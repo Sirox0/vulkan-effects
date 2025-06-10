@@ -1,0 +1,9 @@
+[submodule "external/JoltC"]
+	path = external/JoltC
+	url = https://github.com/SecondHalfGames/JoltC/
+[submodule "external/Jolt"]
+	path = external/Jolt
+	url = https://github.com/jrouwe/JoltPhysics
+[submodule "external/cglm"]
+	path = external/cglm
+	url = https://github.com/recp/cglm
