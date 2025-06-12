@@ -1,14 +1,13 @@
 #version 450
 
-layout(location = 0) in vec2 uv;
-layout(location = 1) in vec4 pos;
-layout(location = 2) in vec3 normal;
-layout(binding = 1) uniform sampler2DArray textures;
-layout(push_constant) uniform PC {
-    uint textureIndex;
-};
+layout(location = 0) in vec4 pos;
+layout(location = 1) in vec3 normal;
+layout(location = 2) in vec2 uv;
+layout(location = 3) in flat uint textureidx;
 
-layout(location = 0) out vec4 outColor;
+layout(binding = 1) uniform sampler2DArray textures;
+
+layout(location = 0) out vec4 color;
 
 const vec4 ambientLightColor = vec4(1.0, 1.0, 1.0, 0.1);
 const vec4 diffuseLightColor = vec4(1.0, 1.0, 1.0, 1.0);
@@ -27,6 +26,6 @@ void main() {
 
     light += max(dot(normalize(normal), normalize(nlightDir)), 0.0) * dlightColor;
 
-    outColor = texture(textures, vec3(uv, textureIndex & 3));
-    outColor.rgb *= light;
+    color = texture(textures, vec3(uv, textureidx));
+    color.rgb *= light;
 }

@@ -24,7 +24,7 @@ typedef struct {
     VkDescriptorSetLayout descriptorSetLayout;
     VkDescriptorSet descriptorSet;
 
-    // layout: depth texture -> game textures -> cube vertex buffer -> cube index buffer
+    // layout: depth texture -> game textures -> cube vertex buffer
     VkDeviceMemory deviceLocalMemory;
 
     VkFormat depthTextureFormat;
@@ -38,8 +38,6 @@ typedef struct {
 
     VkBuffer cubeVertexBuffer;
     VkDeviceSize cubeVertexBufferOffset;
-    VkBuffer cubeIndexBuffer;
-    VkDeviceSize cubeIndexBufferOffset;
 
     VkBuffer cubeUniformBuffer;
     VkDeviceMemory cubeBuffersMemory;

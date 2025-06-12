@@ -1,9 +1,9 @@
 #version 450
 
 layout(location = 0) in vec3 pos;
-layout(push_constant) uniform PC {
-    uint textureIndex;
-};
+layout(location = 1) in vec3 normal;
+layout(location = 2) in vec2 uv;
+layout(location = 3) in uint textureidx;
 
 layout(binding = 0) uniform UBO {
     mat4 model;
@@ -11,28 +11,18 @@ layout(binding = 0) uniform UBO {
     mat4 projection;
 };
 
-layout(location = 0) out vec2 fraguv;
-layout(location = 1) out vec4 fragpos;
-layout(location = 2) out vec3 fragnormal;
+layout(location = 0) out vec4 fragpos;
+layout(location = 1) out vec3 fragnormal;
+layout(location = 2) out vec2 fraguv;
+layout(location = 3) out flat uint fragtextureidx;
 
 void main() {
     fragpos = model * vec4(pos, 1.0);
     gl_Position = projection * view * fragpos;
 
-    vec2 coords;
-    switch (textureIndex >> 2) {
-        case 0:
-            coords = pos.xz;
-            fragnormal = normalize(mat3(model) * vec3(0.0, 1.0 * -sign(pos.y), 0.0));
-            break;
-        case 1:
-            coords = pos.zy;
-            fragnormal = normalize(mat3(model) * vec3(1.0 * -sign(pos.x), 0.0, 0.0));
-            break;
-        case 2:
-            fragnormal = normalize(mat3(model) * vec3(0.0, 0.0, 1.0 * -sign(pos.z)));
-            coords = pos.xy;
-            break;
-    }
-    fraguv = clamp(coords / 2.0, 0.0, 1.0);
+    //mat3 normalmatrix = transpose(inverse(mat3(view * model)));
+    fragnormal = /*normalmatrix **/ normal;
+
+    fraguv = uv;
+    fragtextureidx = textureidx;
 }

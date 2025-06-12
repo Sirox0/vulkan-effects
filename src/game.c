@@ -54,35 +54,54 @@ void gameInit() {
     }
 
     {
-        vec3 vertexbuf[] = {
-            {-2.0f, 2.0f, 2.0f},
-            {-2.0f, 2.0f, -2.0f},
-            {2.0f, 2.0f, -2.0f},
-            {2.0f, 2.0f, 2.0f},
-            {-2.0f, -2.0f, 2.0f},
-            {-2.0f, -2.0f, -2.0f},
-            {2.0f, -2.0f, -2.0f},
-            {2.0f, -2.0f, 2.0f},
-        };
-
-        u16 indexbuf[] = {
-            1, 2, 0,
-            2, 3, 0,
-
-            5, 4, 6,
-            6, 4, 7,
-
-            4, 5, 0,
-            5, 1, 0,
-
-            7, 3, 6,
-            6, 3, 2,
-
-            6, 2, 5,
-            5, 2, 1,
-
-            4, 3, 7,
-            4, 0, 3
+        struct {
+            vec3 pos;
+            vec3 normal;
+            vec2 uv;
+            u32 textureIndex;
+        } vertexbuf[] = {
+             // left face
+            {{-2, -2, -2}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
+            {{-2, 2, 2}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
+            {{-2, -2, 2}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, 0},
+            {{-2, 2, 2}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
+            {{-2, -2, -2}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
+            {{-2, 2, -2}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, 0},
+            // back face
+            {{-2, -2, -2}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}, 0},
+            {{2, -2, -2}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}, 0},
+            {{2, 2, -2}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}, 0},
+            {{-2, -2, -2}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}, 0},
+            {{2, 2, -2}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}, 0},
+            {{-2, 2, -2}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}, 0},
+            // top face
+            {{-2, -2, -2}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}, 2},
+            {{2, -2, 2}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}, 2},
+            {{2, -2, -2}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, 2},
+            {{-2, -2, -2}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}, 2},
+            {{-2, -2, 2}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, 2},
+            {{2, -2, 2}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}, 2},
+            // bottom face
+            {{-2, 2, -2}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f}, 1},
+            {{2, 2, 2}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f}, 1},
+            {{-2, 2, 2}, {0.0f, -1.0f, 0.0f}, {0.0f, 1.0f}, 1},
+            {{-2, 2, -2}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f}, 1},
+            {{2, 2, -2}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f}, 1},
+            {{2, 2, 2}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f}, 1},
+            // right face
+            {{2, 2, -2}, {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
+            {{2, -2, 2}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
+            {{2, 2, 2}, {-1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, 0},
+            {{2, -2, 2}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
+            {{2, 2, -2}, {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
+            {{2, -2, -2}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, 0},
+            // front face
+            {{-2, 2, 2}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f}, 0},
+            {{2, 2, 2}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f}, 0},
+            {{-2, -2, 2}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f}, 0},
+            {{-2, -2, 2}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f}, 0},
+            {{2, 2, 2}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f}, 0},
+            {{2, -2, 2}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f}, 0},
         };
 
         int32_t wallpaperX, wallpaperY;
@@ -102,7 +121,6 @@ void gameInit() {
         createImage(&gameglobals.depthTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, gameglobals.depthTextureFormat, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
         createImage(&gameglobals.gameTextures, wallpaperX, wallpaperY, VK_FORMAT_R8G8B8A8_UNORM, 3, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
         createBuffer(&gameglobals.cubeVertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(vertexbuf));
-        createBuffer(&gameglobals.cubeIndexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(indexbuf));
 
         VkMemoryRequirements depthTextureMemReq;
         vkGetImageMemoryRequirements(vkglobals.device, gameglobals.depthTexture, &depthTextureMemReq);
@@ -110,22 +128,18 @@ void gameInit() {
         vkGetImageMemoryRequirements(vkglobals.device, gameglobals.gameTextures, &gameTexturesMemReq);
         VkMemoryRequirements vertexBufferMemReq;
         vkGetBufferMemoryRequirements(vkglobals.device, gameglobals.cubeVertexBuffer, &vertexBufferMemReq);
-        VkMemoryRequirements indexBufferMemReq;
-        vkGetBufferMemoryRequirements(vkglobals.device, gameglobals.cubeIndexBuffer, &indexBufferMemReq);
 
         gameglobals.gameTexturesOffset = depthTextureMemReq.size + getAlignCooficient(depthTextureMemReq.size, gameTexturesMemReq.alignment);
         gameglobals.cubeVertexBufferOffset = gameglobals.gameTexturesOffset + gameTexturesMemReq.size + getAlignCooficient(gameglobals.gameTexturesOffset + gameTexturesMemReq.size, vertexBufferMemReq.alignment);
-        gameglobals.cubeIndexBufferOffset = gameglobals.cubeVertexBufferOffset + vertexBufferMemReq.size + getAlignCooficient(gameglobals.cubeVertexBufferOffset + vertexBufferMemReq.size, indexBufferMemReq.alignment);
 
-        allocateMemory(&gameglobals.deviceLocalMemory, gameglobals.cubeIndexBufferOffset + indexBufferMemReq.size, getMemoryTypeIndex(depthTextureMemReq.memoryTypeBits & gameTexturesMemReq.memoryTypeBits & vertexBufferMemReq.memoryTypeBits & indexBufferMemReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+        allocateMemory(&gameglobals.deviceLocalMemory, gameglobals.cubeVertexBufferOffset + vertexBufferMemReq.size, getMemoryTypeIndex(depthTextureMemReq.memoryTypeBits & gameTexturesMemReq.memoryTypeBits & vertexBufferMemReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
 
         VK_ASSERT(vkBindImageMemory(vkglobals.device, gameglobals.depthTexture, gameglobals.deviceLocalMemory,  0), "failed to bind image memory\n");
         VK_ASSERT(vkBindImageMemory(vkglobals.device, gameglobals.gameTextures, gameglobals.deviceLocalMemory,  gameglobals.gameTexturesOffset), "failed to bind image memory\n");
         VK_ASSERT(vkBindBufferMemory(vkglobals.device, gameglobals.cubeVertexBuffer, gameglobals.deviceLocalMemory, gameglobals.cubeVertexBufferOffset), "failed to bind buffer memory\n");
-        VK_ASSERT(vkBindBufferMemory(vkglobals.device, gameglobals.cubeIndexBuffer, gameglobals.deviceLocalMemory, gameglobals.cubeIndexBufferOffset), "failed to bind buffer memory\n");
 
         {
-            createBuffer(&garbageBuffers[0], VK_BUFFER_USAGE_TRANSFER_SRC_BIT, sizeof(vertexbuf) + sizeof(indexbuf) + wallpaperX * wallpaperY * 4 + carpetX * carpetY * 4 + ceilingX * ceilingY * 4);
+            createBuffer(&garbageBuffers[0], VK_BUFFER_USAGE_TRANSFER_SRC_BIT, sizeof(vertexbuf) + wallpaperX * wallpaperY * 4 + carpetX * carpetY * 4 + ceilingX * ceilingY * 4);
 
             VkMemoryRequirements garbageBufferMemReq;
             vkGetBufferMemoryRequirements(vkglobals.device, garbageBuffers[0], &garbageBufferMemReq);
@@ -138,10 +152,9 @@ void gameInit() {
             VK_ASSERT(vkMapMemory(vkglobals.device, garbageBuffersMem[0], 0, VK_WHOLE_SIZE, 0, &garbageBuffer0MemRaw), "failed to map memory\n");
 
             memcpy(garbageBuffer0MemRaw, vertexbuf, sizeof(vertexbuf));
-            memcpy(garbageBuffer0MemRaw + sizeof(vertexbuf), indexbuf, sizeof(indexbuf));
-            memcpy(garbageBuffer0MemRaw + sizeof(vertexbuf) + sizeof(indexbuf), wallpaperTexture, wallpaperX * wallpaperY * 4);
-            memcpy(garbageBuffer0MemRaw + sizeof(vertexbuf) + sizeof(indexbuf) + wallpaperX * wallpaperY * 4, carpetTexture, carpetX * carpetY * 4);
-            memcpy(garbageBuffer0MemRaw + sizeof(vertexbuf) + sizeof(indexbuf) + wallpaperX * wallpaperY * 4 + carpetX * carpetY * 4, ceilingTexture, ceilingX * ceilingY * 4);
+            memcpy(garbageBuffer0MemRaw + sizeof(vertexbuf), wallpaperTexture, wallpaperX * wallpaperY * 4);
+            memcpy(garbageBuffer0MemRaw + sizeof(vertexbuf) + wallpaperX * wallpaperY * 4, carpetTexture, carpetX * carpetY * 4);
+            memcpy(garbageBuffer0MemRaw + sizeof(vertexbuf) + wallpaperX * wallpaperY * 4 + carpetX * carpetY * 4, ceilingTexture, ceilingX * ceilingY * 4);
 
             VkMappedMemoryRange memoryRange = {};
             memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
@@ -153,18 +166,14 @@ void gameInit() {
             
             vkUnmapMemory(vkglobals.device, garbageBuffersMem[0]);
 
-            VkBufferCopy copyInfo[2] = {};
+            VkBufferCopy copyInfo[1] = {};
             copyInfo[0].srcOffset = 0;
             copyInfo[0].dstOffset = 0;
             copyInfo[0].size = vertexBufferMemReq.size;
-            copyInfo[1].srcOffset = sizeof(vertexbuf);
-            copyInfo[1].dstOffset = 0;
-            copyInfo[1].size = indexBufferMemReq.size;
 
             vkCmdCopyBuffer(garbageCmdBuffers[0], garbageBuffers[0], gameglobals.cubeVertexBuffer, 1, &copyInfo[0]);
-            vkCmdCopyBuffer(garbageCmdBuffers[0], garbageBuffers[0], gameglobals.cubeIndexBuffer, 1, &copyInfo[1]);
 
-            copyBufferToImage(garbageCmdBuffers[0], garbageBuffers[0], sizeof(vertexbuf) + sizeof(indexbuf), gameglobals.gameTextures, wallpaperX, wallpaperY, 3, 0, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            copyBufferToImage(garbageCmdBuffers[0], garbageBuffers[0], sizeof(vertexbuf), gameglobals.gameTextures, wallpaperX, wallpaperY, 3, 0, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         }
 
         stbi_image_free(ceilingTexture);
@@ -299,17 +308,10 @@ void gameInit() {
     }
 
     {
-        VkPushConstantRange pcRange = {};
-        pcRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        pcRange.size = sizeof(u32);
-        pcRange.offset = 0;
-
         VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.setLayoutCount = 1;
         pipelineLayoutInfo.pSetLayouts = &gameglobals.descriptorSetLayout;
-        pipelineLayoutInfo.pushConstantRangeCount = 1;
-        pipelineLayoutInfo.pPushConstantRanges = &pcRange;
 
         VK_ASSERT(vkCreatePipelineLayout(vkglobals.device, &pipelineLayoutInfo, VK_NULL_HANDLE, &gameglobals.cubePipelineLayout), "failed to create pipeline layout\n");
 
@@ -328,15 +330,27 @@ void gameInit() {
         VkVertexInputBindingDescription bindingDescs[1] = {};
         bindingDescs[0].binding = 0;
         bindingDescs[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        bindingDescs[0].stride = sizeof(vec3);
+        bindingDescs[0].stride = sizeof(vec3) * 2 + sizeof(vec2) + sizeof(u32);
 
-        VkVertexInputAttributeDescription attributeDescs[1] = {};
+        VkVertexInputAttributeDescription attributeDescs[4] = {};
         attributeDescs[0].binding = 0;
         attributeDescs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
         attributeDescs[0].location = 0;
         attributeDescs[0].offset = 0;
+        attributeDescs[1].binding = 0;
+        attributeDescs[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescs[1].location = 1;
+        attributeDescs[1].offset = sizeof(vec3);
+        attributeDescs[2].binding = 0;
+        attributeDescs[2].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDescs[2].location = 2;
+        attributeDescs[2].offset = sizeof(vec3) * 2;
+        attributeDescs[3].binding = 0;
+        attributeDescs[3].format = VK_FORMAT_R32_UINT;
+        attributeDescs[3].location = 3;
+        attributeDescs[3].offset = sizeof(vec3) * 2 + sizeof(vec2);
 
-        pipelineInfo.vertexInputState.vertexAttributeDescriptionCount = 1;
+        pipelineInfo.vertexInputState.vertexAttributeDescriptionCount = 4;
         pipelineInfo.vertexInputState.pVertexAttributeDescriptions = attributeDescs;
         pipelineInfo.vertexInputState.vertexBindingDescriptionCount = 1;
         pipelineInfo.vertexInputState.pVertexBindingDescriptions = bindingDescs;
@@ -509,26 +523,9 @@ void gameRender() {
         VkDeviceSize vertexBufferOffsets[1] = {};
         vkCmdBindPipeline(vkglobals.cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gameglobals.cubePipeline);
         vkCmdBindVertexBuffers(vkglobals.cmdBuffer, 0, 1, &gameglobals.cubeVertexBuffer, vertexBufferOffsets);
-        vkCmdBindIndexBuffer(vkglobals.cmdBuffer, gameglobals.cubeIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
         vkCmdBindDescriptorSets(vkglobals.cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gameglobals.cubePipelineLayout, 0, 1, &gameglobals.descriptorSet, 0, VK_NULL_HANDLE);
 
-        u32 textureArrayIndices[4] = {1, 2, 0 | (1 << 2), 0 | (2 << 2)};
-
-        vkCmdBindIndexBuffer(vkglobals.cmdBuffer, gameglobals.cubeIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
-        vkCmdPushConstants(vkglobals.cmdBuffer, gameglobals.cubePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(u32), &textureArrayIndices[0]);
-        vkCmdDrawIndexed(vkglobals.cmdBuffer, 6, 1, 0, 0, 0);
-
-        vkCmdBindIndexBuffer(vkglobals.cmdBuffer, gameglobals.cubeIndexBuffer, 6 * sizeof(u16), VK_INDEX_TYPE_UINT16);
-        vkCmdPushConstants(vkglobals.cmdBuffer, gameglobals.cubePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(u32), &textureArrayIndices[1]);
-        vkCmdDrawIndexed(vkglobals.cmdBuffer, 6, 1, 0, 0, 0);
-
-        vkCmdBindIndexBuffer(vkglobals.cmdBuffer, gameglobals.cubeIndexBuffer, 12 * sizeof(u16), VK_INDEX_TYPE_UINT16);
-        vkCmdPushConstants(vkglobals.cmdBuffer, gameglobals.cubePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(u32), &textureArrayIndices[2]);
-        vkCmdDrawIndexed(vkglobals.cmdBuffer, 12, 1, 0, 0, 0);
-
-        vkCmdBindIndexBuffer(vkglobals.cmdBuffer, gameglobals.cubeIndexBuffer, 24 * sizeof(u16), VK_INDEX_TYPE_UINT16);
-        vkCmdPushConstants(vkglobals.cmdBuffer, gameglobals.cubePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(u32), &textureArrayIndices[3]);
-        vkCmdDrawIndexed(vkglobals.cmdBuffer, 12, 1, 0, 0, 0);
+        vkCmdDraw(vkglobals.cmdBuffer, 36, 1, 0, 0);
 
         vkCmdEndRenderingKHR(vkglobals.cmdBuffer);
 
@@ -588,7 +585,6 @@ void gameQuit() {
     vkUnmapMemory(vkglobals.device, gameglobals.cubeBuffersMemory);
     vkDestroyBuffer(vkglobals.device, gameglobals.cubeUniformBuffer, VK_NULL_HANDLE);
     vkFreeMemory(vkglobals.device, gameglobals.cubeBuffersMemory, VK_NULL_HANDLE);
-    vkDestroyBuffer(vkglobals.device, gameglobals.cubeIndexBuffer, VK_NULL_HANDLE);
     vkDestroyBuffer(vkglobals.device, gameglobals.cubeVertexBuffer, VK_NULL_HANDLE);
     vkDestroySampler(vkglobals.device, gameglobals.gameTexturesSampler, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, gameglobals.gameTexturesView, VK_NULL_HANDLE);
