@@ -54,8 +54,8 @@ typedef struct {
         f32 pitch, yaw;
     } cam;
 
-    VkSemaphore swapchainReadySemaphore;
     VkSemaphore renderingDoneSemaphore;
+    VkFence swapchainReadyFence;
     VkFence frameFence;
 } game_globals_t;
 

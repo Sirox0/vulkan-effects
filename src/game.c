@@ -296,7 +296,6 @@ void gameInit() {
         VkSemaphoreCreateInfo semaphoreInfo = {};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-        VK_ASSERT(vkCreateSemaphore(vkglobals.device, &semaphoreInfo, VK_NULL_HANDLE, &gameglobals.swapchainReadySemaphore), "failed to create semaphore\n");
         VK_ASSERT(vkCreateSemaphore(vkglobals.device, &semaphoreInfo, VK_NULL_HANDLE, &gameglobals.renderingDoneSemaphore), "failed to create semaphore\n");
 
         VkFenceCreateInfo fenceInfo = {};
@@ -304,6 +303,10 @@ void gameInit() {
         fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
         VK_ASSERT(vkCreateFence(vkglobals.device, &fenceInfo, VK_NULL_HANDLE, &gameglobals.frameFence), "failed to create fence\n");
+
+        fenceInfo.flags = 0;
+
+        VK_ASSERT(vkCreateFence(vkglobals.device, &fenceInfo, VK_NULL_HANDLE, &gameglobals.swapchainReadyFence), "failed to create fence\n");
     }
 
     glm_perspective(glm_rad(45.0f), (f32)vkglobals.swapchainExtent.width / vkglobals.swapchainExtent.height, 50.0f, 0.01f, gameglobals.cubeBuffersMemoryRaw + sizeof(mat4) * 2);
@@ -382,11 +385,10 @@ void updateCubeUbo() {
 void gameRender() {
     updateCubeUbo();
 
-    VK_ASSERT(vkWaitForFences(vkglobals.device, 1, &gameglobals.frameFence, VK_FALSE, 0xFFFFFFFFFFFFFFFF), "failed to wait for fences\n");
-    VK_ASSERT(vkResetFences(vkglobals.device, 1, &gameglobals.frameFence), "failed to reset fences\n");
-
     u32 imageIndex;
-    VK_ASSERT(vkAcquireNextImageKHR(vkglobals.device, vkglobals.swapchain, 0xFFFFFFFFFFFFFFFF, gameglobals.swapchainReadySemaphore, VK_NULL_HANDLE, &imageIndex), "failed tp acquire swapchain image\n");
+    VK_ASSERT(vkAcquireNextImageKHR(vkglobals.device, vkglobals.swapchain, 0xFFFFFFFFFFFFFFFF, VK_NULL_HANDLE, gameglobals.swapchainReadyFence, &imageIndex), "failed to acquire swapchain image\n");
+    VK_ASSERT(vkWaitForFences(vkglobals.device, 2, (VkFence[]){gameglobals.swapchainReadyFence, gameglobals.frameFence}, VK_TRUE, 0xFFFFFFFFFFFFFFFF), "failed to wait for fences\n");
+    VK_ASSERT(vkResetFences(vkglobals.device, 2, (VkFence[]){gameglobals.swapchainReadyFence, gameglobals.frameFence}), "failed to reset fences\n");
 
     {
         VkCommandBufferBeginInfo cmdBeginInfo = {};
@@ -479,8 +481,8 @@ void gameRender() {
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &gameglobals.swapchainReadySemaphore;
+    submitInfo.waitSemaphoreCount = 0;
+    submitInfo.pWaitSemaphores = VK_NULL_HANDLE;
     submitInfo.pWaitDstStageMask = &semaphoreSignalStage;
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &gameglobals.renderingDoneSemaphore;
@@ -502,8 +504,8 @@ void gameRender() {
 
 void gameQuit() {
     vkDestroyFence(vkglobals.device, gameglobals.frameFence, VK_NULL_HANDLE);
+    vkDestroyFence(vkglobals.device, gameglobals.swapchainReadyFence, VK_NULL_HANDLE);
     vkDestroySemaphore(vkglobals.device, gameglobals.renderingDoneSemaphore, VK_NULL_HANDLE);
-    vkDestroySemaphore(vkglobals.device, gameglobals.swapchainReadySemaphore, VK_NULL_HANDLE);
     vkDestroyPipeline(vkglobals.device, gameglobals.cubePipeline, VK_NULL_HANDLE);
     vkDestroyPipelineLayout(vkglobals.device, gameglobals.cubePipelineLayout, VK_NULL_HANDLE);
     vkUnmapMemory(vkglobals.device, gameglobals.cubeBuffersMemory);
