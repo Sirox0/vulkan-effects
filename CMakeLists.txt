@@ -27,6 +27,7 @@ set(SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/vkFunctions.c
     ${CMAKE_CURRENT_LIST_DIR}/src/util.c
     ${CMAKE_CURRENT_LIST_DIR}/src/game.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/stb_image.c
 )
 
 find_package(SDL3 REQUIRED)
@@ -38,7 +39,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME} SDL3::SDL3 Vulkan::Headers)
 if(UNIX)
     target_link_libraries(${CMAKE_PROJECT_NAME} m)
 endif()
-target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include ${CMAKE_CURRENT_LIST_DIR}/external/cglm/include)
+target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include ${CMAKE_CURRENT_LIST_DIR}/external/cglm/include ${CMAKE_CURRENT_LIST_DIR}/external/stb)
 
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE CMAKE_EXPORT_COMPILE_COMMANDS=ON)
 

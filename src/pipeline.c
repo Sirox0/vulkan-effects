@@ -62,7 +62,7 @@ void pipelineFillDefaultGraphicsPipeline(graphics_pipeline_info_t* pInfo) {
     pInfo->rasterizationState.depthClampEnable = VK_FALSE;
     pInfo->rasterizationState.rasterizerDiscardEnable = VK_FALSE;
     pInfo->rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
-    pInfo->rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
+    pInfo->rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
     pInfo->rasterizationState.frontFace = VK_FRONT_FACE_CLOCKWISE;
     pInfo->rasterizationState.depthBiasEnable = VK_FALSE;
     pInfo->rasterizationState.lineWidth = 1.0f;

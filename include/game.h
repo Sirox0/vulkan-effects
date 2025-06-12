@@ -17,23 +17,24 @@
     }
 
 typedef struct {
-    vec3 pos;
-    vec3 color;
-} vertex_input_cube_t;
-
-typedef struct {
     u8 loopActive;
     u32 deltaTime;
 
     VkDescriptorPool descriptorPool;
-    VkDescriptorSetLayout uboDescriptorSetLayout;
+    VkDescriptorSetLayout descriptorSetLayout;
+    VkDescriptorSet descriptorSet;
 
-    // layout: depth texture -> cube vertex buffer -> cube index buffer
+    // layout: depth texture -> game textures -> cube vertex buffer -> cube index buffer
     VkDeviceMemory deviceLocalMemory;
 
     VkFormat depthTextureFormat;
     VkImage depthTexture;
     VkImageView depthTextureView;
+
+    VkImage gameTextures;
+    VkDeviceSize gameTexturesOffset;
+    VkImageView gameTexturesView;
+    VkSampler gameTexturesSampler;
 
     VkBuffer cubeVertexBuffer;
     VkDeviceSize cubeVertexBufferOffset;
@@ -44,15 +45,16 @@ typedef struct {
     VkDeviceMemory cubeBuffersMemory;
     void* cubeBuffersMemoryRaw;
 
-    VkDescriptorSet cubeUboDescriptorSet;
     VkPipelineLayout cubePipelineLayout;
     VkPipeline cubePipeline;
 
     struct {
-        vec3 velocity;
         vec3 position;
         f32 pitch, yaw;
     } cam;
+
+    vec4 input;
+    u8 shift;
 
     VkSemaphore renderingDoneSemaphore;
     VkFence swapchainReadyFence;

@@ -11,7 +11,7 @@
 #include "vkInit.h"
 #include "mathext.h"
 #include "pipeline.h"
-#include "game.h"
+#include "util.h"
 
 vulkan_globals_t vkglobals = {};
 
@@ -290,19 +290,7 @@ void vkInit() {
         vkGetSwapchainImagesKHR(vkglobals.device, vkglobals.swapchain, &vkglobals.swapchainImageCount, vkglobals.swapchainImages);
 
         for (u32 i = 0; i < vkglobals.swapchainImageCount; i++) {
-            VkImageViewCreateInfo viewInfo = {};
-            viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-            viewInfo.image = vkglobals.swapchainImages[i];
-            viewInfo.format = vkglobals.surfaceFormat.format;
-            viewInfo.components = (VkComponentMapping){VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY};
-            viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            viewInfo.subresourceRange.levelCount = 1;
-            viewInfo.subresourceRange.baseMipLevel = 0;
-            viewInfo.subresourceRange.layerCount = 1;
-            viewInfo.subresourceRange.baseArrayLayer = 0;
-
-            VK_ASSERT(vkCreateImageView(vkglobals.device, &viewInfo, VK_NULL_HANDLE, &vkglobals.swapchainImageViews[i]), "failed to create image view\n");
+            createImageView(&vkglobals.swapchainImageViews[i], vkglobals.swapchainImages[i], VK_IMAGE_VIEW_TYPE_2D, vkglobals.surfaceFormat.format, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
         }
     }
 }
