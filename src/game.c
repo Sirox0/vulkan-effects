@@ -120,22 +120,27 @@ void gameInit() {
 
         createImage(&gameglobals.depthTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, gameglobals.depthTextureFormat, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
         createImage(&gameglobals.gameTextures, wallpaperX, wallpaperY, VK_FORMAT_R8G8B8A8_UNORM, 3, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+        createImage(&gameglobals.gbuffer, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, 3, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
         createBuffer(&gameglobals.cubeVertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(vertexbuf));
 
         VkMemoryRequirements depthTextureMemReq;
         vkGetImageMemoryRequirements(vkglobals.device, gameglobals.depthTexture, &depthTextureMemReq);
         VkMemoryRequirements gameTexturesMemReq;
         vkGetImageMemoryRequirements(vkglobals.device, gameglobals.gameTextures, &gameTexturesMemReq);
+        VkMemoryRequirements gbufferMemReq;
+        vkGetImageMemoryRequirements(vkglobals.device, gameglobals.gbuffer, &gbufferMemReq);
         VkMemoryRequirements vertexBufferMemReq;
         vkGetBufferMemoryRequirements(vkglobals.device, gameglobals.cubeVertexBuffer, &vertexBufferMemReq);
 
         gameglobals.gameTexturesOffset = depthTextureMemReq.size + getAlignCooficient(depthTextureMemReq.size, gameTexturesMemReq.alignment);
-        gameglobals.cubeVertexBufferOffset = gameglobals.gameTexturesOffset + gameTexturesMemReq.size + getAlignCooficient(gameglobals.gameTexturesOffset + gameTexturesMemReq.size, vertexBufferMemReq.alignment);
+        gameglobals.gbufferOffset = gameglobals.gameTexturesOffset + gameTexturesMemReq.size + getAlignCooficient(gameglobals.gameTexturesOffset + gameTexturesMemReq.size, gbufferMemReq.alignment);
+        gameglobals.cubeVertexBufferOffset = gameglobals.gbufferOffset + gbufferMemReq.size + getAlignCooficient(gameglobals.gbufferOffset + gbufferMemReq.size, vertexBufferMemReq.alignment);
 
-        allocateMemory(&gameglobals.deviceLocalMemory, gameglobals.cubeVertexBufferOffset + vertexBufferMemReq.size, getMemoryTypeIndex(depthTextureMemReq.memoryTypeBits & gameTexturesMemReq.memoryTypeBits & vertexBufferMemReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+        allocateMemory(&gameglobals.deviceLocalMemory, gameglobals.cubeVertexBufferOffset + vertexBufferMemReq.size, getMemoryTypeIndex(depthTextureMemReq.memoryTypeBits & gameTexturesMemReq.memoryTypeBits & gbufferMemReq.memoryTypeBits & vertexBufferMemReq.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
 
         VK_ASSERT(vkBindImageMemory(vkglobals.device, gameglobals.depthTexture, gameglobals.deviceLocalMemory,  0), "failed to bind image memory\n");
         VK_ASSERT(vkBindImageMemory(vkglobals.device, gameglobals.gameTextures, gameglobals.deviceLocalMemory,  gameglobals.gameTexturesOffset), "failed to bind image memory\n");
+        VK_ASSERT(vkBindImageMemory(vkglobals.device, gameglobals.gbuffer, gameglobals.deviceLocalMemory,  gameglobals.gbufferOffset), "failed to bind image memory\n");
         VK_ASSERT(vkBindBufferMemory(vkglobals.device, gameglobals.cubeVertexBuffer, gameglobals.deviceLocalMemory, gameglobals.cubeVertexBufferOffset), "failed to bind buffer memory\n");
 
         {
@@ -213,7 +218,10 @@ void gameInit() {
 
     createImageView(&gameglobals.depthTextureView, gameglobals.depthTexture, VK_IMAGE_VIEW_TYPE_2D, gameglobals.depthTextureFormat, 1, 0, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
     createImageView(&gameglobals.gameTexturesView, gameglobals.gameTextures, VK_IMAGE_VIEW_TYPE_2D_ARRAY, VK_FORMAT_R8G8B8A8_UNORM, 3, 0, VK_IMAGE_ASPECT_COLOR_BIT);
-    createSampler(&gameglobals.gameTexturesSampler);
+    createImageView(&gameglobals.gbufferAlbedoView, gameglobals.gbuffer, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+    createImageView(&gameglobals.gbufferPositionView, gameglobals.gbuffer, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT);
+    createImageView(&gameglobals.gbufferNormalView, gameglobals.gbuffer, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 2, VK_IMAGE_ASPECT_COLOR_BIT);
+    createSampler(&gameglobals.sampler);
 
     {
         createBuffer(&gameglobals.cubeUniformBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(mat4) * 3);
@@ -235,13 +243,13 @@ void gameInit() {
 
         VkDescriptorPoolSize textureArrayPoolSize = {};
         textureArrayPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        textureArrayPoolSize.descriptorCount = 1;
+        textureArrayPoolSize.descriptorCount = 4;
 
         VkDescriptorPoolCreateInfo poolInfo = {};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         poolInfo.poolSizeCount = 2;
         poolInfo.pPoolSizes = (VkDescriptorPoolSize[]){uboPoolSize, textureArrayPoolSize};
-        poolInfo.maxSets = 1;
+        poolInfo.maxSets = 2;
 
         VK_ASSERT(vkCreateDescriptorPool(vkglobals.device, &poolInfo, VK_NULL_HANDLE, &gameglobals.descriptorPool), "failed to create descriptor pool\n");
     }
@@ -264,17 +272,37 @@ void gameInit() {
         descriptorSetLayoutInfo.bindingCount = 2;
         descriptorSetLayoutInfo.pBindings = (VkDescriptorSetLayoutBinding[]){uboBinding, textureArrayBinding};
 
-        VK_ASSERT(vkCreateDescriptorSetLayout(vkglobals.device, &descriptorSetLayoutInfo, VK_NULL_HANDLE, &gameglobals.descriptorSetLayout), "failed to create descriptor set layout\n");
+        VK_ASSERT(vkCreateDescriptorSetLayout(vkglobals.device, &descriptorSetLayoutInfo, VK_NULL_HANDLE, &gameglobals.cubeDescriptorSetLayout), "failed to create descriptor set layout\n");
+
+        VkDescriptorSetLayoutBinding gbufferBindings[3] = {};
+        gbufferBindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        gbufferBindings[0].binding = 0;
+        gbufferBindings[0].descriptorCount = 1;
+        gbufferBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        gbufferBindings[1] = gbufferBindings[0];
+        gbufferBindings[1].binding = 1;
+        gbufferBindings[2] = gbufferBindings[0];
+        gbufferBindings[2].binding = 2;
+
+        descriptorSetLayoutInfo.bindingCount = 3;
+        descriptorSetLayoutInfo.pBindings = gbufferBindings;
+
+        VK_ASSERT(vkCreateDescriptorSetLayout(vkglobals.device, &descriptorSetLayoutInfo, VK_NULL_HANDLE, &gameglobals.compositionDescriptorSetLayout), "failed to create descriptor set layout\n");
     }
 
     {
         VkDescriptorSetAllocateInfo descriptorSetsInfo = {};
         descriptorSetsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         descriptorSetsInfo.descriptorPool = gameglobals.descriptorPool;
-        descriptorSetsInfo.descriptorSetCount = 1;
-        descriptorSetsInfo.pSetLayouts = (VkDescriptorSetLayout[]){gameglobals.descriptorSetLayout};
+        descriptorSetsInfo.descriptorSetCount = 2;
+        descriptorSetsInfo.pSetLayouts = (VkDescriptorSetLayout[]){gameglobals.cubeDescriptorSetLayout, gameglobals.compositionDescriptorSetLayout};
 
-        VK_ASSERT(vkAllocateDescriptorSets(vkglobals.device, &descriptorSetsInfo, &gameglobals.descriptorSet), "failed to allocate descriptor sets\n");
+        VkDescriptorSet sets[2];
+
+        VK_ASSERT(vkAllocateDescriptorSets(vkglobals.device, &descriptorSetsInfo, sets), "failed to allocate descriptor sets\n");
+
+        gameglobals.cubeDescriptorSet = sets[0];
+        gameglobals.compositionDescriptorSet = sets[1];
 
         VkDescriptorBufferInfo descriptorBufferInfo = {};
         descriptorBufferInfo.buffer = gameglobals.cubeUniformBuffer;
@@ -287,13 +315,13 @@ void gameInit() {
         uboDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         uboDescriptorWrite.dstBinding = 0;
         uboDescriptorWrite.dstArrayElement = 0;
-        uboDescriptorWrite.dstSet = gameglobals.descriptorSet;
+        uboDescriptorWrite.dstSet = gameglobals.cubeDescriptorSet;
         uboDescriptorWrite.pBufferInfo = &descriptorBufferInfo;
 
         VkDescriptorImageInfo descriptorImageInfo = {};
         descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         descriptorImageInfo.imageView = gameglobals.gameTexturesView;
-        descriptorImageInfo.sampler = gameglobals.gameTexturesSampler;
+        descriptorImageInfo.sampler = gameglobals.sampler;
 
         VkWriteDescriptorSet textureArrayDescriptorWrite = {};
         textureArrayDescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -301,31 +329,76 @@ void gameInit() {
         textureArrayDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         textureArrayDescriptorWrite.dstBinding = 1;
         textureArrayDescriptorWrite.dstArrayElement = 0;
-        textureArrayDescriptorWrite.dstSet = gameglobals.descriptorSet;
+        textureArrayDescriptorWrite.dstSet = gameglobals.cubeDescriptorSet;
         textureArrayDescriptorWrite.pImageInfo = &descriptorImageInfo;
 
-        vkUpdateDescriptorSets(vkglobals.device, 2, (VkWriteDescriptorSet[]){uboDescriptorWrite, textureArrayDescriptorWrite}, 0, VK_NULL_HANDLE);
+        VkDescriptorImageInfo descriptorGbufferAlbedoInfo = descriptorImageInfo;
+        descriptorGbufferAlbedoInfo.imageView = gameglobals.gbufferAlbedoView;
+
+        VkDescriptorImageInfo descriptorGbufferPositionInfo = descriptorImageInfo;
+        descriptorGbufferPositionInfo.imageView = gameglobals.gbufferPositionView;
+
+        VkDescriptorImageInfo descriptorGbufferNormalInfo = descriptorImageInfo;
+        descriptorGbufferNormalInfo.imageView = gameglobals.gbufferNormalView;
+
+        VkWriteDescriptorSet gbufferDescriptorWrites[3] = {textureArrayDescriptorWrite, textureArrayDescriptorWrite, textureArrayDescriptorWrite};
+        gbufferDescriptorWrites[0].dstBinding = 0;
+        gbufferDescriptorWrites[0].dstSet = gameglobals.compositionDescriptorSet;
+        gbufferDescriptorWrites[0].pImageInfo = &descriptorGbufferAlbedoInfo;
+        gbufferDescriptorWrites[1] = gbufferDescriptorWrites[0];
+        gbufferDescriptorWrites[1].dstBinding = 1;
+        gbufferDescriptorWrites[1].pImageInfo = &descriptorGbufferPositionInfo;
+        gbufferDescriptorWrites[2] = gbufferDescriptorWrites[0];
+        gbufferDescriptorWrites[2].dstBinding = 2;
+        gbufferDescriptorWrites[2].pImageInfo = &descriptorGbufferNormalInfo;
+
+        vkUpdateDescriptorSets(vkglobals.device, 5, (VkWriteDescriptorSet[]){uboDescriptorWrite, textureArrayDescriptorWrite, gbufferDescriptorWrites[0], gbufferDescriptorWrites[1], gbufferDescriptorWrites[2]}, 0, VK_NULL_HANDLE);
     }
 
     {
         VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.setLayoutCount = 1;
-        pipelineLayoutInfo.pSetLayouts = &gameglobals.descriptorSetLayout;
+        pipelineLayoutInfo.pSetLayouts = &gameglobals.cubeDescriptorSetLayout;
 
         VK_ASSERT(vkCreatePipelineLayout(vkglobals.device, &pipelineLayoutInfo, VK_NULL_HANDLE, &gameglobals.cubePipelineLayout), "failed to create pipeline layout\n");
 
-        graphics_pipeline_info_t pipelineInfo = {};
-        pipelineFillDefaultGraphicsPipeline(&pipelineInfo);
-        pipelineInfo.stageCount = 2;
-        pipelineInfo.stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-        pipelineInfo.stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        pipelineInfo.stages[0].module = createShaderModuleFromFile("assets/shaders/cube.vert.spv");
-        pipelineInfo.stages[1].module = createShaderModuleFromFile("assets/shaders/cube.frag.spv");
-        pipelineInfo.renderingInfo.colorAttachmentCount = 1;
-        pipelineInfo.renderingInfo.pColorAttachmentFormats = (VkFormat[]){vkglobals.surfaceFormat.format};
-        pipelineInfo.renderingInfo.depthAttachmentFormat = gameglobals.depthTextureFormat;
-        pipelineInfo.layout = gameglobals.cubePipelineLayout;
+        VkPushConstantRange pcRange = {};
+        pcRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        pcRange.size = sizeof(vec3);
+        pcRange.offset = 0;
+
+        pipelineLayoutInfo.pSetLayouts = &gameglobals.compositionDescriptorSetLayout;
+        pipelineLayoutInfo.pushConstantRangeCount = 1;
+        pipelineLayoutInfo.pPushConstantRanges = &pcRange;
+
+        VK_ASSERT(vkCreatePipelineLayout(vkglobals.device, &pipelineLayoutInfo, VK_NULL_HANDLE, &gameglobals.compositionPipelineLayout), "failed to create pipeline layout\n");
+
+        graphics_pipeline_info_t pipelineInfos[2] = {};
+        pipelineFillDefaultGraphicsPipeline(&pipelineInfos[0]);
+        pipelineInfos[0].stageCount = 2;
+        pipelineInfos[0].stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+        pipelineInfos[0].stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        pipelineInfos[0].stages[0].module = createShaderModuleFromFile("assets/shaders/gbuffer.vert.spv");
+        pipelineInfos[0].stages[1].module = createShaderModuleFromFile("assets/shaders/gbuffer.frag.spv");
+        pipelineInfos[0].renderingInfo.colorAttachmentCount = 3;
+        pipelineInfos[0].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R16G16B16A16_SFLOAT};
+        pipelineInfos[0].renderingInfo.depthAttachmentFormat = gameglobals.depthTextureFormat;
+        pipelineInfos[0].layout = gameglobals.cubePipelineLayout;
+
+        pipelineInfos[0].colorBlendState.attachmentCount = 3;
+        pipelineInfos[0].colorBlendState.pAttachments = (VkPipelineColorBlendAttachmentState[]){pipelineInfos[0].colorBlendAttachment, pipelineInfos[0].colorBlendAttachment, pipelineInfos[0].colorBlendAttachment};
+
+        pipelineInfos[1] = pipelineInfos[0];
+        pipelineInfos[1].stages[0].module = createShaderModuleFromFile("assets/shaders/fullscreen.vert.spv");
+        pipelineInfos[1].stages[1].module = createShaderModuleFromFile("assets/shaders/composition.frag.spv");
+        pipelineInfos[1].layout = gameglobals.compositionPipelineLayout;
+
+        pipelineInfos[1].renderingInfo.colorAttachmentCount = 1;
+        pipelineInfos[1].renderingInfo.pColorAttachmentFormats = &vkglobals.surfaceFormat.format;
+        pipelineInfos[1].colorBlendState.attachmentCount = 1;
+
+        pipelineInfos[0].rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
 
         VkVertexInputBindingDescription bindingDescs[1] = {};
         bindingDescs[0].binding = 0;
@@ -350,18 +423,25 @@ void gameInit() {
         attributeDescs[3].location = 3;
         attributeDescs[3].offset = sizeof(vec3) * 2 + sizeof(vec2);
 
-        pipelineInfo.vertexInputState.vertexAttributeDescriptionCount = 4;
-        pipelineInfo.vertexInputState.pVertexAttributeDescriptions = attributeDescs;
-        pipelineInfo.vertexInputState.vertexBindingDescriptionCount = 1;
-        pipelineInfo.vertexInputState.pVertexBindingDescriptions = bindingDescs;
+        pipelineInfos[0].vertexInputState.vertexAttributeDescriptionCount = 4;
+        pipelineInfos[0].vertexInputState.pVertexAttributeDescriptions = attributeDescs;
+        pipelineInfos[0].vertexInputState.vertexBindingDescriptionCount = 1;
+        pipelineInfos[0].vertexInputState.pVertexBindingDescriptions = bindingDescs;
 
-        pipelineInfo.depthStencilState.depthTestEnable = VK_TRUE;
-        pipelineInfo.depthStencilState.depthWriteEnable = VK_TRUE;
+        pipelineInfos[0].depthStencilState.depthTestEnable = VK_TRUE;
+        pipelineInfos[0].depthStencilState.depthWriteEnable = VK_TRUE;
 
-        pipelineCreateGraphicsPipelines(VK_NULL_HANDLE, 1, &pipelineInfo, &gameglobals.cubePipeline);
+        VkPipeline pipelines[2];
 
-        vkDestroyShaderModule(vkglobals.device, pipelineInfo.stages[0].module, VK_NULL_HANDLE);
-        vkDestroyShaderModule(vkglobals.device, pipelineInfo.stages[1].module, VK_NULL_HANDLE);
+        pipelineCreateGraphicsPipelines(VK_NULL_HANDLE, 2, pipelineInfos, pipelines);
+
+        gameglobals.cubePipeline = pipelines[0];
+        gameglobals.compositionPipeline = pipelines[1];
+
+        vkDestroyShaderModule(vkglobals.device, pipelineInfos[1].stages[0].module, VK_NULL_HANDLE);
+        vkDestroyShaderModule(vkglobals.device, pipelineInfos[1].stages[1].module, VK_NULL_HANDLE);
+        vkDestroyShaderModule(vkglobals.device, pipelineInfos[0].stages[0].module, VK_NULL_HANDLE);
+        vkDestroyShaderModule(vkglobals.device, pipelineInfos[0].stages[1].module, VK_NULL_HANDLE);
     }
 
     {
@@ -434,15 +514,14 @@ void updateCubeUbo() {
         glm_mat4_mulv3(rot, (vec3){(gameglobals.input[2] + gameglobals.input[3]) * gameglobals.shift * gameglobals.deltaTime, 0.0f, (gameglobals.input[0] + gameglobals.input[1]) * gameglobals.shift * gameglobals.deltaTime}, 0.0f, vel);
         glm_vec3_add(gameglobals.cam.position, vel, gameglobals.cam.position);
 
-        clampf(&gameglobals.cam.position[0], -0.9f, 0.9f);
-        clampf(&gameglobals.cam.position[1], -0.9f, 0.9f);
-        clampf(&gameglobals.cam.position[2], -0.9f, 0.9f);
+        clampf(&gameglobals.cam.position[0], -1.9f, 1.9f);
+        clampf(&gameglobals.cam.position[1], -1.9f, 1.9f);
+        clampf(&gameglobals.cam.position[2], -1.9f, 1.9f);
     }
 
     {
         glm_quat_mul(y, p, y);
         glm_quat_look(gameglobals.cam.position, y, gameglobals.cubeBuffersMemoryRaw + sizeof(mat4));
-        glm_translate(gameglobals.cubeBuffersMemoryRaw + sizeof(mat4), (vec3){-gameglobals.cam.position[0], -gameglobals.cam.position[1], -gameglobals.cam.position[2]});
     }
 
     glm_mat4_identity(gameglobals.cubeBuffersMemoryRaw);
@@ -458,12 +537,12 @@ void updateCubeUbo() {
 }
 
 void gameRender() {
-    updateCubeUbo();
-
     u32 imageIndex;
     VK_ASSERT(vkAcquireNextImageKHR(vkglobals.device, vkglobals.swapchain, 0xFFFFFFFFFFFFFFFF, VK_NULL_HANDLE, gameglobals.swapchainReadyFence, &imageIndex), "failed to acquire swapchain image\n");
     VK_ASSERT(vkWaitForFences(vkglobals.device, 2, (VkFence[]){gameglobals.swapchainReadyFence, gameglobals.frameFence}, VK_TRUE, 0xFFFFFFFFFFFFFFFF), "failed to wait for fences\n");
     VK_ASSERT(vkResetFences(vkglobals.device, 2, (VkFence[]){gameglobals.swapchainReadyFence, gameglobals.frameFence}), "failed to reset fences\n");
+
+    updateCubeUbo();
 
     {
         VkCommandBufferBeginInfo cmdBeginInfo = {};
@@ -475,10 +554,10 @@ void gameRender() {
         {
             VkImageMemoryBarrier imageBarrier = {};
             imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            imageBarrier.image = vkglobals.swapchainImages[imageIndex];
+            imageBarrier.image = gameglobals.gbuffer;
             imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             imageBarrier.subresourceRange.baseArrayLayer = 0;
-            imageBarrier.subresourceRange.layerCount = 1;
+            imageBarrier.subresourceRange.layerCount = 3;
             imageBarrier.subresourceRange.baseMipLevel = 0;
             imageBarrier.subresourceRange.levelCount = 1;
             imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -491,14 +570,32 @@ void gameRender() {
             vkCmdPipelineBarrier(vkglobals.cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &imageBarrier);
         }
 
-        VkRenderingAttachmentInfoKHR swapchainImageAttachment = {};
-        swapchainImageAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-        swapchainImageAttachment.imageView = vkglobals.swapchainImageViews[imageIndex];
-        swapchainImageAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        swapchainImageAttachment.resolveMode = VK_RESOLVE_MODE_NONE_KHR;
-        swapchainImageAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        swapchainImageAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        swapchainImageAttachment.clearValue = (VkClearValue){{{0.0f, 0.0f, 0.0f, 0.0f}}};
+        VkRenderingAttachmentInfoKHR albedoAttachment = {};
+        albedoAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+        albedoAttachment.imageView = gameglobals.gbufferAlbedoView;
+        albedoAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        albedoAttachment.resolveMode = VK_RESOLVE_MODE_NONE_KHR;
+        albedoAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        albedoAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        albedoAttachment.clearValue = (VkClearValue){{{0.0f, 0.0f, 0.0f, 0.0f}}};
+
+        VkRenderingAttachmentInfoKHR positionAttachment = {};
+        positionAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+        positionAttachment.imageView = gameglobals.gbufferPositionView;
+        positionAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        positionAttachment.resolveMode = VK_RESOLVE_MODE_NONE_KHR;
+        positionAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        positionAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        positionAttachment.clearValue = (VkClearValue){{{0.0f, 0.0f, 0.0f, 0.0f}}};
+
+        VkRenderingAttachmentInfoKHR normalAttachment = {};
+        normalAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+        normalAttachment.imageView = gameglobals.gbufferNormalView;
+        normalAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        normalAttachment.resolveMode = VK_RESOLVE_MODE_NONE_KHR;
+        normalAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        normalAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        normalAttachment.clearValue = (VkClearValue){{{0.0f, 0.0f, 0.0f, 0.0f}}};
 
         VkRenderingAttachmentInfoKHR depthTextureAttachment = {};
         depthTextureAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
@@ -513,8 +610,8 @@ void gameRender() {
         renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
         renderingInfo.renderArea = (VkRect2D){(VkOffset2D){0, 0}, vkglobals.swapchainExtent};
         renderingInfo.layerCount = 1;
-        renderingInfo.colorAttachmentCount = 1;
-        renderingInfo.pColorAttachments = &swapchainImageAttachment;
+        renderingInfo.colorAttachmentCount = 3;
+        renderingInfo.pColorAttachments = (VkRenderingAttachmentInfoKHR[]){albedoAttachment, positionAttachment, normalAttachment};
         renderingInfo.pDepthAttachment = &depthTextureAttachment;
         renderingInfo.pStencilAttachment = VK_NULL_HANDLE;
 
@@ -523,9 +620,67 @@ void gameRender() {
         VkDeviceSize vertexBufferOffsets[1] = {};
         vkCmdBindPipeline(vkglobals.cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gameglobals.cubePipeline);
         vkCmdBindVertexBuffers(vkglobals.cmdBuffer, 0, 1, &gameglobals.cubeVertexBuffer, vertexBufferOffsets);
-        vkCmdBindDescriptorSets(vkglobals.cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gameglobals.cubePipelineLayout, 0, 1, &gameglobals.descriptorSet, 0, VK_NULL_HANDLE);
+        vkCmdBindDescriptorSets(vkglobals.cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gameglobals.cubePipelineLayout, 0, 1, &gameglobals.cubeDescriptorSet, 0, VK_NULL_HANDLE);
 
         vkCmdDraw(vkglobals.cmdBuffer, 36, 1, 0, 0);
+
+        vkCmdEndRenderingKHR(vkglobals.cmdBuffer);
+
+        {
+            VkImageMemoryBarrier imageBarriers[2] = {};
+            imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageBarriers[0].image = vkglobals.swapchainImages[imageIndex];
+            imageBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            imageBarriers[0].subresourceRange.baseArrayLayer = 0;
+            imageBarriers[0].subresourceRange.layerCount = 1;
+            imageBarriers[0].subresourceRange.baseMipLevel = 0;
+            imageBarriers[0].subresourceRange.levelCount = 1;
+            imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            imageBarriers[0].srcAccessMask = 0;
+            imageBarriers[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+            imageBarriers[1] = imageBarriers[0];
+            imageBarriers[1].image = gameglobals.gbuffer;
+            imageBarriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            imageBarriers[1].subresourceRange.baseArrayLayer = 0;
+            imageBarriers[1].subresourceRange.layerCount = 3;
+            imageBarriers[1].subresourceRange.baseMipLevel = 0;
+            imageBarriers[1].subresourceRange.levelCount = 1;
+            imageBarriers[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            imageBarriers[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+            imageBarriers[1].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            vkCmdPipelineBarrier(vkglobals.cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &imageBarriers[0]);
+            vkCmdPipelineBarrier(vkglobals.cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &imageBarriers[1]);
+        }
+
+        VkRenderingAttachmentInfoKHR swapchainImageAttachment = {};
+        swapchainImageAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+        swapchainImageAttachment.imageView = vkglobals.swapchainImageViews[imageIndex];
+        swapchainImageAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        swapchainImageAttachment.resolveMode = VK_RESOLVE_MODE_NONE_KHR;
+        swapchainImageAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        swapchainImageAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        swapchainImageAttachment.clearValue = (VkClearValue){{{0.0f, 0.0f, 0.0f, 0.0f}}};
+
+        renderingInfo.colorAttachmentCount = 1;
+        renderingInfo.pColorAttachments = &swapchainImageAttachment;
+        renderingInfo.pDepthAttachment = VK_NULL_HANDLE;
+
+        vkCmdBeginRenderingKHR(vkglobals.cmdBuffer, &renderingInfo);
+
+        vkCmdBindPipeline(vkglobals.cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gameglobals.compositionPipeline);
+        vkCmdBindDescriptorSets(vkglobals.cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gameglobals.compositionPipelineLayout, 0, 1, &gameglobals.compositionDescriptorSet, 0, VK_NULL_HANDLE);
+
+        vec3 viewLightPos;
+        glm_mat4_mulv3(gameglobals.cubeBuffersMemoryRaw + sizeof(mat4), (vec3){0.0, -1.75, 0.0}, 1.0, viewLightPos);
+        vkCmdPushConstants(vkglobals.cmdBuffer, gameglobals.compositionPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(vec3), viewLightPos);
+
+        vkCmdDraw(vkglobals.cmdBuffer, 3, 1, 0, 0);
 
         vkCmdEndRenderingKHR(vkglobals.cmdBuffer);
 
@@ -580,18 +735,25 @@ void gameQuit() {
     vkDestroyFence(vkglobals.device, gameglobals.frameFence, VK_NULL_HANDLE);
     vkDestroyFence(vkglobals.device, gameglobals.swapchainReadyFence, VK_NULL_HANDLE);
     vkDestroySemaphore(vkglobals.device, gameglobals.renderingDoneSemaphore, VK_NULL_HANDLE);
+    vkDestroyPipeline(vkglobals.device, gameglobals.compositionPipeline, VK_NULL_HANDLE);
+    vkDestroyPipelineLayout(vkglobals.device, gameglobals.compositionPipelineLayout, VK_NULL_HANDLE);
+    vkDestroyDescriptorSetLayout(vkglobals.device, gameglobals.compositionDescriptorSetLayout, VK_NULL_HANDLE);
     vkDestroyPipeline(vkglobals.device, gameglobals.cubePipeline, VK_NULL_HANDLE);
     vkDestroyPipelineLayout(vkglobals.device, gameglobals.cubePipelineLayout, VK_NULL_HANDLE);
+    vkDestroyDescriptorSetLayout(vkglobals.device, gameglobals.cubeDescriptorSetLayout, VK_NULL_HANDLE);
     vkUnmapMemory(vkglobals.device, gameglobals.cubeBuffersMemory);
     vkDestroyBuffer(vkglobals.device, gameglobals.cubeUniformBuffer, VK_NULL_HANDLE);
     vkFreeMemory(vkglobals.device, gameglobals.cubeBuffersMemory, VK_NULL_HANDLE);
     vkDestroyBuffer(vkglobals.device, gameglobals.cubeVertexBuffer, VK_NULL_HANDLE);
-    vkDestroySampler(vkglobals.device, gameglobals.gameTexturesSampler, VK_NULL_HANDLE);
+    vkDestroySampler(vkglobals.device, gameglobals.sampler, VK_NULL_HANDLE);
+    vkDestroyImageView(vkglobals.device, gameglobals.gbufferNormalView, VK_NULL_HANDLE);
+    vkDestroyImageView(vkglobals.device, gameglobals.gbufferPositionView, VK_NULL_HANDLE);
+    vkDestroyImageView(vkglobals.device, gameglobals.gbufferAlbedoView, VK_NULL_HANDLE);
+    vkDestroyImage(vkglobals.device, gameglobals.gbuffer, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, gameglobals.gameTexturesView, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, gameglobals.gameTextures, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, gameglobals.depthTextureView, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, gameglobals.depthTexture, VK_NULL_HANDLE);
     vkFreeMemory(vkglobals.device, gameglobals.deviceLocalMemory, VK_NULL_HANDLE);
-    vkDestroyDescriptorSetLayout(vkglobals.device, gameglobals.descriptorSetLayout, VK_NULL_HANDLE);
     vkDestroyDescriptorPool(vkglobals.device, gameglobals.descriptorPool, VK_NULL_HANDLE);
 }

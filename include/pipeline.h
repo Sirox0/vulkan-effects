@@ -24,8 +24,6 @@ typedef struct {
     VkPipelineColorBlendStateCreateInfo colorBlendState;
     VkPipelineDynamicStateCreateInfo dynamicState;
     VkPipelineLayout layout;
-    VkRenderPass renderpass;
-    u32 subpass;
     VkPipeline basePipelineHandle;
     i32 basePipelineIndex;
 } graphics_pipeline_info_t;

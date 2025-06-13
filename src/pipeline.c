@@ -62,7 +62,7 @@ void pipelineFillDefaultGraphicsPipeline(graphics_pipeline_info_t* pInfo) {
     pInfo->rasterizationState.depthClampEnable = VK_FALSE;
     pInfo->rasterizationState.rasterizerDiscardEnable = VK_FALSE;
     pInfo->rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
-    pInfo->rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
+    pInfo->rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
     pInfo->rasterizationState.frontFace = VK_FRONT_FACE_CLOCKWISE;
     pInfo->rasterizationState.depthBiasEnable = VK_FALSE;
     pInfo->rasterizationState.lineWidth = 1.0f;
@@ -162,6 +162,7 @@ void pipelineCreateGraphicsPipelines(VkPipelineCache cache, u32 infoCount, graph
 
     for (u32 i = 0; i < infoCount; i++) {
         pInfos->renderingInfo.pNext = pInfos->pNext;
+        createInfos[i] = (VkGraphicsPipelineCreateInfo){};
         createInfos[i].sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         createInfos[i].pNext = &pInfos[i].renderingInfo;
         createInfos[i].flags = pInfos[i].flags;
@@ -178,8 +179,6 @@ void pipelineCreateGraphicsPipelines(VkPipelineCache cache, u32 infoCount, graph
         createInfos[i].pColorBlendState = &pInfos[i].colorBlendState;
         createInfos[i].pDynamicState = &pInfos[i].dynamicState;
         createInfos[i].layout = pInfos[i].layout;
-        createInfos[i].renderPass = pInfos[i].renderpass;
-        createInfos[i].subpass = pInfos[i].subpass;
         createInfos[i].basePipelineHandle = pInfos[i].basePipelineHandle;
         createInfos[i].basePipelineIndex = pInfos[i].basePipelineIndex;
     }

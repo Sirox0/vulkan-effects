@@ -21,8 +21,8 @@ typedef struct {
     u32 deltaTime;
 
     VkDescriptorPool descriptorPool;
-    VkDescriptorSetLayout descriptorSetLayout;
-    VkDescriptorSet descriptorSet;
+
+    VkSampler sampler;
 
     // layout: depth texture -> game textures -> cube vertex buffer
     VkDeviceMemory deviceLocalMemory;
@@ -34,7 +34,12 @@ typedef struct {
     VkImage gameTextures;
     VkDeviceSize gameTexturesOffset;
     VkImageView gameTexturesView;
-    VkSampler gameTexturesSampler;
+
+    VkImage gbuffer;
+    VkDeviceSize gbufferOffset;
+    VkImageView gbufferAlbedoView;
+    VkImageView gbufferPositionView;
+    VkImageView gbufferNormalView;
 
     VkBuffer cubeVertexBuffer;
     VkDeviceSize cubeVertexBufferOffset;
@@ -43,8 +48,17 @@ typedef struct {
     VkDeviceMemory cubeBuffersMemory;
     void* cubeBuffersMemoryRaw;
 
+    VkDescriptorSetLayout cubeDescriptorSetLayout;
+    VkDescriptorSet cubeDescriptorSet;
+
     VkPipelineLayout cubePipelineLayout;
     VkPipeline cubePipeline;
+
+    VkDescriptorSetLayout compositionDescriptorSetLayout;
+    VkDescriptorSet compositionDescriptorSet;
+
+    VkPipelineLayout compositionPipelineLayout;
+    VkPipeline compositionPipeline;
 
     struct {
         vec3 position;

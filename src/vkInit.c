@@ -255,17 +255,10 @@ void vkInit() {
             swapchainImageCount = vkglobals.surfaceCapabilities.minImageCount;
         }
 
-        VkCompositeAlphaFlagsKHR swapchainCompositeAlpha;
-        if (vkglobals.surfaceCapabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR) {
-            swapchainCompositeAlpha = VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR;
-        } else {
-            swapchainCompositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-        }
-
         VkSwapchainCreateInfoKHR swapchainInfo = {};
         swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         swapchainInfo.clipped = VK_TRUE;
-        swapchainInfo.compositeAlpha = swapchainCompositeAlpha;
+        swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         swapchainInfo.imageArrayLayers = 1;
         swapchainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;

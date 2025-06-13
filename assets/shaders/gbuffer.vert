@@ -17,11 +17,10 @@ layout(location = 2) out vec2 fraguv;
 layout(location = 3) out flat uint fragtextureidx;
 
 void main() {
-    fragpos = model * vec4(pos, 1.0);
-    gl_Position = projection * view * fragpos;
+    fragpos = view * model * vec4(pos, 1.0);
+    gl_Position = projection * fragpos;
 
-    //mat3 normalmatrix = transpose(inverse(mat3(view * model)));
-    fragnormal = /*normalmatrix **/ normal;
+    fragnormal = transpose(inverse(mat3(view * model))) * normal;
 
     fraguv = uv;
     fragtextureidx = textureidx;
