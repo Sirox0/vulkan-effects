@@ -24,6 +24,9 @@ extern PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices;
 extern PFN_vkDestroyInstance vkDestroyInstance;
 
 // vulkan device functions
+extern PFN_vkGetPipelineCacheData vkGetPipelineCacheData;
+extern PFN_vkDestroyPipelineCache vkDestroyPipelineCache;
+extern PFN_vkCreatePipelineCache vkCreatePipelineCache;
 extern PFN_vkCmdEndRenderingKHR vkCmdEndRenderingKHR;
 extern PFN_vkCmdBeginRenderingKHR vkCmdBeginRenderingKHR;
 extern PFN_vkCmdDrawIndexed vkCmdDrawIndexed;

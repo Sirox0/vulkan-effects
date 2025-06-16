@@ -832,15 +832,20 @@ void gameInit() {
         pipelineInfos[4].renderingInfo.pColorAttachmentFormats = &vkglobals.surfaceFormat.format;
         pipelineInfos[4].layout = gameglobals.grainPipelineLayout;
 
+        VkPipelineCache pipelineCache = loadPipelineCache("pipelinecache.dat");
+
         VkPipeline pipelines[5];
 
-        pipelineCreateGraphicsPipelines(VK_NULL_HANDLE, 5, pipelineInfos, pipelines);
+        pipelineCreateGraphicsPipelines(pipelineCache, 5, pipelineInfos, pipelines);
 
         gameglobals.cubePipeline = pipelines[0];
         gameglobals.ssaoPipeline = pipelines[1];
         gameglobals.ssaoBlurPipeline = pipelines[2];
         gameglobals.compositionPipeline = pipelines[3];
         gameglobals.grainPipeline = pipelines[4];
+
+        storePipelineCache(pipelineCache, "pipelinecache.dat");
+        vkDestroyPipelineCache(vkglobals.device, pipelineCache, VK_NULL_HANDLE);
 
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[4].stages[1].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[3].stages[1].module, VK_NULL_HANDLE);

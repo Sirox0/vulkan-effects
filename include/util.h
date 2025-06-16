@@ -12,6 +12,8 @@ void createImage(VkImage* pImage, i32 w, i32 h, VkFormat textureFormat, u32 arra
 void createImageView(VkImageView* pView, VkImage image, VkImageViewType type, VkFormat textureFormat, u32 arrayLayers, u32 baseArrayLayer, VkImageAspectFlags aspect);
 u32 getMemoryTypeIndex(u32 filter, VkMemoryPropertyFlags props);
 VkShaderModule createShaderModuleFromAsset(char* path);
+VkPipelineCache loadPipelineCache(char* path);
+void storePipelineCache(VkPipelineCache cache, char* path);
 
 // alignment stuff
 VkDeviceSize getAlignCooficient(VkDeviceSize size, u32 alignment);

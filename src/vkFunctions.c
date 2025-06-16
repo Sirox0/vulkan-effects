@@ -25,6 +25,9 @@ PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices;
 PFN_vkDestroyInstance vkDestroyInstance;
 
 // vulkan device functions
+PFN_vkGetPipelineCacheData vkGetPipelineCacheData;
+PFN_vkDestroyPipelineCache vkDestroyPipelineCache;
+PFN_vkCreatePipelineCache vkCreatePipelineCache;
 PFN_vkCmdEndRenderingKHR vkCmdEndRenderingKHR;
 PFN_vkCmdBeginRenderingKHR vkCmdBeginRenderingKHR;
 PFN_vkCmdDrawIndexed vkCmdDrawIndexed;
@@ -123,6 +126,9 @@ void loadVulkanInstanceFunctions(VkInstance instance) {
 
 void loadVulkanDeviceFunctions(VkDevice device) {
 	#ifdef VK_NO_PROTOTYPES
+	vkGetPipelineCacheData = (PFN_vkGetPipelineCacheData)vkGetDeviceProcAddr(device, "vkGetPipelineCacheData");
+	vkDestroyPipelineCache = (PFN_vkDestroyPipelineCache)vkGetDeviceProcAddr(device, "vkDestroyPipelineCache");
+	vkCreatePipelineCache = (PFN_vkCreatePipelineCache)vkGetDeviceProcAddr(device, "vkCreatePipelineCache");
 	vkCmdEndRenderingKHR = (PFN_vkCmdEndRenderingKHR)vkGetDeviceProcAddr(device, "vkCmdEndRenderingKHR");
 	vkCmdBeginRenderingKHR = (PFN_vkCmdBeginRenderingKHR)vkGetDeviceProcAddr(device, "vkCmdBeginRenderingKHR");
 	vkCmdDrawIndexed = (PFN_vkCmdDrawIndexed)vkGetDeviceProcAddr(device, "vkCmdDrawIndexed");
