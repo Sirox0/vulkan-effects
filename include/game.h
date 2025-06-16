@@ -36,25 +36,25 @@ typedef struct {
 
 
     // device local resources
-    VkBuffer deviceLocalUniformBuffer;
+    VkBuffer projectionMatrixBuffer;
+    VkBuffer ssaoKernelBuffer;
     VkBuffer cubeVertexBuffer;
 
     VkImage depthTexture;
     VkImage cubeTextures;
-    VkImage gbuffer;
+    VkImage gbufferPosition;
+    VkImage gbufferNormalAlbedo;
     VkImage ssaoNoiseTexture;
     VkImage ssaoAttachment;
 
     VkImageView depthTextureView;
     VkImageView cubeTexturesView;
-    VkImageView gbufferAlbedoView;
     VkImageView gbufferPositionView;
     VkImageView gbufferNormalView;
+    VkImageView gbufferAlbedoView;
     VkImageView ssaoNoiseTextureView;
     VkImageView ssaoAttachmentView;
     VkImageView ssaoBlurAttachmentView;
-
-    VkDeviceSize ssaoNoiseTextureOffset;
 
     // host visible resources
     VkBuffer cubeUniformBuffer;

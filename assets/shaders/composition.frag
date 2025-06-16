@@ -2,9 +2,7 @@
 
 layout(location = 0) in vec2 uv;
 
-layout(binding = 0, set = 0) uniform sampler2D gbufferAlbedo;
-layout(binding = 1, set = 0) uniform sampler2D gbufferPosition;
-layout(binding = 2, set = 0) uniform sampler2D gbufferNormal;
+layout(binding = 0, set = 0) uniform sampler2D gbuffer[3];
 
 layout(binding = 0, set = 1) uniform sampler2D occlusionMapBlurred;
 
@@ -22,15 +20,15 @@ void main() {
     vec3 light = vec3(0.0);
 
     // diffuse light
-    vec3 nlightDir = viewLightPos - texture(gbufferPosition, uv).xyz;
+    vec3 nlightDir = viewLightPos - texture(gbuffer[0], uv).xyz;
     float attenuation = inversesqrt(length(nlightDir));
     vec3 dlightColor = diffuseLightColor.rgb * diffuseLightColor.a * attenuation;
 
-    light += max(dot(texture(gbufferNormal, uv).xyz, normalize(nlightDir)), 0.0) * dlightColor;
+    light += max(dot(texture(gbuffer[1], uv).xyz * 2.0 - 1.0, normalize(nlightDir)), 0.0) * dlightColor;
 
     // ambient light
     light += ambientLightColor.rgb * ambientLightColor.a * texture(occlusionMapBlurred, uv).r;
 
-    color = texture(gbufferAlbedo, uv);
+    color = texture(gbuffer[2], uv);
     color.rgb *= light;
 }

@@ -1,6 +1,6 @@
 #version 450
 
-layout(constant_id = 0) const int SSAO_BLUR_SCALE = 5;
+layout(constant_id = 0) const int SSAO_BLUR_SCALE = 4;
 
 layout(location = 0) in vec2 uv;
 
