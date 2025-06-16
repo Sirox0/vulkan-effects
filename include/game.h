@@ -7,58 +7,9 @@
 
 #include "numtypes.h"
 
-#define FT_ASSERT(expression) \
-    { \
-        FT_Error error = expression; \
-        if (error != 0) { \
-            printf("freetype error: %s\n", FT_Error_String(error)); \
-            exit(1); \
-        } \
-    }
-
 typedef struct {
     u8 loopActive;
     u32 deltaTime;
-
-    VkDescriptorPool descriptorPool;
-
-    VkSampler sampler;
-
-    // layout: depth texture -> game textures -> cube vertex buffer
-    VkDeviceMemory deviceLocalMemory;
-
-    VkFormat depthTextureFormat;
-    VkImage depthTexture;
-    VkImageView depthTextureView;
-
-    VkImage gameTextures;
-    VkDeviceSize gameTexturesOffset;
-    VkImageView gameTexturesView;
-
-    VkImage gbuffer;
-    VkDeviceSize gbufferOffset;
-    VkImageView gbufferAlbedoView;
-    VkImageView gbufferPositionView;
-    VkImageView gbufferNormalView;
-
-    VkBuffer cubeVertexBuffer;
-    VkDeviceSize cubeVertexBufferOffset;
-
-    VkBuffer cubeUniformBuffer;
-    VkDeviceMemory cubeBuffersMemory;
-    void* cubeBuffersMemoryRaw;
-
-    VkDescriptorSetLayout cubeDescriptorSetLayout;
-    VkDescriptorSet cubeDescriptorSet;
-
-    VkPipelineLayout cubePipelineLayout;
-    VkPipeline cubePipeline;
-
-    VkDescriptorSetLayout compositionDescriptorSetLayout;
-    VkDescriptorSet compositionDescriptorSet;
-
-    VkPipelineLayout compositionPipelineLayout;
-    VkPipeline compositionPipeline;
 
     struct {
         vec3 position;
@@ -67,14 +18,79 @@ typedef struct {
 
     vec4 input;
     u8 shift;
+    VkFormat depthTextureFormat;
+
+    VkSampler sampler;
+
+    // device local memory
+    VkDeviceMemory deviceLocalDepthStencilAttachmentMemory;
+    VkDeviceMemory deviceLocalColorAttachmentSampledMemory;
+    VkDeviceMemory deviceLocalSampledTransferDstMemory;
+    VkDeviceMemory deviceLocalUniformTransferDstMemory;
+    VkDeviceMemory deviceLocalVertexTransferDstMemory;
+
+    // host visible memory
+    VkDeviceMemory hostVisibleUniformMemory;
+
+    void* hostVisibleUniformMemoryRaw;
+
+
+    // device local resources
+    VkBuffer deviceLocalUniformBuffer;
+    VkBuffer cubeVertexBuffer;
+
+    VkImage depthTexture;
+    VkImage cubeTextures;
+    VkImage gbuffer;
+    VkImage ssaoNoiseTexture;
+    VkImage ssaoAttachment;
+
+    VkImageView depthTextureView;
+    VkImageView cubeTexturesView;
+    VkImageView gbufferAlbedoView;
+    VkImageView gbufferPositionView;
+    VkImageView gbufferNormalView;
+    VkImageView ssaoNoiseTextureView;
+    VkImageView ssaoAttachmentView;
+    VkImageView ssaoBlurAttachmentView;
+
+    VkDeviceSize ssaoNoiseTextureOffset;
+
+    // host visible resources
+    VkBuffer cubeUniformBuffer;
+
+
+    VkDescriptorPool descriptorPool;
+
+    VkDescriptorSetLayout projectionMatrixdescriptorSetLayout;
+    VkDescriptorSetLayout cubeDescriptorSetLayout;
+    VkDescriptorSetLayout ssaoDataDescriptorSetLayout;
+    VkDescriptorSetLayout gbufferDescriptorSetLayout;
+    VkDescriptorSetLayout sampledImageDescriptorSetLayout;
+    
+    VkDescriptorSet projectionMatrixdescriptorSet;
+    VkDescriptorSet cubeDescriptorSet;
+    VkDescriptorSet ssaoDataDescriptorSet;
+    VkDescriptorSet gbufferDescriptorSet;
+    VkDescriptorSet ssaoAttachmentDescriptorSet;
+    VkDescriptorSet ssaoBlurAttachmentDescriptorSet;
+
+
+    VkPipelineLayout sampledImagePipelineLayout;
+    VkPipelineLayout cubePipelineLayout;
+    VkPipelineLayout ssaoPipelineLayout;
+    VkPipelineLayout compositionPipelineLayout;
+
+    VkPipeline cubePipeline;
+    VkPipeline ssaoPipeline;
+    VkPipeline ssaoBlurPipeline;
+    VkPipeline compositionPipeline;
 
     VkSemaphore renderingDoneSemaphore;
+
     VkFence swapchainReadyFence;
     VkFence frameFence;
 } game_globals_t;
-
-#define MAX_STAR_SCALE 1.1f
-#define LERP_STAR_INVERSE_SPEED 100.0f
 
 void gameInit();
 void gameEvent(SDL_Event* e);

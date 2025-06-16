@@ -2,6 +2,7 @@
 #include <SDL3/SDL.h>
 
 #include <stdlib.h>
+#include <time.h>
 
 #include "config.h"
 #include "vkInit.h"
@@ -33,6 +34,8 @@ int main(int argc, char** argv) {
     }
 
     SDL_SetWindowRelativeMouseMode(vkglobals.window, true);
+
+    srand(time(NULL));
 
     vkInit();
     gameInit();

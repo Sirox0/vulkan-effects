@@ -10,23 +10,37 @@
 #include "game.h"
 #include "util.h"
 
-void copyBufferToImage(VkCommandBuffer cmdBuffer, VkBuffer buffer, VkDeviceSize bufferOffset, VkImage image, u32 w, u32 h, u32 arrayLayers, u32 baseArrayLayer, VkImageLayout oldLayout, VkImageLayout newLayout) {
-    VkImageMemoryBarrier imageBarrier = {};
-    imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    imageBarrier.image = image;
-    imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageBarrier.subresourceRange.baseArrayLayer = baseArrayLayer;
-    imageBarrier.subresourceRange.layerCount = arrayLayers;
-    imageBarrier.subresourceRange.baseMipLevel = 0;
-    imageBarrier.subresourceRange.levelCount = 1;
-    imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    imageBarrier.srcAccessMask = 0;
-    imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    imageBarrier.oldLayout = oldLayout;
-    imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+void copyTempBufferToImage(VkCommandBuffer cmdBuffer, VkBuffer buffer, VkDeviceSize bufferOffset, VkImage image, u32 w, u32 h, u32 arrayLayers, u32 baseArrayLayer, VkImageLayout newLayout) {
+    VkImageMemoryBarrier imageBarriers[2] = {};
+    imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageBarriers[0].image = image;
+    imageBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageBarriers[0].subresourceRange.baseArrayLayer = baseArrayLayer;
+    imageBarriers[0].subresourceRange.layerCount = arrayLayers;
+    imageBarriers[0].subresourceRange.baseMipLevel = 0;
+    imageBarriers[0].subresourceRange.levelCount = 1;
+    imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageBarriers[0].srcAccessMask = 0;
+    imageBarriers[0].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
-    vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &imageBarrier);
+    imageBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageBarriers[1].image = image;
+    imageBarriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    imageBarriers[1].subresourceRange.baseArrayLayer = baseArrayLayer;
+    imageBarriers[1].subresourceRange.layerCount = arrayLayers;
+    imageBarriers[1].subresourceRange.baseMipLevel = 0;
+    imageBarriers[1].subresourceRange.levelCount = 1;
+    imageBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageBarriers[1].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageBarriers[1].dstAccessMask = 0;
+    imageBarriers[1].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    imageBarriers[1].newLayout = newLayout;
+
+    vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &imageBarriers[0]);
 
     VkBufferImageCopy copyInfo = {};
     copyInfo.bufferOffset = bufferOffset;
@@ -38,12 +52,7 @@ void copyBufferToImage(VkCommandBuffer cmdBuffer, VkBuffer buffer, VkDeviceSize 
 
     vkCmdCopyBufferToImage(cmdBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyInfo);
 
-    imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    imageBarrier.dstAccessMask = 0;
-    imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    imageBarrier.newLayout = newLayout;
-
-    vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &imageBarrier);
+    vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &imageBarriers[1]);
 }
 
 void createBuffer(VkBuffer* pBuffer, VkBufferUsageFlags usage, VkDeviceSize size) {
@@ -98,23 +107,35 @@ void createImageView(VkImageView* pView, VkImage image, VkImageViewType type, Vk
     VK_ASSERT(vkCreateImageView(vkglobals.device, &viewInfo, VK_NULL_HANDLE, pView), "failed to create image view\n");
 }
 
-void createSampler(VkSampler* pSampler) {
-    VkSamplerCreateInfo samplerInfo = {};
-    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    samplerInfo.mipLodBias = 0.0f;
-    samplerInfo.minLod = 0.0f;
-    samplerInfo.maxLod = 0.0f;
-    samplerInfo.minFilter = VK_FILTER_LINEAR;
-    samplerInfo.magFilter = VK_FILTER_LINEAR;
-    samplerInfo.anisotropyEnable = VK_FALSE;
-    samplerInfo.compareEnable = VK_FALSE;
-    samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+u32 getMemoryTypeIndex(u32 filter, VkMemoryPropertyFlags props) {
+    for (u32 i = 0; i < vkglobals.deviceMemoryProperties.memoryTypeCount; i++) {
+        if (filter & (1 << i) && ((vkglobals.deviceMemoryProperties.memoryTypes[i].propertyFlags & props) == props)) {
+            return i;
+        }
+    }
+    printf("failed to find required memory type\n");
+    exit(1);
+}
 
-    VK_ASSERT(vkCreateSampler(vkglobals.device, &samplerInfo, VK_NULL_HANDLE, pSampler), "failed to create sampler\n");
+VkShaderModule createShaderModuleFromAsset(char* path) {
+    FILE* f = fopen(path, "rb");
+    fseek(f, 0, SEEK_END);
+    size_t fsize = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    char* shaderCode = (char*)malloc(sizeof(char) * fsize);
+    fread(shaderCode, fsize, 1, f);
+    fclose(f);
+
+    VkShaderModule module;
+    VkShaderModuleCreateInfo moduleInfo = {};
+    moduleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    moduleInfo.codeSize = fsize;
+    moduleInfo.pCode = (u32*)shaderCode;
+
+    VK_ASSERT(vkCreateShaderModule(vkglobals.device, &moduleInfo, VK_NULL_HANDLE, &module), "failed to create shader module\n");
+    free(shaderCode);
+    return module;
 }
 
 VkDeviceSize getAlignCooficient(VkDeviceSize size, u32 alignment) {
@@ -126,7 +147,7 @@ VkDeviceSize getAlignCooficientByTwo(VkDeviceSize size, u32 alignment1, u32 alig
     return alignFactor - (size % alignFactor);
 }
 
-offset_size_t getAlignedOffsetAndSize(VkDeviceSize unalignedOffset, VkDeviceSize size, u32 alignment) {
+offset_size_t getAlignedMaxOffsetAndMinSize(VkDeviceSize unalignedOffset, VkDeviceSize size, u32 alignment) {
     VkDeviceSize maxOffset = 0, newsize = 0;
     do {
         maxOffset += alignment;

@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "numtypes.h"
 
 void clamp(u32* v, u32 min, u32 max) {
@@ -20,4 +22,8 @@ u32 gcd(u32 a, u32 b) {
 
 u32 lcm(u32 a, u32 b) {
     return (a / gcd(a, b)) * b;
+}
+
+f32 randFloat() {
+    return (f32)rand() / RAND_MAX;
 }

@@ -15,37 +15,6 @@
 
 vulkan_globals_t vkglobals = {};
 
-u32 getMemoryTypeIndex(u32 filter, VkMemoryPropertyFlags props) {
-    for (u32 i = 0; i < vkglobals.deviceMemoryProperties.memoryTypeCount; i++) {
-        if (filter & (1 << i) && ((vkglobals.deviceMemoryProperties.memoryTypes[i].propertyFlags & props) == props)) {
-            return i;
-        }
-    }
-    printf("failed to find required memory type\n");
-    exit(1);
-}
-
-VkShaderModule createShaderModuleFromFile(char* path) {
-    FILE* f = fopen(path, "rb");
-    fseek(f, 0, SEEK_END);
-    size_t fsize = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char* shaderCode = (char*)malloc(sizeof(char) * fsize);
-    fread(shaderCode, fsize, 1, f);
-    fclose(f);
-
-    VkShaderModule module;
-    VkShaderModuleCreateInfo moduleInfo = {};
-    moduleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    moduleInfo.codeSize = fsize;
-    moduleInfo.pCode = (u32*)shaderCode;
-
-    VK_ASSERT(vkCreateShaderModule(vkglobals.device, &moduleInfo, VK_NULL_HANDLE, &module), "failed to create shader module\n");
-    free(shaderCode);
-    return module;
-}
-
 void vkInit() {
     loadVulkanLoaderFunctions();
 
@@ -123,7 +92,7 @@ void vkInit() {
 
             u8 foundQueueFamily = 0;
             for (u32 queueFamilyIndex = 0; queueFamilyIndex < queueFamilyPropertyCount; queueFamilyIndex++) {
-                if (queueFamilyProperties[queueFamilyIndex].queueFlags & VK_QUEUE_GRAPHICS_BIT && queueFamilyProperties[queueFamilyIndex].queueFlags & VK_QUEUE_COMPUTE_BIT) {
+                if (queueFamilyProperties[queueFamilyIndex].queueFlags & VK_QUEUE_GRAPHICS_BIT && queueFamilyProperties[queueFamilyIndex].queueFlags & VK_QUEUE_TRANSFER_BIT) {
                     VkBool32 canPresent;
                     vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevices[i], queueFamilyIndex, vkglobals.surface, &canPresent);
 
@@ -233,10 +202,9 @@ void vkInit() {
     if (vkglobals.surfaceCapabilities.currentExtent.width != 0xFFFFFFFF) {
         vkglobals.swapchainExtent = vkglobals.surfaceCapabilities.currentExtent;
     } else {
-        u32 w;
-        u32 h;
-        // width and height normally are positive integers
-        if (SDL_GetWindowSizeInPixels(vkglobals.window, (i32*)&w, (i32*)&h) != true) {
+        i32 w;
+        i32 h;
+        if (SDL_GetWindowSizeInPixels(vkglobals.window, &w, &h) != true) {
             printf("failed to get window size from sdl\n");
             exit(1);
         }

@@ -5,7 +5,7 @@
 #include "vkFunctions.h"
 #include "util.h"
 
-void garbageCreate(u32 cmdBufferCount, VkCommandBuffer* cmdBuffers, u32 fenceCount, VkFence* fences) {
+void tempResourcesCreate(u32 cmdBufferCount, VkCommandBuffer* cmdBuffers, u32 fenceCount, VkFence* fences) {
     VkCommandBufferAllocateInfo garbageCmdBuffersInfo = {};
     garbageCmdBuffersInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     garbageCmdBuffersInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -28,7 +28,7 @@ void garbageCreate(u32 cmdBufferCount, VkCommandBuffer* cmdBuffers, u32 fenceCou
     }
 }
 
-void garbageWaitAndDestroy(u32 cmdBufferCount, VkCommandBuffer* cmdBuffers, u32 bufferCount, VkBuffer* buffers, u32 bufferMemCount, VkDeviceMemory* buffersMem, u32 fenceCount, VkFence* fences) {
+void tempResourcesWaitAndDestroy(u32 cmdBufferCount, VkCommandBuffer* cmdBuffers, u32 bufferCount, VkBuffer* buffers, u32 bufferMemCount, VkDeviceMemory* buffersMem, u32 fenceCount, VkFence* fences) {
     if (fenceCount > 0) VK_ASSERT(vkWaitForFences(vkglobals.device, fenceCount, fences, VK_TRUE, 0xFFFFFFFFFFFFFFFF), "failed to wait for fences\n");
     for (u32 i = 0; i < fenceCount; i++) {
         vkDestroyFence(vkglobals.device, fences[i], VK_NULL_HANDLE);
