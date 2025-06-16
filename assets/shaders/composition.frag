@@ -10,7 +10,7 @@ layout(push_constant) uniform PC {
     vec3 viewLightPos;
 };
 
-layout(location = 0) out vec4 color;
+layout(location = 0) out vec4 outColor;
 
 const vec4 ambientLightColor = vec4(1.0, 1.0, 1.0, 0.3);
 const vec4 diffuseLightColor = vec4(1.0, 1.0, 1.0, 1.0);
@@ -29,6 +29,8 @@ void main() {
     // ambient light
     light += ambientLightColor.rgb * ambientLightColor.a * texture(occlusionMapBlurred, uv).r;
 
-    color = texture(gbuffer[2], uv);
+    vec4 color = texture(gbuffer[2], uv);
     color.rgb *= light;
+
+    outColor = color;
 }

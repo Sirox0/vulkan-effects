@@ -14,4 +14,9 @@
 #define SSAO_BLUR_SCALE 4
 #define SSAO_POWER 4.0f
 
+#define GRAIN_INTESITY 0.25f
+#define GRAIN_SIGNAL_TO_NOISE 4.0f
+#define GRAIN_VARIANCE 0.15f
+#define GRAIN_NOISE_SHIFT 0.0f
+
 #endif

@@ -10,6 +10,7 @@
 typedef struct {
     u8 loopActive;
     u32 deltaTime;
+    u32 time;
 
     struct {
         vec3 position;
@@ -46,6 +47,7 @@ typedef struct {
     VkImage gbufferNormalAlbedo;
     VkImage ssaoNoiseTexture;
     VkImage ssaoAttachment;
+    VkImage postProcessAttachment;
 
     VkImageView depthTextureView;
     VkImageView cubeTexturesView;
@@ -55,6 +57,7 @@ typedef struct {
     VkImageView ssaoNoiseTextureView;
     VkImageView ssaoAttachmentView;
     VkImageView ssaoBlurAttachmentView;
+    VkImageView postProcessAttachmentView;
 
     // host visible resources
     VkBuffer cubeUniformBuffer;
@@ -74,17 +77,20 @@ typedef struct {
     VkDescriptorSet gbufferDescriptorSet;
     VkDescriptorSet ssaoAttachmentDescriptorSet;
     VkDescriptorSet ssaoBlurAttachmentDescriptorSet;
+    VkDescriptorSet postProcessAttachmentDescriptorSet;
 
 
     VkPipelineLayout sampledImagePipelineLayout;
     VkPipelineLayout cubePipelineLayout;
     VkPipelineLayout ssaoPipelineLayout;
     VkPipelineLayout compositionPipelineLayout;
+    VkPipelineLayout grainPipelineLayout;
 
     VkPipeline cubePipeline;
     VkPipeline ssaoPipeline;
     VkPipeline ssaoBlurPipeline;
     VkPipeline compositionPipeline;
+    VkPipeline grainPipeline;
 
     VkSemaphore renderingDoneSemaphore;
 

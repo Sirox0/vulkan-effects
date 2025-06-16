@@ -49,11 +49,11 @@ int main(int argc, char** argv) {
             } else gameEvent(&event);
         }
 
-        u32 startTime = SDL_GetTicks();
+        gameglobals.time = SDL_GetTicks();
 
         gameRender();
 
-        gameglobals.deltaTime = SDL_GetTicks() - startTime;
+        gameglobals.deltaTime = SDL_GetTicks() - gameglobals.time;
     }
 
     vkDeviceWaitIdle(vkglobals.device);

@@ -1,8 +1,8 @@
 #version 450
 
-layout(constant_id = 0) const uint SSAO_KERNEL_SIZE = 64;
+layout(constant_id = 0) const uint SSAO_KERNEL_SIZE = 12;
 layout(constant_id = 1) const float SSAO_RADIUS = 0.3;
-layout(constant_id = 2) const float SSAO_POWER = 2.0;
+layout(constant_id = 2) const float SSAO_POWER = 4.0;
 
 layout(location = 0) in vec2 uv;
 
