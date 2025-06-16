@@ -12,7 +12,7 @@
 #define SSAO_NOISE_DIM 4
 #define SSAO_RADIUS 0.3f
 #define SSAO_BLUR_SCALE 4
-#define SSAO_POWER 4.0f
+#define SSAO_POWER 2.0f
 
 #define GRAIN_INTESITY 0.25f
 #define GRAIN_SIGNAL_TO_NOISE 4.0f
