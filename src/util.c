@@ -123,7 +123,7 @@ VkShaderModule createShaderModuleFromAsset(char* path) {
     size_t fsize = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    u8* shaderCode = (u8*)malloc(sizeof(u8) * fsize);
+    u8 shaderCode[fsize];
     fread(shaderCode, fsize, 1, f);
     fclose(f);
 
@@ -134,29 +134,28 @@ VkShaderModule createShaderModuleFromAsset(char* path) {
     moduleInfo.pCode = (u32*)shaderCode;
 
     VK_ASSERT(vkCreateShaderModule(vkglobals.device, &moduleInfo, VK_NULL_HANDLE, &module), "failed to create shader module\n");
-    free(shaderCode);
     return module;
 }
 
 VkPipelineCache loadPipelineCache(char* path) {
     FILE* f = fopen(path, "rb");
-    size_t cacheSize = 0;
+    size_t fsize = 0;
     u8* cacheData = NULL;
 
     if (f != NULL) {
         fseek(f, 0, SEEK_END);
-        cacheSize = ftell(f);
+        fsize = ftell(f);
         fseek(f, 0, SEEK_SET);
 
-        cacheData = (u8*)malloc(sizeof(u8) * cacheSize);
-        fread(cacheData, cacheSize, 1, f);
+        cacheData = (u8*)malloc(sizeof(u8) * fsize);
+        fread(cacheData, fsize, 1, f);
         fclose(f);
     }
 
     VkPipelineCache cache;
     VkPipelineCacheCreateInfo cacheInfo = {};
     cacheInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-    cacheInfo.initialDataSize = cacheSize;
+    cacheInfo.initialDataSize = fsize;
     cacheInfo.pInitialData = cacheData;
 
     VK_ASSERT(vkCreatePipelineCache(vkglobals.device, &cacheInfo, VK_NULL_HANDLE, &cache), "failed to create pipeline cache\n");
@@ -167,7 +166,7 @@ VkPipelineCache loadPipelineCache(char* path) {
 void storePipelineCache(VkPipelineCache cache, char* path) {
     size_t cacheSize;
     vkGetPipelineCacheData(vkglobals.device, cache, &cacheSize, VK_NULL_HANDLE);
-    u8 cacheData[cacheSize];
+    u8* cacheData = (u8*)malloc(sizeof(u8) * cacheSize);
     vkGetPipelineCacheData(vkglobals.device, cache, &cacheSize, cacheData);
 
     FILE* f = fopen(path, "wb");
@@ -176,6 +175,7 @@ void storePipelineCache(VkPipelineCache cache, char* path) {
         fwrite(cacheData, cacheSize, 1, f);
         fclose(f);
     }
+    free(cacheData);
 }
 
 VkDeviceSize getAlignCooficient(VkDeviceSize size, u32 alignment) {
