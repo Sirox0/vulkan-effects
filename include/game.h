@@ -84,13 +84,13 @@ typedef struct {
     VkPipelineLayout cubePipelineLayout;
     VkPipelineLayout ssaoPipelineLayout;
     VkPipelineLayout compositionPipelineLayout;
-    VkPipelineLayout grainPipelineLayout;
+    VkPipelineLayout uberPipelineLayout;
 
     VkPipeline cubePipeline;
     VkPipeline ssaoPipeline;
     VkPipeline ssaoBlurPipeline;
     VkPipeline compositionPipeline;
-    VkPipeline grainPipeline;
+    VkPipeline uberPipeline;
 
     VkSemaphore renderingDoneSemaphore;
 
