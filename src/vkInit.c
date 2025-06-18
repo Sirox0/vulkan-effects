@@ -12,6 +12,7 @@
 #include "mathext.h"
 #include "pipeline.h"
 #include "util.h"
+#include "config.h"
 
 vulkan_globals_t vkglobals = {};
 
@@ -110,7 +111,18 @@ void vkInit() {
             VkPresentModeKHR surfacePresentModes[surfacePresentModeCount];
             vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevices[i], vkglobals.surface, &surfacePresentModeCount, surfacePresentModes);
 
-            if (vkglobals.preferImmediate) {
+            if (config.vsync) {
+                if (config.vsyncRelaxed) {
+                    u8 fifoRelaxedPresentModeSupported = 0;
+                    for (u32 i = 0; i < surfacePresentModeCount; i++) {
+                        if (surfacePresentModes[i] == VK_PRESENT_MODE_FIFO_RELAXED_KHR) {
+                            fifoRelaxedPresentModeSupported = 1;
+                            vkglobals.surfacePresentMode = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+                        }
+                    }
+                    if (!fifoRelaxedPresentModeSupported) vkglobals.surfacePresentMode = VK_PRESENT_MODE_FIFO_KHR;
+                } else vkglobals.surfacePresentMode = VK_PRESENT_MODE_FIFO_KHR;
+            } else {
                 u8 immediatePresentModeSupported = 0;
                 for (u32 i = 0; i < surfacePresentModeCount; i++) {
                     if (surfacePresentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) {
@@ -118,9 +130,15 @@ void vkInit() {
                         vkglobals.surfacePresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
                     }
                 }
-                if (!immediatePresentModeSupported) vkglobals.surfacePresentMode = VK_PRESENT_MODE_FIFO_KHR;
-            } else {
-                vkglobals.surfacePresentMode = VK_PRESENT_MODE_FIFO_KHR;
+                if (!immediatePresentModeSupported) {
+                    // mailbox is kinda similar to immediate, its just that it discards the frames presentation engine dont need
+                    u8 mailboxPresentModeSupported = 0;
+                    if (surfacePresentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+                        mailboxPresentModeSupported = 1;
+                        vkglobals.surfacePresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+                    }
+                    if (!mailboxPresentModeSupported) vkglobals.surfacePresentMode = VK_PRESENT_MODE_FIFO_KHR;
+                }
             }
 
             u32 surfaceFormatCount;

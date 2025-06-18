@@ -1,23 +1,32 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define TITLE "walker"
-#define DEFAULT_WINDOW_WIDTH 1024
-#define DEFAULT_WINDOW_HEIGHT 1024
+#include "numtypes.h"
 
-#define NEAR_PLANE 0.01f
-#define FAR_PLANE 6.0f
+typedef struct {
+    u32 windowWidth;
+    u32 windowHeight;
+    u8 vsync;
+    u8 vsyncRelaxed;
+    u8 fullscreen;
 
-// the resolution of occlusion map is window resolution divided by this
-#define SSAO_RESOLUTION_FACTOR 4
-#define SSAO_KERNEL_SIZE 12
-#define SSAO_NOISE_DIM 4
-#define SSAO_RADIUS 0.3f
-#define SSAO_BLUR_SCALE 2
-#define SSAO_POWER 8.0f
+    f32 nearPlane;
+    f32 farPlane;
 
-#define GRAIN_INTESITY 18.0f
-#define GRAIN_SIGNAL_TO_NOISE 1.0f
-#define GRAIN_NOISE_SHIFT 0.0f
+    f32 ssaoResolutionFactor;
+    u32 ssaoKernelSize;
+    u32 ssaoNoiseDim;
+    f32 ssaoRadius;
+    u32 ssaoBlurSize;
+    f32 ssaoPower;
+
+    f32 grainIntensity;
+    f32 grainSignalToNoise;
+    f32 grainNoiseShift;
+} config_t;
+
+void configLoad(char* path);
+
+extern config_t config;
 
 #endif

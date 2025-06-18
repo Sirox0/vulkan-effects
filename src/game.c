@@ -131,7 +131,7 @@ void gameInit() {
 
             {
                 createImage(&gameglobals.cubeTextures, wallpaperX, wallpaperY, VK_FORMAT_R8G8B8A8_UNORM, 3, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-                createImage(&gameglobals.ssaoNoiseTexture, SSAO_NOISE_DIM, SSAO_NOISE_DIM, VK_FORMAT_R32G32B32A32_SFLOAT, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+                createImage(&gameglobals.ssaoNoiseTexture, config.ssaoNoiseDim, config.ssaoNoiseDim, VK_FORMAT_R32G32B32A32_SFLOAT, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 
                 VkMemoryRequirements memReqs[2];
                 vkGetImageMemoryRequirements(vkglobals.device, gameglobals.cubeTextures, &memReqs[0]);
@@ -147,7 +147,7 @@ void gameInit() {
 
             {
                 createBuffer(&gameglobals.projectionMatrixBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(mat4));
-                createBuffer(&gameglobals.ssaoKernelBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, SSAO_KERNEL_SIZE * sizeof(vec4));
+                createBuffer(&gameglobals.ssaoKernelBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, config.ssaoKernelSize * sizeof(vec4));
 
                 VkMemoryRequirements memReqs[2];
                 vkGetBufferMemoryRequirements(vkglobals.device, gameglobals.projectionMatrixBuffer, &memReqs[0]);
@@ -175,7 +175,7 @@ void gameInit() {
 
         {
             createBuffer(&tempBuffers[0], VK_BUFFER_USAGE_TRANSFER_SRC_BIT, sizeof(vertexbuf) + wallpaperX * wallpaperY * 4 + carpetX * carpetY * 4 + ceilingX * ceilingY * 4 +
-                SSAO_NOISE_DIM * SSAO_NOISE_DIM * sizeof(vec4) + SSAO_KERNEL_SIZE * sizeof(vec4) + sizeof(mat4));
+                config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4));
 
             VkMemoryRequirements memReq;
             vkGetBufferMemoryRequirements(vkglobals.device, tempBuffers[0], &memReq);
@@ -194,23 +194,23 @@ void gameInit() {
                 memcpy(tempBufferMemRaw + sizeof(vertexbuf) + wallpaperX * wallpaperY * 4 + carpetX * carpetY * 4, ceilingTexture, ceilingX * ceilingY * 4);
 
                 #define tempBufferMemRawWithSSAOoffset (tempBufferMemRaw + sizeof(vertexbuf) + wallpaperX * wallpaperY * 4 + carpetX * carpetY * 4 + ceilingX * ceilingY * 4)
-                for (u32 i = 0; i < SSAO_NOISE_DIM * SSAO_NOISE_DIM; i++) {
+                for (u32 i = 0; i < config.ssaoNoiseDim * config.ssaoNoiseDim; i++) {
                     glm_vec4_copy((vec4){randFloat() * 2.0f - 1.0f, randFloat() * 2.0f - 1.0f, 0.0f, 0.0f}, tempBufferMemRawWithSSAOoffset + i * sizeof(vec4));
                 }
 
-                for (u32 i = 0; i < SSAO_KERNEL_SIZE; i++) {
+                for (u32 i = 0; i < config.ssaoKernelSize; i++) {
                     vec3 sample;
                     glm_vec3_normalize_to((vec3){randFloat() * 2.0f - 1.0f, randFloat() * 2.0f - 1.0f, randFloat()}, sample);
                     glm_vec3_scale(sample, randFloat(), sample);
 
-                    f32 scale = (f32)i / SSAO_KERNEL_SIZE;
+                    f32 scale = (f32)i / config.ssaoKernelSize;
                     scale = lerpf(0.1f, 1.0f, scale * scale);
                     glm_vec3_scale(sample, scale, sample);
-                    glm_vec4_copy((vec4){sample[0], sample[1], sample[2], 0.0f}, tempBufferMemRawWithSSAOoffset + SSAO_NOISE_DIM * SSAO_NOISE_DIM * sizeof(vec4) + i * sizeof(vec4));
+                    glm_vec4_copy((vec4){sample[0], sample[1], sample[2], 0.0f}, tempBufferMemRawWithSSAOoffset + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + i * sizeof(vec4));
                 }
 
                 // use reverse depth
-                glm_perspective(glm_rad(80.0f), (f32)vkglobals.swapchainExtent.width / vkglobals.swapchainExtent.height, FAR_PLANE, NEAR_PLANE, tempBufferMemRawWithSSAOoffset + SSAO_NOISE_DIM * SSAO_NOISE_DIM * sizeof(vec4) + SSAO_KERNEL_SIZE * sizeof(vec4));
+                glm_perspective(glm_rad(80.0f), (f32)vkglobals.swapchainExtent.width / vkglobals.swapchainExtent.height, config.farPlane, config.nearPlane, tempBufferMemRawWithSSAOoffset + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4));
 
                 VkMappedMemoryRange memoryRange = {};
                 memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
@@ -229,11 +229,11 @@ void gameInit() {
                 copyInfo[0].dstOffset = 0;
                 copyInfo[0].size = sizeof(vertexbuf);
 
-                copyInfo[1].srcOffset = sizeof(vertexbuf) + wallpaperX * wallpaperY * 4 + carpetX * carpetY * 4 + ceilingX * ceilingY * 4 + SSAO_NOISE_DIM * SSAO_NOISE_DIM * sizeof(vec4);
+                copyInfo[1].srcOffset = sizeof(vertexbuf) + wallpaperX * wallpaperY * 4 + carpetX * carpetY * 4 + ceilingX * ceilingY * 4 + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4);
                 copyInfo[1].dstOffset = 0;
-                copyInfo[1].size = SSAO_KERNEL_SIZE * sizeof(vec4);
+                copyInfo[1].size = config.ssaoKernelSize * sizeof(vec4);
 
-                copyInfo[2].srcOffset = sizeof(vertexbuf) + wallpaperX * wallpaperY * 4 + carpetX * carpetY * 4 + ceilingX * ceilingY * 4 + SSAO_NOISE_DIM * SSAO_NOISE_DIM * sizeof(vec4) + SSAO_KERNEL_SIZE * sizeof(vec4);
+                copyInfo[2].srcOffset = sizeof(vertexbuf) + wallpaperX * wallpaperY * 4 + carpetX * carpetY * 4 + ceilingX * ceilingY * 4 + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4);
                 copyInfo[2].dstOffset = 0;
                 copyInfo[2].size = sizeof(mat4);
 
@@ -244,7 +244,7 @@ void gameInit() {
                 copyTempBufferToImage(tempCmdBuffers[0], tempBuffers[0], sizeof(vertexbuf), gameglobals.cubeTextures, wallpaperX, wallpaperY, 3, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                 copyTempBufferToImage(tempCmdBuffers[0], tempBuffers[0],
                     sizeof(vertexbuf) + wallpaperX * wallpaperY * 4 + carpetX * carpetY * 4 + ceilingX * ceilingY * 4,
-                    gameglobals.ssaoNoiseTexture, SSAO_NOISE_DIM, SSAO_NOISE_DIM, 1, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    gameglobals.ssaoNoiseTexture, config.ssaoNoiseDim, config.ssaoNoiseDim, 1, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             }
         }
 
@@ -287,7 +287,7 @@ void gameInit() {
         {
             createImage(&gameglobals.gbufferPosition, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
             createImage(&gameglobals.gbufferNormalAlbedo, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 2, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-            createImage(&gameglobals.ssaoAttachment, vkglobals.swapchainExtent.width / SSAO_RESOLUTION_FACTOR, vkglobals.swapchainExtent.height / SSAO_RESOLUTION_FACTOR, VK_FORMAT_R8_UNORM, 2, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+            createImage(&gameglobals.ssaoAttachment, vkglobals.swapchainExtent.width / config.ssaoResolutionFactor, vkglobals.swapchainExtent.height / config.ssaoResolutionFactor, VK_FORMAT_R8_UNORM, 2, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
             createImage(&gameglobals.postProcessAttachment, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
             VkMemoryRequirements memReqs[4];
@@ -700,17 +700,17 @@ void gameInit() {
             u32 kernelSize;
             f32 radius;
             f32 power;
-        } ssaoSpecializationData = {SSAO_KERNEL_SIZE, SSAO_RADIUS, SSAO_POWER};
+        } ssaoSpecializationData = {config.ssaoKernelSize, config.ssaoRadius, config.ssaoPower};
 
         struct {
-            i32 blurScale;
-        } ssaoBlurSpecializationData = {SSAO_BLUR_SCALE};
+            i32 blurSize;
+        } ssaoBlurSpecializationData = {config.ssaoBlurSize};
 
         struct {
             f32 intensity;
             f32 signalToNoiseRatio;
             f32 noiseShift;
-        } grainSpecializationData = {GRAIN_INTESITY, GRAIN_SIGNAL_TO_NOISE, GRAIN_NOISE_SHIFT};
+        } grainSpecializationData = {config.grainIntensity, config.grainSignalToNoise, config.grainNoiseShift};
 
         VkSpecializationInfo specializationInfos[3] = {};
         specializationInfos[0].mapEntryCount = 3;
@@ -792,9 +792,9 @@ void gameInit() {
         pipelineInfos[1].stages[1].module = createShaderModuleFromAsset("assets/shaders/ssao.frag.spv");
         pipelineInfos[1].stages[1].pSpecializationInfo = &specializationInfos[0];
 
-        pipelineInfos[1].viewport.width = vkglobals.swapchainExtent.width / SSAO_RESOLUTION_FACTOR;
-        pipelineInfos[1].viewport.height = vkglobals.swapchainExtent.height / SSAO_RESOLUTION_FACTOR;
-        pipelineInfos[1].scissor.extent = (VkExtent2D){vkglobals.swapchainExtent.width / SSAO_RESOLUTION_FACTOR, vkglobals.swapchainExtent.height / SSAO_RESOLUTION_FACTOR};
+        pipelineInfos[1].viewport.width = vkglobals.swapchainExtent.width / config.ssaoResolutionFactor;
+        pipelineInfos[1].viewport.height = vkglobals.swapchainExtent.height / config.ssaoResolutionFactor;
+        pipelineInfos[1].scissor.extent = (VkExtent2D){vkglobals.swapchainExtent.width / config.ssaoResolutionFactor, vkglobals.swapchainExtent.height / config.ssaoResolutionFactor};
 
         pipelineInfos[1].renderingInfo.colorAttachmentCount = 1;
         pipelineInfos[1].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R8_UNORM};
@@ -807,9 +807,9 @@ void gameInit() {
         pipelineInfos[2].stages[1].module = createShaderModuleFromAsset("assets/shaders/ssaoblur.frag.spv");
         pipelineInfos[2].stages[1].pSpecializationInfo = &specializationInfos[1];
 
-        pipelineInfos[2].viewport.width = vkglobals.swapchainExtent.width / SSAO_RESOLUTION_FACTOR;
-        pipelineInfos[2].viewport.height = vkglobals.swapchainExtent.height / SSAO_RESOLUTION_FACTOR;
-        pipelineInfos[2].scissor.extent = (VkExtent2D){vkglobals.swapchainExtent.width / SSAO_RESOLUTION_FACTOR, vkglobals.swapchainExtent.height / SSAO_RESOLUTION_FACTOR};
+        pipelineInfos[2].viewport.width = vkglobals.swapchainExtent.width / config.ssaoResolutionFactor;
+        pipelineInfos[2].viewport.height = vkglobals.swapchainExtent.height / config.ssaoResolutionFactor;
+        pipelineInfos[2].scissor.extent = (VkExtent2D){vkglobals.swapchainExtent.width / config.ssaoResolutionFactor, vkglobals.swapchainExtent.height / config.ssaoResolutionFactor};
 
         pipelineInfos[2].renderingInfo.colorAttachmentCount = 1;
         pipelineInfos[2].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R8_UNORM};
@@ -1103,7 +1103,7 @@ void gameRender() {
 
             VkRenderingInfoKHR renderingInfo = {};
             renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
-            renderingInfo.renderArea = (VkRect2D){(VkOffset2D){0, 0}, (VkExtent2D){vkglobals.swapchainExtent.width / SSAO_RESOLUTION_FACTOR, vkglobals.swapchainExtent.height / SSAO_RESOLUTION_FACTOR}};
+            renderingInfo.renderArea = (VkRect2D){(VkOffset2D){0, 0}, (VkExtent2D){vkglobals.swapchainExtent.width / config.ssaoResolutionFactor, vkglobals.swapchainExtent.height / config.ssaoResolutionFactor}};
             renderingInfo.layerCount = 1;
             renderingInfo.colorAttachmentCount = 1;
             renderingInfo.pColorAttachments = attachments;
@@ -1166,7 +1166,7 @@ void gameRender() {
 
             VkRenderingInfoKHR renderingInfo = {};
             renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
-            renderingInfo.renderArea = (VkRect2D){(VkOffset2D){0, 0}, (VkExtent2D){vkglobals.swapchainExtent.width / SSAO_RESOLUTION_FACTOR, vkglobals.swapchainExtent.height / SSAO_RESOLUTION_FACTOR}};
+            renderingInfo.renderArea = (VkRect2D){(VkOffset2D){0, 0}, (VkExtent2D){vkglobals.swapchainExtent.width / config.ssaoResolutionFactor, vkglobals.swapchainExtent.height / config.ssaoResolutionFactor}};
             renderingInfo.layerCount = 1;
             renderingInfo.colorAttachmentCount = 1;
             renderingInfo.pColorAttachments = attachments;

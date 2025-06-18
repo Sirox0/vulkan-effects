@@ -1,6 +1,6 @@
 #version 450
 
-layout(constant_id = 0) const int SSAO_BLUR_SCALE = 4;
+layout(constant_id = 0) const int SSAO_BLUR_SIZE = 4;
 
 layout(location = 0) in vec2 uv;
 
@@ -13,8 +13,8 @@ void main() {
 
     float n = 0.0;
     float res = 0.0;
-    for (int y = -SSAO_BLUR_SCALE; y < SSAO_BLUR_SCALE; y++) {
-        for (int x = -SSAO_BLUR_SCALE; x < SSAO_BLUR_SCALE; x++) {
+    for (int y = -SSAO_BLUR_SIZE; y < SSAO_BLUR_SIZE; y++) {
+        for (int x = -SSAO_BLUR_SIZE; x < SSAO_BLUR_SIZE; x++) {
             vec2 offset = texelSize * vec2(x, y);
             res += texture(occlusionMap, uv + offset).r;
 

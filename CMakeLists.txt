@@ -19,6 +19,7 @@ if(WIN32)
 endif()
 
 set(SOURCES
+    ${CMAKE_CURRENT_LIST_DIR}/src/config.c
     ${CMAKE_CURRENT_LIST_DIR}/src/main.c
     ${CMAKE_CURRENT_LIST_DIR}/src/mathext.c
     ${CMAKE_CURRENT_LIST_DIR}/src/vkInit.c
@@ -33,9 +34,14 @@ set(SOURCES
 find_package(SDL3 REQUIRED)
 find_package(Vulkan REQUIRED)
 
+set(BUILD_SHARED_LIBS OFF)
+set(BUILD_EXAMPLES OFF)
+set(BUILD_DOCS OFF)
+add_subdirectory(external/iniparser)
+
 
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
-target_link_libraries(${CMAKE_PROJECT_NAME} SDL3::SDL3 Vulkan::Headers)
+target_link_libraries(${CMAKE_PROJECT_NAME} SDL3::SDL3 Vulkan::Headers iniparser-static)
 if(UNIX)
     target_link_libraries(${CMAKE_PROJECT_NAME} m)
 endif()
@@ -48,3 +54,4 @@ if(WIN32)
 endif()
 
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/assets ${CMAKE_CURRENT_BINARY_DIR}/assets)
+add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/config.ini ${CMAKE_CURRENT_BINARY_DIR}/config.ini)

@@ -10,23 +10,14 @@
 #include "game.h"
 
 int main(int argc, char** argv) {
+    (void)argc;
+    (void)argv;
+
+    configLoad("config.ini");
+
     SDL_Init(SDL_INIT_EVENTS);
     {
-        u32 w = 0, h = 0;
-        u8 f = 0;
-        if (argc <= 4) {
-            if (argc >= 2) f = atoi(argv[1]);
-            if (argc >= 3) vkglobals.preferImmediate = atoi(argv[2]);
-            w = DEFAULT_WINDOW_WIDTH;
-            h = DEFAULT_WINDOW_HEIGHT;
-        } else if (argc > 4) {
-            f = atoi(argv[1]);
-            vkglobals.preferImmediate = atoi(argv[2]);
-            w = atoi(argv[3]);
-            h = atoi(argv[4]);
-        }
-        
-        vkglobals.window = SDL_CreateWindow(TITLE, w, h, SDL_WINDOW_VULKAN | (f ? SDL_WINDOW_FULLSCREEN : 0));
+        vkglobals.window = SDL_CreateWindow("walker", config.windowWidth, config.windowHeight, SDL_WINDOW_VULKAN | (config.fullscreen ? SDL_WINDOW_FULLSCREEN : 0));
     }
     if (vkglobals.window == VK_NULL_HANDLE) {
         printf("failed to create window\n");

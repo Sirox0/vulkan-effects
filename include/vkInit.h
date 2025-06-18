@@ -17,7 +17,6 @@
 
 typedef struct {
     SDL_Window* window;
-    u8 preferImmediate;
 
     VkInstance instance;
     VkPhysicalDevice physicalDevice;
