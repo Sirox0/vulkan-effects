@@ -13,8 +13,8 @@ void main() {
 
     float n = 0.0;
     float res = 0.0;
-    for (int y = -SSAO_BLUR_SIZE; y < SSAO_BLUR_SIZE; y++) {
-        for (int x = -SSAO_BLUR_SIZE; x < SSAO_BLUR_SIZE; x++) {
+    for (int y = -SSAO_BLUR_SIZE; y <= SSAO_BLUR_SIZE; y++) {
+        for (int x = -SSAO_BLUR_SIZE; x <= SSAO_BLUR_SIZE; x++) {
             vec2 offset = texelSize * vec2(x, y);
             res += texture(occlusionMap, uv + offset).r;
 

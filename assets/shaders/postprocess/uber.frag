@@ -16,8 +16,12 @@ layout(location = 0) out vec4 outColor;
 
 const float PI = acos(-1.0);
 
+float luma(vec3 color) {
+    return dot(color, vec3(0.2126, 0.7152, 0.0722));
+}
+
 vec3 grain(vec3 color) {
-    // use eye-perceived weights
+    // inverse luma
     float invluma = dot(color, vec3(-0.2126, -0.7152, -0.0722)) + 1.0;
 
     // generate noise
@@ -30,5 +34,7 @@ vec3 grain(vec3 color) {
 void main() {
     vec4 color = texture(frame, uv);
 
-    outColor = vec4(grain(color.rgb), 1.0);
+    color.rgb = grain(color.rgb);
+
+    outColor = color;
 }
