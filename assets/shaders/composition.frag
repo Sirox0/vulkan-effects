@@ -21,7 +21,7 @@ void main() {
 
     // diffuse light
     vec3 nlightDir = viewLightPos - texture(gbuffer[0], uv).xyz;
-    float attenuation = inversesqrt(length(nlightDir));
+    float attenuation = inversesqrt(length(nlightDir)) / 1.25;
     vec3 dlightColor = diffuseLightColor.rgb * diffuseLightColor.a * attenuation;
 
     light += max(dot(texture(gbuffer[1], uv).xyz * 2.0 - 1.0, normalize(nlightDir)), 0.0) * dlightColor;
