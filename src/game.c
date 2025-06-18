@@ -60,47 +60,47 @@ void gameInit() {
             u32 textureIndex;
         } vertexbuf[] = {
              // left face
-            {{-2.0f, -2.0f, -2.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
-            {{-2.0f, 2.0f, 2.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
-            {{-2.0f, -2.0f, 2.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, 0},
-            {{-2.0f, 2.0f, 2.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
-            {{-2.0f, -2.0f, -2.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
-            {{-2.0f, 2.0f, -2.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, 0},
+            {{-1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
+            {{-1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
+            {{-1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, 0},
+            {{-1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
+            {{-1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
+            {{-1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, 0},
             // back face
-            {{-2.0f, -2.0f, -2.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}, 0},
-            {{2.0f, -2.0f, -2.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}, 0},
-            {{2.0f, 2.0f, -2.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}, 0},
-            {{-2.0f, -2.0f, -2.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}, 0},
-            {{2.0f, 2.0f, -2.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}, 0},
-            {{-2.0f, 2.0f, -2.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}, 0},
+            {{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}, 0},
+            {{1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}, 0},
+            {{1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}, 0},
+            {{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}, 0},
+            {{1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}, 0},
+            {{-1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}, 0},
             // top face
-            {{-2.0f, -2.0f, -2.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}, 2},
-            {{2.0f, -2.0f, 2.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}, 2},
-            {{2.0f, -2.0f, -2.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, 2},
-            {{-2.0f, -2.0f, -2.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}, 2},
-            {{-2.0f, -2.0f, 2.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, 2},
-            {{2.0f, -2.0f, 2.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}, 2},
+            {{-1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}, 2},
+            {{1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}, 2},
+            {{1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, 2},
+            {{-1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}, 2},
+            {{-1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, 2},
+            {{1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}, 2},
             // bottom face
-            {{-2.0f, 2.0f, -2.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f}, 1},
-            {{2.0f, 2.0f, 2.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f}, 1},
-            {{-2.0f, 2.0f, 2.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 1.0f}, 1},
-            {{-2.0f, 2.0f, -2.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f}, 1},
-            {{2.0f, 2.0f, -2.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f}, 1},
-            {{2.0f, 2.0f, 2.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f}, 1},
+            {{-1.0f, 1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f}, 1},
+            {{1.0f, 1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f}, 1},
+            {{-1.0f, 1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 1.0f}, 1},
+            {{-1.0f, 1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f}, 1},
+            {{1.0f, 1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f}, 1},
+            {{1.0f, 1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f}, 1},
             // right face
-            {{2.0f, 2.0f, -2.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
-            {{2.0f, -2.0f, 2.0f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
-            {{2.0f, 2.0f, 2.0f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, 0},
-            {{2.0f, -2.0f, 2.0f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
-            {{2.0f, 2.0f, -2.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
-            {{2.0f, -2.0f, -2.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, 0},
+            {{1.0f, 1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
+            {{1.0f, -1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
+            {{1.0f, 1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, 0},
+            {{1.0f, -1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
+            {{1.0f, 1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
+            {{1.0f, -1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, 0},
             // front face
-            {{-2.0f, 2.0f, 2.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f}, 0},
-            {{2.0f, 2.0f, 2.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f}, 0},
-            {{-2.0f, -2.0f, 2.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f}, 0},
-            {{-2.0f, -2.0f, 2.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f}, 0},
-            {{2.0f, 2.0f, 2.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f}, 0},
-            {{2.0f, -2.0f, 2.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f}, 0},
+            {{-1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f}, 0},
+            {{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f}, 0},
+            {{-1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f}, 0},
+            {{-1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f}, 0},
+            {{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f}, 0},
+            {{1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f}, 0},
         };
 
         int32_t wallpaperX, wallpaperY;
@@ -886,16 +886,17 @@ void gameInit() {
 void gameEvent(SDL_Event* e) {
     if (e->type == SDL_EVENT_KEY_DOWN) {
         if (e->key.key == SDLK_W) gameglobals.input[0] = 1.0f / 2000.0f;
-        if (e->key.key == SDLK_S) gameglobals.input[1] = -1.0f / 2000.0f;
-        if (e->key.key == SDLK_A) gameglobals.input[2] = -1.0f / 2000.0f;
-        if (e->key.key == SDLK_D) gameglobals.input[3] = 1.0f / 2000.0f;
-        if (e->key.key == SDLK_LSHIFT) gameglobals.shift = 3;
+        else if (e->key.key == SDLK_S) gameglobals.input[1] = -1.0f / 2000.0f;
+        else if (e->key.key == SDLK_A) gameglobals.input[2] = -1.0f / 2000.0f;
+        else if (e->key.key == SDLK_D) gameglobals.input[3] = 1.0f / 2000.0f;
+        else if (e->key.key == SDLK_LSHIFT) gameglobals.shift = 3;
+        else if (e->key.key == SDLK_ESCAPE) gameglobals.loopActive = 0;
     } else if (e->type == SDL_EVENT_KEY_UP) {
         if (e->key.key == SDLK_W) gameglobals.input[0] = 0;
-        if (e->key.key == SDLK_S) gameglobals.input[1] = 0;
-        if (e->key.key == SDLK_A) gameglobals.input[2] = 0;
-        if (e->key.key == SDLK_D) gameglobals.input[3] = 0;
-        if (e->key.key == SDLK_LSHIFT) gameglobals.shift = 1;
+        else if (e->key.key == SDLK_S) gameglobals.input[1] = 0;
+        else if (e->key.key == SDLK_A) gameglobals.input[2] = 0;
+        else if (e->key.key == SDLK_D) gameglobals.input[3] = 0;
+        else if (e->key.key == SDLK_LSHIFT) gameglobals.shift = 1;
     } else if (e->type == SDL_EVENT_MOUSE_MOTION) {
         gameglobals.cam.yaw += (f32)e->motion.xrel / 400.0f;
         gameglobals.cam.pitch -= (f32)e->motion.yrel / 400.0f;
@@ -918,9 +919,9 @@ void updateCubeUbo() {
         glm_mat4_mulv3(rot, (vec3){(gameglobals.input[2] + gameglobals.input[3]) * gameglobals.shift * gameglobals.deltaTime, 0.0f, (gameglobals.input[0] + gameglobals.input[1]) * gameglobals.shift * gameglobals.deltaTime}, 0.0f, vel);
         glm_vec3_add(gameglobals.cam.position, vel, gameglobals.cam.position);
 
-        clampf(&gameglobals.cam.position[0], -1.9f, 1.9f);
-        clampf(&gameglobals.cam.position[1], -1.9f, 1.9f);
-        clampf(&gameglobals.cam.position[2], -1.9f, 1.9f);
+        clampf(&gameglobals.cam.position[0], -0.9f, 0.9f);
+        clampf(&gameglobals.cam.position[1], -0.9f, 0.9f);
+        clampf(&gameglobals.cam.position[2], -0.9f, 0.9f);
     }
 
     {
@@ -1242,7 +1243,7 @@ void gameRender() {
         vkCmdBindDescriptorSets(vkglobals.cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gameglobals.compositionPipelineLayout, 0, 2, (VkDescriptorSet[]){gameglobals.gbufferDescriptorSet, gameglobals.ssaoBlurAttachmentDescriptorSet}, 0, VK_NULL_HANDLE);
 
         vec3 viewLightPos;
-        glm_mat4_mulv3(gameglobals.hostVisibleUniformMemoryRaw + sizeof(mat4), (vec3){0.0, -1.75, 0.0}, 1.0, viewLightPos);
+        glm_mat4_mulv3(gameglobals.hostVisibleUniformMemoryRaw + sizeof(mat4), (vec3){0.0, -0.75, 0.0}, 1.0, viewLightPos);
         vkCmdPushConstants(vkglobals.cmdBuffer, gameglobals.compositionPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(vec3), viewLightPos);
 
         vkCmdDraw(vkglobals.cmdBuffer, 3, 1, 0, 0);
