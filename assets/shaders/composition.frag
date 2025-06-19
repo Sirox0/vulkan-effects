@@ -20,16 +20,16 @@ void main() {
     vec3 light = vec3(0.0);
 
     // diffuse light
-    vec3 nlightDir = viewLightPos - texture(gbuffer[0], uv).xyz;
+    vec3 nlightDir = viewLightPos - texelFetch(gbuffer[0], ivec2(gl_FragCoord.xy), 0).xyz;
     float attenuation = inversesqrt(length(nlightDir)) / 1.25;
     vec3 dlightColor = diffuseLightColor.rgb * diffuseLightColor.a * attenuation;
 
-    light += max(dot(texture(gbuffer[1], uv).xyz * 2.0 - 1.0, normalize(nlightDir)), 0.0) * dlightColor;
+    light += max(dot(texelFetch(gbuffer[1], ivec2(gl_FragCoord.xy), 0).xyz * 2.0 - 1.0, normalize(nlightDir)), 0.0) * dlightColor;
 
     // ambient light
-    light += ambientLightColor.rgb * ambientLightColor.a * texture(occlusionMapBlurred, uv).r;
+    light += ambientLightColor.rgb * ambientLightColor.a * texelFetch(occlusionMapBlurred, ivec2(uv * textureSize(occlusionMapBlurred, 0)), 0).r;
 
-    vec4 color = texture(gbuffer[2], uv);
+    vec4 color = texelFetch(gbuffer[2], ivec2(gl_FragCoord.xy), 0);
     color.rgb *= light;
 
     outColor = color;

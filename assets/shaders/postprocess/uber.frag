@@ -32,7 +32,7 @@ vec3 grain(vec3 color) {
 }
 
 void main() {
-    vec4 color = texture(frame, uv);
+    vec4 color = texelFetch(frame, ivec2(gl_FragCoord.xy), 0);
 
     color.rgb = grain(color.rgb);
 
