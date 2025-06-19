@@ -23,13 +23,13 @@ layout(location = 0) out float outOcclusion;
 void main() {
     ivec2 textureDim = textureSize(gbuffer[0], 0);
 
-    vec3 pos = texelFetch(gbuffer[0], ivec2(gl_FragCoord.xy), 0).xyz;
-    vec3 normal = texelFetch(gbuffer[1], ivec2(gl_FragCoord.xy), 0).xyz * 2.0 - 1.0;
+    vec3 pos = texelFetch(gbuffer[0], ivec2(uv * (textureDim - 1)), 0).xyz;
+    vec3 normal = texelFetch(gbuffer[1], ivec2(uv * (textureDim - 1)), 0).xyz * 2.0 - 1.0;
 
     ivec2 noiseDim = textureSize(ssaoNoise, 0);
     vec2 noiseUV = fract(uv * (textureDim / noiseDim));
 
-    vec3 randV = texelFetch(ssaoNoise, ivec2(noiseUV * noiseDim), 0).xyz;
+    vec3 randV = texelFetch(ssaoNoise, ivec2(noiseUV * (noiseDim - 1)), 0).xyz;
 
     vec3 tangent = normalize(randV - normal * dot(randV, normal));
     vec3 bitangent = cross(tangent, normal);
@@ -43,11 +43,11 @@ void main() {
 
         vec4 offset = vec4(samplePos, 1.0);
         offset = projection * offset;
-        offset.xy /= offset.w;
-        offset.xy = offset.xy * 0.5 + 0.5;
-        offset.xy = fract(offset.xy);
+        offset.xyz /= offset.w;
+        offset.xyz = offset.xyz * 0.5 + 0.5;
+        offset.xy = clamp(offset.xy, 0.0, 1.0);
 
-        float depth = texelFetch(gbuffer[0], ivec2(offset.xy * textureDim), 0).z;
+        float depth = texelFetch(gbuffer[0], ivec2(offset.xy * (textureDim - 1)), 0).z;
 
         float rangeCheck = smoothstep(0.0, 1.0, SSAO_RADIUS / abs(pos.z - depth));
         occlusion += (depth <= samplePos.z - 0.025 ? 1.0 : 0.0) * rangeCheck;

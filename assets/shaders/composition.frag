@@ -27,7 +27,7 @@ void main() {
     light += max(dot(texelFetch(gbuffer[1], ivec2(gl_FragCoord.xy), 0).xyz * 2.0 - 1.0, normalize(nlightDir)), 0.0) * dlightColor;
 
     // ambient light
-    light += ambientLightColor.rgb * ambientLightColor.a * texelFetch(occlusionMapBlurred, ivec2(uv * textureSize(occlusionMapBlurred, 0)), 0).r;
+    light += ambientLightColor.rgb * ambientLightColor.a * texelFetch(occlusionMapBlurred, ivec2(uv * (textureSize(occlusionMapBlurred, 0) - 1)), 0).r;
 
     vec4 color = texelFetch(gbuffer[2], ivec2(gl_FragCoord.xy), 0);
     color.rgb *= light;
