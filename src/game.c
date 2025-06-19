@@ -1099,7 +1099,7 @@ void gameRender() {
             attachments[0].imageView = gameglobals.ssaoAttachmentView;
             attachments[0].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             attachments[0].resolveMode = VK_RESOLVE_MODE_NONE_KHR;
-            attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             attachments[0].clearValue = (VkClearValue){{{0.0f, 0.0f, 0.0f, 0.0f}}};
 
@@ -1162,7 +1162,7 @@ void gameRender() {
             attachments[0].imageView = gameglobals.ssaoBlurAttachmentView;
             attachments[0].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             attachments[0].resolveMode = VK_RESOLVE_MODE_NONE_KHR;
-            attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             attachments[0].clearValue = (VkClearValue){{{0.0f, 0.0f, 0.0f, 0.0f}}};
 
@@ -1225,7 +1225,7 @@ void gameRender() {
             attachments[0].imageView = gameglobals.postProcessAttachmentView;
             attachments[0].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             attachments[0].resolveMode = VK_RESOLVE_MODE_NONE_KHR;
-            attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             attachments[0].clearValue = (VkClearValue){{{0.0f, 0.0f, 0.0f, 0.0f}}};
 
@@ -1292,7 +1292,7 @@ void gameRender() {
             attachments[0].imageView = vkglobals.swapchainImageViews[imageIndex];
             attachments[0].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             attachments[0].resolveMode = VK_RESOLVE_MODE_NONE_KHR;
-            attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             attachments[0].clearValue = (VkClearValue){{{0.0f, 0.0f, 0.0f, 0.0f}}};
 
