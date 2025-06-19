@@ -755,6 +755,7 @@ void gameInit() {
         attributeDescs[3].offset = sizeof(vec3) * 2 + sizeof(vec2);
 
         VkShaderModule fullscreenVertexModule = createShaderModuleFromAsset("assets/shaders/fullscreen.vert.spv");
+        VkShaderModule fullscreenNoUVVertexModule = createShaderModuleFromAsset("assets/shaders/fullscreenNoUV.vert.spv");
 
         graphics_pipeline_info_t pipelineInfos[5] = {};
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[0]);
@@ -803,7 +804,7 @@ void gameInit() {
         pipelineInfos[2].stageCount = 2;
         pipelineInfos[2].stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
         pipelineInfos[2].stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        pipelineInfos[2].stages[0].module = fullscreenVertexModule;
+        pipelineInfos[2].stages[0].module = fullscreenNoUVVertexModule;
         pipelineInfos[2].stages[1].module = createShaderModuleFromAsset("assets/shaders/ssaoblur.frag.spv");
         pipelineInfos[2].stages[1].pSpecializationInfo = &specializationInfos[1];
 
@@ -857,6 +858,7 @@ void gameInit() {
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[1].stages[1].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[0].stages[0].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[0].stages[1].module, VK_NULL_HANDLE);
+        vkDestroyShaderModule(vkglobals.device, fullscreenNoUVVertexModule, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, fullscreenVertexModule, VK_NULL_HANDLE);
     }
 

@@ -2,8 +2,6 @@
 
 layout(constant_id = 0) const int SSAO_BLUR_SIZE = 4;
 
-layout(location = 0) in vec2 uv;
-
 layout(binding = 0) uniform sampler2D occlusionMap;
 
 layout(location = 0) out float occlusionBlur;
