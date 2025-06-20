@@ -1071,7 +1071,7 @@ void gameRender() {
             imageBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             imageBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             imageBarriers[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-            imageBarriers[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+            imageBarriers[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
             imageBarriers[1].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -1085,7 +1085,7 @@ void gameRender() {
             imageBarriers[2].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             imageBarriers[2].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             imageBarriers[2].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-            imageBarriers[2].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+            imageBarriers[2].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
             imageBarriers[2].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             imageBarriers[2].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
            
@@ -1148,7 +1148,7 @@ void gameRender() {
             imageBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             imageBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             imageBarriers[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-            imageBarriers[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+            imageBarriers[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
             imageBarriers[1].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -1211,7 +1211,7 @@ void gameRender() {
             imageBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             imageBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             imageBarriers[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-            imageBarriers[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+            imageBarriers[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
             imageBarriers[1].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
