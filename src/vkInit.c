@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <memory.h>
 
 #include "numtypes.h"
 #include "vkFunctions.h"
@@ -21,6 +22,9 @@ void vkInit() {
 
     #define DEVICE_EXTENSION_COUNT 6
     const char* deviceExtensions[DEVICE_EXTENSION_COUNT] = {"VK_KHR_swapchain", "VK_KHR_dynamic_rendering", "VK_KHR_depth_stencil_resolve", "VK_KHR_create_renderpass2", "VK_KHR_multiview", "VK_KHR_maintenance2"};
+    #define DEVICE_OPTIONAL_EXTENSION_COUNT 2
+    const char* deviceOptionalExtensions[DEVICE_OPTIONAL_EXTENSION_COUNT] = {"VK_IMG_filter_cubic", "VK_EXT_filter_cubic"};
+    u8 optionalExts[DEVICE_OPTIONAL_EXTENSION_COUNT] = {0};
     #define INSTANCE_EXTENSION_COUNT 1
     const char* instanceExtensions[INSTANCE_EXTENSION_COUNT] = {"VK_KHR_get_physical_device_properties2"};
 
@@ -70,22 +74,28 @@ void vkInit() {
             VkExtensionProperties extensionProperties[extensionPropertyCount];
             vkEnumerateDeviceExtensionProperties(physicalDevices[i], VK_NULL_HANDLE, &extensionPropertyCount, extensionProperties);
 
-            u8 foundExts;
-            for (u32 requiredExt = 0; requiredExt < DEVICE_EXTENSION_COUNT; requiredExt++) {
-                foundExts = 0;
-
-                for (u32 availableExt = 0; availableExt < extensionPropertyCount; availableExt++) {
+            u8 foundExts[DEVICE_EXTENSION_COUNT] = {0};
+            u8 foundOptionalExts[DEVICE_OPTIONAL_EXTENSION_COUNT] = {0}; 
+            for (u32 availableExt = 0; availableExt < extensionPropertyCount; availableExt++) {
+                for (u32 requiredExt = 0; requiredExt < DEVICE_EXTENSION_COUNT; requiredExt++) {
                     if (strcmp(deviceExtensions[requiredExt], extensionProperties[availableExt].extensionName) == 0) {
-                        foundExts = 1;
+                        foundExts[requiredExt] = 1;
                         break;
                     }
                 }
 
-                if (!foundExts) {
-                    break;
+                for (u32 optionalExt = 0; optionalExt < DEVICE_OPTIONAL_EXTENSION_COUNT; optionalExt++) {
+                    if (strcmp(deviceOptionalExtensions[optionalExt], extensionProperties[availableExt].extensionName) == 0) {
+                        foundOptionalExts[optionalExt] = 1;
+                        break;
+                    }
                 }
             }
-            if (!foundExts) continue;
+            u8 foundExtsSum = 0;
+            for (u32 requiredExt = 0; requiredExt < DEVICE_EXTENSION_COUNT; requiredExt++) {
+                foundExtsSum += foundExts[requiredExt];
+            }
+            if (foundExtsSum < DEVICE_EXTENSION_COUNT) continue;
 
             u32 queueFamilyPropertyCount;
             vkGetPhysicalDeviceQueueFamilyProperties(physicalDevices[i], &queueFamilyPropertyCount, VK_NULL_HANDLE);
@@ -156,12 +166,37 @@ void vkInit() {
 
             vkglobals.physicalDevice = physicalDevices[i];
             foundDevice = 1;
+            memcpy(optionalExts, foundOptionalExts, sizeof(optionalExts));
         }
 
         if (!foundDevice) {
             printf("failed to find a suitable vulkan device, try updating your gpu drivers\n");
             exit(1);
         }
+    }
+
+    {
+        VkFormatProperties properties;
+        vkGetPhysicalDeviceFormatProperties(vkglobals.physicalDevice, VK_FORMAT_R8G8B8A8_UNORM, &properties);
+
+        // if cubic filtering is available check its support for texture format
+        if (optionalExts[0] || optionalExts[1]) {
+            // IMG and EXT alias each other here
+            if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_EXT && config.preferredTextureFilter == 2) {
+                vkglobals.textureFilter = VK_FILTER_CUBIC_EXT;
+            } else if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT && config.preferredTextureFilter >= 1) {
+                vkglobals.textureFilter = VK_FILTER_LINEAR;
+            } else {
+                vkglobals.textureFilter = VK_FILTER_NEAREST;
+            }
+        } else {
+            if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT && config.preferredTextureFilter >= 1) {
+                vkglobals.textureFilter = VK_FILTER_LINEAR;
+            } else {
+                vkglobals.textureFilter = VK_FILTER_NEAREST;
+            }
+        }
+        
     }
 
     {
@@ -177,12 +212,25 @@ void vkInit() {
         deviceQueueInfo.queueCount = 1;
         deviceQueueInfo.queueFamilyIndex = vkglobals.queueFamilyIndex;
 
+        const char* finalDeviceExtensions[DEVICE_EXTENSION_COUNT + DEVICE_OPTIONAL_EXTENSION_COUNT];
+        u32 deviceExtensionIdx = 0;
+        for (u32 i = 0; i < DEVICE_EXTENSION_COUNT; i++) {
+            finalDeviceExtensions[deviceExtensionIdx] = deviceExtensions[i];
+            deviceExtensionIdx++;
+        }
+        for (u32 i = 0; i < DEVICE_OPTIONAL_EXTENSION_COUNT; i++) {
+            if (optionalExts[i]) {
+                finalDeviceExtensions[deviceExtensionIdx] = deviceOptionalExtensions[i];
+                deviceExtensionIdx++;
+            }
+        }
+
         VkDeviceCreateInfo deviceInfo = {};
         deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         deviceInfo.enabledLayerCount = vkLayerCount;
         deviceInfo.ppEnabledLayerNames = vkLayers;
-        deviceInfo.enabledExtensionCount = DEVICE_EXTENSION_COUNT;
-        deviceInfo.ppEnabledExtensionNames = deviceExtensions;
+        deviceInfo.enabledExtensionCount = deviceExtensionIdx;
+        deviceInfo.ppEnabledExtensionNames = finalDeviceExtensions;
         deviceInfo.queueCreateInfoCount = 1;
         deviceInfo.pQueueCreateInfos = &deviceQueueInfo;
         deviceInfo.pNext = &deviceDynamicRenderingFeatures;

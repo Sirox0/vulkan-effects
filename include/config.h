@@ -10,6 +10,8 @@ typedef struct {
     u8 vsyncRelaxed;
     u8 fullscreen;
 
+    u8 preferredTextureFilter;
+
     f32 fov;
     f32 nearPlane;
     f32 farPlane;

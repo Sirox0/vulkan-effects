@@ -322,12 +322,12 @@ void gameInit() {
     {
         VkSamplerCreateInfo samplerInfo = {};
         samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         samplerInfo.mipLodBias = 0.0f;
         samplerInfo.minLod = 0.0f;
-        samplerInfo.maxLod = 0.0f;
-        samplerInfo.minFilter = VK_FILTER_NEAREST;
-        samplerInfo.magFilter = VK_FILTER_NEAREST;
+        samplerInfo.maxLod = 0.25f;
+        samplerInfo.minFilter = vkglobals.textureFilter;
+        samplerInfo.magFilter = vkglobals.textureFilter;
         samplerInfo.anisotropyEnable = VK_FALSE;
         samplerInfo.compareEnable = VK_FALSE;
         samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;

@@ -18,6 +18,8 @@
 typedef struct {
     SDL_Window* window;
 
+    VkFilter textureFilter;
+
     VkInstance instance;
     VkPhysicalDevice physicalDevice;
     VkPhysicalDeviceProperties deviceProperties;
