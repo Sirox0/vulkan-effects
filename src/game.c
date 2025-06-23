@@ -210,7 +210,7 @@ void gameInit() {
                 }
 
                 // use reverse depth
-                glm_perspective(glm_rad(80.0f), (f32)vkglobals.swapchainExtent.width / vkglobals.swapchainExtent.height, config.farPlane, config.nearPlane, tempBufferMemRawWithSSAOoffset + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4));
+                glm_perspective(glm_rad(config.fov), (f32)vkglobals.swapchainExtent.width / vkglobals.swapchainExtent.height, config.farPlane, config.nearPlane, tempBufferMemRawWithSSAOoffset + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4));
 
                 VkMappedMemoryRange memoryRange = {};
                 memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;

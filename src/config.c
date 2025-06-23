@@ -17,6 +17,9 @@ void configLoad(char* path) {
     config.vsyncRelaxed = iniparser_getboolean(conf, "window:vsync-relaxed", 1);
     config.fullscreen = iniparser_getboolean(conf, "window:fullscreen", 0);
 
+    config.rayTracing = iniparser_getboolean(conf, "general:ray-tracing", 0);
+
+    config.fov = iniparser_getdouble(conf, "projection:fov", 80.0f);
     config.nearPlane = iniparser_getdouble(conf, "projection:near-plane", 0.01f);
     config.farPlane = iniparser_getdouble(conf, "projection:far-plane", 6.0f);
 
