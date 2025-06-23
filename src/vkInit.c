@@ -77,6 +77,7 @@ void vkInit() {
                 for (u32 availableExt = 0; availableExt < extensionPropertyCount; availableExt++) {
                     if (strcmp(deviceExtensions[requiredExt], extensionProperties[availableExt].extensionName) == 0) {
                         foundExts = 1;
+                        break;
                     }
                 }
 
