@@ -92,7 +92,7 @@ typedef struct {
     VkPipeline compositionPipeline;
     VkPipeline uberPipeline;
 
-    VkSemaphore renderingDoneSemaphore;
+    VkSemaphore* renderingDoneSemaphores;
 
     VkFence swapchainReadyFence;
     VkFence frameFence;

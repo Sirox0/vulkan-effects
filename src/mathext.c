@@ -25,5 +25,5 @@ u32 lcm(u32 a, u32 b) {
 }
 
 f32 randFloat() {
-    return (f32)rand() / RAND_MAX;
+    return (f32)rand() / (f32)RAND_MAX;
 }

@@ -863,10 +863,12 @@ void gameInit() {
     }
 
     {
+        gameglobals.renderingDoneSemaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * vkglobals.swapchainImageCount);
+
         VkSemaphoreCreateInfo semaphoreInfo = {};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-        VK_ASSERT(vkCreateSemaphore(vkglobals.device, &semaphoreInfo, VK_NULL_HANDLE, &gameglobals.renderingDoneSemaphore), "failed to create semaphore\n");
+        for (u32 i = 0; i < vkglobals.swapchainImageCount; i++) VK_ASSERT(vkCreateSemaphore(vkglobals.device, &semaphoreInfo, VK_NULL_HANDLE, &gameglobals.renderingDoneSemaphores[i]), "failed to create semaphore\n");
 
         VkFenceCreateInfo fenceInfos[2] = {};
         fenceInfos[0].sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -1348,7 +1350,7 @@ void gameRender() {
     submitInfo.pWaitSemaphores = VK_NULL_HANDLE;
     submitInfo.pWaitDstStageMask = &semaphoreSignalStage;
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &gameglobals.renderingDoneSemaphore;
+    submitInfo.pSignalSemaphores = &gameglobals.renderingDoneSemaphores[imageIndex];
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &vkglobals.cmdBuffer;
 
@@ -1359,7 +1361,7 @@ void gameRender() {
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = &vkglobals.swapchain;
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &gameglobals.renderingDoneSemaphore;
+    presentInfo.pWaitSemaphores = &gameglobals.renderingDoneSemaphores[imageIndex];
     presentInfo.pImageIndices = &imageIndex;
 
     VK_ASSERT(vkQueuePresentKHR(vkglobals.queue, &presentInfo), "failed to present swapchain image\n");
@@ -1369,7 +1371,8 @@ void gameQuit() {
     vkDestroyFence(vkglobals.device, gameglobals.frameFence, VK_NULL_HANDLE);
     vkDestroyFence(vkglobals.device, gameglobals.swapchainReadyFence, VK_NULL_HANDLE);
 
-    vkDestroySemaphore(vkglobals.device, gameglobals.renderingDoneSemaphore, VK_NULL_HANDLE);
+    for (u32 i = 0; i < vkglobals.swapchainImageCount; i++) vkDestroySemaphore(vkglobals.device, gameglobals.renderingDoneSemaphores[i], VK_NULL_HANDLE);
+    free(gameglobals.renderingDoneSemaphores);
 
     vkDestroyPipelineLayout(vkglobals.device, gameglobals.uberPipelineLayout, VK_NULL_HANDLE);
     vkDestroyPipelineLayout(vkglobals.device, gameglobals.compositionPipelineLayout, VK_NULL_HANDLE);
