@@ -11,6 +11,7 @@
 
 #include "numtypes.h"
 #include "vkFunctions.h"
+#include "vkRayTracingFunctions.h"
 #include "vkInit.h"
 #include "pipeline.h"
 #include "game.h"
@@ -20,6 +21,7 @@
 #include "mathext.h"
 
 game_globals_t gameglobals = {};
+rt_globals_t rtglobals = {};
 
 #define TEMP_CMD_BUFFER_NUM 1
 #define TEMP_BUFFER_NUM 1
@@ -33,6 +35,13 @@ void gameInit() {
     VkFence tempFences[TEMP_FENCE_NUM];
 
     tempResourcesCreate(TEMP_CMD_BUFFER_NUM, tempCmdBuffers, TEMP_FENCE_NUM, tempFences);
+
+    VkBuffer blAccelScratchBuffer;
+    VkDeviceMemory blAccelScratchMemory;
+    VkBuffer tlAccelScratchBuffer;
+    VkDeviceMemory tlAccelScratchMemory;
+    VkBuffer blAccelInstanceBuffer;
+    VkDeviceMemory blAccelInstanceMemory;
 
     {
         #define DEPTH_FORMAT_COUNT 3
@@ -118,13 +127,14 @@ void gameInit() {
         }
 
         {
+            // TODO: do not create resources not needed for ray-tracing when it is enabled
             {
                 createImage(&gameglobals.depthTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, gameglobals.depthTextureFormat, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
                 VkMemoryRequirements memReqs[1];
                 vkGetImageMemoryRequirements(vkglobals.device, gameglobals.depthTexture, &memReqs[0]);
 
-                allocateMemory(&gameglobals.deviceLocalDepthStencilAttachmentMemory, memReqs[0].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+                allocateMemory(&gameglobals.deviceLocalDepthStencilAttachmentMemory, memReqs[0].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), 0);
 
                 VK_ASSERT(vkBindImageMemory(vkglobals.device, gameglobals.depthTexture, gameglobals.deviceLocalDepthStencilAttachmentMemory,  0), "failed to bind image memory\n");
             }
@@ -139,7 +149,7 @@ void gameInit() {
 
                 VkDeviceSize ssaoNoiseTextureOffset = memReqs[0].size + getAlignCooficient(memReqs[0].size, memReqs[1].alignment);
 
-                allocateMemory(&gameglobals.deviceLocalSampledTransferDstMemory, ssaoNoiseTextureOffset + memReqs[1].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits & memReqs[1].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+                allocateMemory(&gameglobals.deviceLocalSampledTransferDstMemory, ssaoNoiseTextureOffset + memReqs[1].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits & memReqs[1].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), 0);
 
                 VK_ASSERT(vkBindImageMemory(vkglobals.device, gameglobals.cubeTextures, gameglobals.deviceLocalSampledTransferDstMemory,  0), "failed to bind image memory\n");
                 VK_ASSERT(vkBindImageMemory(vkglobals.device, gameglobals.ssaoNoiseTexture, gameglobals.deviceLocalSampledTransferDstMemory,  ssaoNoiseTextureOffset), "failed to bind image memory\n");
@@ -155,19 +165,20 @@ void gameInit() {
 
                 VkDeviceSize ssaoKernelBufferOffset = memReqs[0].size + getAlignCooficient(memReqs[0].size, memReqs[1].alignment);
 
-                allocateMemory(&gameglobals.deviceLocalUniformTransferDstMemory, ssaoKernelBufferOffset + memReqs[1].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits & memReqs[1].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+                allocateMemory(&gameglobals.deviceLocalUniformTransferDstMemory, ssaoKernelBufferOffset + memReqs[1].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits & memReqs[1].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), 0);
 
                 VK_ASSERT(vkBindBufferMemory(vkglobals.device, gameglobals.projectionMatrixBuffer, gameglobals.deviceLocalUniformTransferDstMemory, 0), "failed to bind buffer memory\n");
                 VK_ASSERT(vkBindBufferMemory(vkglobals.device, gameglobals.ssaoKernelBuffer, gameglobals.deviceLocalUniformTransferDstMemory, ssaoKernelBufferOffset), "failed to bind buffer memory\n");
             }
 
             {
-                createBuffer(&gameglobals.cubeVertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(vertexbuf));
+                VkBufferUsageFlags rtVertexBufferUsage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+                createBuffer(&gameglobals.cubeVertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | (config.rayTracing ? rtVertexBufferUsage : 0), sizeof(vertexbuf));
 
                 VkMemoryRequirements memReqs[1];
                 vkGetBufferMemoryRequirements(vkglobals.device, gameglobals.cubeVertexBuffer, &memReqs[0]);
 
-                allocateMemory(&gameglobals.deviceLocalVertexTransferDstMemory, memReqs[0].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+                allocateMemory(&gameglobals.deviceLocalVertexTransferDstMemory, memReqs[0].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), (config.rayTracing ? 1 : 0));
 
                 VK_ASSERT(vkBindBufferMemory(vkglobals.device, gameglobals.cubeVertexBuffer, gameglobals.deviceLocalVertexTransferDstMemory, 0), "failed to bind buffer memory\n");
             }
@@ -180,7 +191,7 @@ void gameInit() {
             VkMemoryRequirements memReq;
             vkGetBufferMemoryRequirements(vkglobals.device, tempBuffers[0], &memReq);
 
-            allocateMemory(&tempBuffersMemory[0], memReq.size, getMemoryTypeIndex(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT));
+            allocateMemory(&tempBuffersMemory[0], memReq.size, getMemoryTypeIndex(memReq.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT), 0);
 
             VK_ASSERT(vkBindBufferMemory(vkglobals.device, tempBuffers[0], tempBuffersMemory[0], 0), "failed to bind buffer memory\n");
 
@@ -272,6 +283,230 @@ void gameInit() {
         vkCmdPipelineBarrier(tempCmdBuffers[0], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &imageBarrier);
     }
 
+    // TODO: optimize this abomination
+    if (config.rayTracing) {
+        {
+            VkBufferMemoryBarrier bufferBarrier = {};
+            bufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+            bufferBarrier.buffer = gameglobals.cubeVertexBuffer;
+            bufferBarrier.offset = 0;
+            bufferBarrier.size = VK_WHOLE_SIZE;
+            bufferBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            bufferBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            bufferBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            bufferBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+            vkCmdPipelineBarrier(tempCmdBuffers[0], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, 0, 0, VK_NULL_HANDLE, 1, &bufferBarrier, 0, VK_NULL_HANDLE);
+        }
+
+        {
+            VkBufferDeviceAddressInfoKHR bufferAddressInfo = {};
+            bufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR;
+            bufferAddressInfo.buffer = gameglobals.cubeVertexBuffer;
+
+            rtglobals.cubeVertexBufferAddress.deviceAddress = vkGetBufferDeviceAddressKHR(vkglobals.device, &bufferAddressInfo);
+        }
+
+        {
+            u32 numTriangles = 36 / 3;
+
+            {
+                VkAccelerationStructureGeometryKHR accelGeometry = {};
+                accelGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+                accelGeometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+                accelGeometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+                accelGeometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
+                accelGeometry.geometry.triangles.vertexData.deviceAddress = rtglobals.cubeVertexBufferAddress.deviceAddress;
+                accelGeometry.geometry.triangles.vertexStride = sizeof(struct { vec3 pos; vec3 normal; vec2 uv; u32 textureIndex; });
+                accelGeometry.geometry.triangles.maxVertex = 35;
+                accelGeometry.geometry.triangles.indexType = VK_INDEX_TYPE_NONE_KHR;
+
+                VkAccelerationStructureBuildGeometryInfoKHR accelGeometryBuildInfo = {};
+                accelGeometryBuildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+                accelGeometryBuildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+                accelGeometryBuildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+                accelGeometryBuildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+                accelGeometryBuildInfo.geometryCount = 1;
+                accelGeometryBuildInfo.pGeometries = &accelGeometry;
+
+                VkAccelerationStructureBuildSizesInfoKHR accelBuildSizesInfo = {};
+                accelBuildSizesInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+
+                vkGetAccelerationStructureBuildSizesKHR(vkglobals.device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &accelGeometryBuildInfo, &numTriangles, &accelBuildSizesInfo);
+
+                {
+                    createBuffer(&rtglobals.blAccelerationStructureStorageBuffer, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR, accelBuildSizesInfo.accelerationStructureSize);
+
+                    VkMemoryRequirements memReqs[1];
+                    vkGetBufferMemoryRequirements(vkglobals.device, rtglobals.blAccelerationStructureStorageBuffer, &memReqs[0]);
+
+                    allocateMemory(&rtglobals.deviceLocalblAccelerationStructureStorageMemory, memReqs[0].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), 1);
+
+                    VK_ASSERT(vkBindBufferMemory(vkglobals.device, rtglobals.blAccelerationStructureStorageBuffer, rtglobals.deviceLocalblAccelerationStructureStorageMemory, 0), "failed to bind buffer memory\n");
+                }
+
+                VkAccelerationStructureCreateInfoKHR accelInfo = {};
+                accelInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+                accelInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+                accelInfo.buffer = rtglobals.blAccelerationStructureStorageBuffer;
+                accelInfo.size = accelBuildSizesInfo.accelerationStructureSize;
+
+                VK_ASSERT(vkCreateAccelerationStructureKHR(vkglobals.device, &accelInfo, VK_NULL_HANDLE, &rtglobals.blAccelerationStructure), "failed to create acceleration structur\n");
+
+                {
+                    createBuffer(&blAccelScratchBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR, accelBuildSizesInfo.buildScratchSize);
+
+                    VkMemoryRequirements memReqs[1];
+                    vkGetBufferMemoryRequirements(vkglobals.device, blAccelScratchBuffer, &memReqs[0]);
+
+                    allocateMemory(&blAccelScratchMemory, memReqs[0].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), 1);
+
+                    VK_ASSERT(vkBindBufferMemory(vkglobals.device, blAccelScratchBuffer, blAccelScratchMemory, 0), "failed to bind buffer memory\n");
+                }
+
+                VkDeviceOrHostAddressKHR scratchBufferAddress;
+                {
+                    VkBufferDeviceAddressInfoKHR bufferAddressInfo = {};
+                    bufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR;
+                    bufferAddressInfo.buffer = blAccelScratchBuffer;
+
+                    scratchBufferAddress.deviceAddress = vkGetBufferDeviceAddressKHR(vkglobals.device, &bufferAddressInfo);
+                }
+
+                accelGeometryBuildInfo.dstAccelerationStructure = rtglobals.blAccelerationStructure;
+                accelGeometryBuildInfo.scratchData.deviceAddress = scratchBufferAddress.deviceAddress;
+
+                VkAccelerationStructureBuildRangeInfoKHR accelBuildRangeInfo = {};
+                accelBuildRangeInfo.firstVertex = 0;
+                accelBuildRangeInfo.primitiveCount = numTriangles;
+                accelBuildRangeInfo.primitiveOffset = 0;
+                accelBuildRangeInfo.transformOffset = 0;
+
+                vkCmdBuildAccelerationStructuresKHR(tempCmdBuffers[0], 1, &accelGeometryBuildInfo, (const VkAccelerationStructureBuildRangeInfoKHR*[]){&accelBuildRangeInfo});
+            }
+
+            {
+                VkAccelerationStructureDeviceAddressInfoKHR accelDeviceAddressInfo = {};
+                accelDeviceAddressInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
+                accelDeviceAddressInfo.accelerationStructure = rtglobals.blAccelerationStructure;
+
+                VkAccelerationStructureInstanceKHR accelInstance = {};
+                accelInstance.instanceCustomIndex = 0;
+                accelInstance.mask = 0xFF;
+                accelInstance.instanceShaderBindingTableRecordOffset = 0;
+                accelInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+                accelInstance.accelerationStructureReference = vkGetAccelerationStructureDeviceAddressKHR(vkglobals.device, &accelDeviceAddressInfo);
+
+                {
+                    createBuffer(&blAccelInstanceBuffer, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR, sizeof(VkAccelerationStructureInstanceKHR));
+
+                    VkMemoryRequirements memReqs[1];
+                    vkGetBufferMemoryRequirements(vkglobals.device, blAccelInstanceBuffer, &memReqs[0]);
+
+                    allocateMemory(&blAccelInstanceMemory, memReqs[0].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT), 1);
+
+                    VK_ASSERT(vkBindBufferMemory(vkglobals.device, blAccelInstanceBuffer, blAccelInstanceMemory, 0), "failed to bind buffer memory\n");
+
+                    void* data;
+                    VK_ASSERT(vkMapMemory(vkglobals.device, blAccelInstanceMemory, 0, VK_WHOLE_SIZE, 0, &data), "failed to map buffer memory\n");
+
+                    memcpy(data, &accelInstance, sizeof(VkAccelerationStructureInstanceKHR));
+
+                    VkMappedMemoryRange memoryRange = {};
+                    memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+                    memoryRange.size = VK_WHOLE_SIZE;
+                    memoryRange.offset = 0;
+                    memoryRange.memory = blAccelInstanceMemory;
+                    
+                    VK_ASSERT(vkFlushMappedMemoryRanges(vkglobals.device, 1, &memoryRange), "failed to flush device memory\n");
+
+                    vkUnmapMemory(vkglobals.device, blAccelInstanceMemory);
+                }
+
+                VkDeviceOrHostAddressKHR blAccelInstanceBufferAddress;
+                {
+                    VkBufferDeviceAddressInfoKHR bufferAddressInfo = {};
+                    bufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR;
+                    bufferAddressInfo.buffer = blAccelInstanceBuffer;
+
+                    blAccelInstanceBufferAddress.deviceAddress = vkGetBufferDeviceAddressKHR(vkglobals.device, &bufferAddressInfo);
+                }
+
+                VkAccelerationStructureGeometryKHR accelGeometry = {};
+                accelGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+                accelGeometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+                accelGeometry.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+                accelGeometry.geometry.instances.arrayOfPointers = VK_FALSE;
+                accelGeometry.geometry.instances.data.deviceAddress = blAccelInstanceBufferAddress.deviceAddress;
+
+                VkAccelerationStructureBuildGeometryInfoKHR accelGeometryBuildInfo = {};
+                accelGeometryBuildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+                accelGeometryBuildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+                accelGeometryBuildInfo.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+                accelGeometryBuildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+                accelGeometryBuildInfo.geometryCount = 1;
+                accelGeometryBuildInfo.pGeometries = &accelGeometry;
+
+                VkAccelerationStructureBuildSizesInfoKHR accelBuildSizesInfo = {};
+                accelBuildSizesInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+
+                u32 instanceCount = 1;
+
+                vkGetAccelerationStructureBuildSizesKHR(vkglobals.device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &accelGeometryBuildInfo, &instanceCount, &accelBuildSizesInfo);
+
+                {
+                    createBuffer(&rtglobals.tlAccelerationStructureStorageBuffer, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR, accelBuildSizesInfo.accelerationStructureSize);
+
+                    VkMemoryRequirements memReqs[1];
+                    vkGetBufferMemoryRequirements(vkglobals.device, rtglobals.tlAccelerationStructureStorageBuffer, &memReqs[0]);
+
+                    allocateMemory(&rtglobals.deviceLocaltlAccelerationStructureStorageMemory, memReqs[0].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), 1);
+
+                    VK_ASSERT(vkBindBufferMemory(vkglobals.device, rtglobals.tlAccelerationStructureStorageBuffer, rtglobals.deviceLocaltlAccelerationStructureStorageMemory, 0), "failed to bind buffer memory\n");
+                }
+
+                VkAccelerationStructureCreateInfoKHR accelInfo = {};
+                accelInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+                accelInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+                accelInfo.buffer = rtglobals.tlAccelerationStructureStorageBuffer;
+                accelInfo.size = accelBuildSizesInfo.accelerationStructureSize;
+
+                VK_ASSERT(vkCreateAccelerationStructureKHR(vkglobals.device, &accelInfo, VK_NULL_HANDLE, &rtglobals.tlAccelerationStructure), "failed to create acceleration structur\n");
+
+                {
+                    createBuffer(&tlAccelScratchBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT_KHR, accelBuildSizesInfo.buildScratchSize);
+
+                    VkMemoryRequirements memReqs[1];
+                    vkGetBufferMemoryRequirements(vkglobals.device, tlAccelScratchBuffer, &memReqs[0]);
+
+                    allocateMemory(&tlAccelScratchMemory, memReqs[0].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), 1);
+
+                    VK_ASSERT(vkBindBufferMemory(vkglobals.device, tlAccelScratchBuffer, tlAccelScratchMemory, 0), "failed to bind buffer memory\n");
+                }
+
+                VkDeviceOrHostAddressKHR scratchBufferAddress;
+                {
+                    VkBufferDeviceAddressInfoKHR bufferAddressInfo = {};
+                    bufferAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR;
+                    bufferAddressInfo.buffer = tlAccelScratchBuffer;
+
+                    scratchBufferAddress.deviceAddress = vkGetBufferDeviceAddressKHR(vkglobals.device, &bufferAddressInfo);
+                }
+
+                accelGeometryBuildInfo.dstAccelerationStructure = rtglobals.tlAccelerationStructure;
+                accelGeometryBuildInfo.scratchData.deviceAddress = scratchBufferAddress.deviceAddress;
+
+                VkAccelerationStructureBuildRangeInfoKHR accelBuildRangeInfo = {};
+                accelBuildRangeInfo.firstVertex = 0;
+                accelBuildRangeInfo.primitiveCount = 1;
+                accelBuildRangeInfo.primitiveOffset = 0;
+                accelBuildRangeInfo.transformOffset = 0;
+
+                vkCmdBuildAccelerationStructuresKHR(tempCmdBuffers[0], 1, &accelGeometryBuildInfo, (const VkAccelerationStructureBuildRangeInfoKHR*[]){&accelBuildRangeInfo});
+            }
+        }
+    }
+
     {
         VK_ASSERT(vkEndCommandBuffer(tempCmdBuffers[0]), "failed to end command buffer\n");
 
@@ -300,7 +535,7 @@ void gameInit() {
             VkDeviceSize ssaoAttachmentOffset = gbufferNormalAlbedoOffset + memReqs[1].size + getAlignCooficient(gbufferNormalAlbedoOffset + memReqs[1].size, memReqs[2].alignment);
             VkDeviceSize postProcessAttachmentOffset = ssaoAttachmentOffset + memReqs[2].size + getAlignCooficient(ssaoAttachmentOffset + memReqs[2].size, memReqs[3].alignment);
 
-            allocateMemory(&gameglobals.deviceLocalColorAttachmentSampledMemory, postProcessAttachmentOffset + memReqs[3].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits & memReqs[1].memoryTypeBits & memReqs[2].memoryTypeBits & memReqs[3].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+            allocateMemory(&gameglobals.deviceLocalColorAttachmentSampledMemory, postProcessAttachmentOffset + memReqs[3].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits & memReqs[1].memoryTypeBits & memReqs[2].memoryTypeBits & memReqs[3].memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT), 0);
 
             VK_ASSERT(vkBindImageMemory(vkglobals.device, gameglobals.gbufferPosition, gameglobals.deviceLocalColorAttachmentSampledMemory,  0), "failed to bind image memory\n");
             VK_ASSERT(vkBindImageMemory(vkglobals.device, gameglobals.gbufferNormalAlbedo, gameglobals.deviceLocalColorAttachmentSampledMemory,  gbufferNormalAlbedoOffset), "failed to bind image memory\n");
@@ -344,7 +579,7 @@ void gameInit() {
         VkMemoryRequirements memReqs[1];
         vkGetBufferMemoryRequirements(vkglobals.device, gameglobals.cubeUniformBuffer, &memReqs[0]);
 
-        allocateMemory(&gameglobals.hostVisibleUniformMemory, memReqs[0].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT));
+        allocateMemory(&gameglobals.hostVisibleUniformMemory, memReqs[0].size, getMemoryTypeIndex(memReqs[0].memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT), 0);
 
         VK_ASSERT(vkBindBufferMemory(vkglobals.device, gameglobals.cubeUniformBuffer, gameglobals.hostVisibleUniformMemory, 0), "failed to bind buffer memory\n");
 
@@ -883,6 +1118,16 @@ void gameInit() {
     gameglobals.shift = 1;
 
     tempResourcesWaitAndDestroy(TEMP_CMD_BUFFER_NUM, tempCmdBuffers, TEMP_BUFFER_NUM, tempBuffers, TEMP_BUFFER_MEMORY_NUM, tempBuffersMemory, TEMP_FENCE_NUM, tempFences);
+
+    if (config.rayTracing) {
+        vkDestroyBuffer(vkglobals.device, blAccelInstanceBuffer, VK_NULL_HANDLE);
+        vkDestroyBuffer(vkglobals.device, tlAccelScratchBuffer, VK_NULL_HANDLE);
+        vkDestroyBuffer(vkglobals.device, blAccelScratchBuffer, VK_NULL_HANDLE);
+
+        vkFreeMemory(vkglobals.device, blAccelInstanceMemory, VK_NULL_HANDLE);
+        vkFreeMemory(vkglobals.device, tlAccelScratchMemory, VK_NULL_HANDLE);
+        vkFreeMemory(vkglobals.device, blAccelScratchMemory, VK_NULL_HANDLE);
+    }
 }
 
 void gameEvent(SDL_Event* e) {
@@ -1426,4 +1671,15 @@ void gameQuit() {
     vkFreeMemory(vkglobals.device, gameglobals.deviceLocalDepthStencilAttachmentMemory, VK_NULL_HANDLE);
 
     vkDestroySampler(vkglobals.device, gameglobals.sampler, VK_NULL_HANDLE);
+
+    if (config.rayTracing) {
+        vkDestroyAccelerationStructureKHR(vkglobals.device, rtglobals.tlAccelerationStructure, VK_NULL_HANDLE);
+        vkDestroyAccelerationStructureKHR(vkglobals.device, rtglobals.blAccelerationStructure, VK_NULL_HANDLE);
+
+        vkDestroyBuffer(vkglobals.device, rtglobals.tlAccelerationStructureStorageBuffer, VK_NULL_HANDLE);
+        vkDestroyBuffer(vkglobals.device, rtglobals.blAccelerationStructureStorageBuffer, VK_NULL_HANDLE);
+
+        vkFreeMemory(vkglobals.device, rtglobals.deviceLocaltlAccelerationStructureStorageMemory, VK_NULL_HANDLE);
+        vkFreeMemory(vkglobals.device, rtglobals.deviceLocalblAccelerationStructureStorageMemory, VK_NULL_HANDLE);
+    }
 }

@@ -65,11 +65,16 @@ void createBuffer(VkBuffer* pBuffer, VkBufferUsageFlags usage, VkDeviceSize size
     VK_ASSERT(vkCreateBuffer(vkglobals.device, &bufferInfo, VK_NULL_HANDLE, pBuffer), "failed to create buffer\n");
 }
 
-void allocateMemory(VkDeviceMemory* pMem, VkDeviceSize size, u32 memoryTypeIndex) {
+void allocateMemory(VkDeviceMemory* pMem, VkDeviceSize size, u32 memoryTypeIndex, u8 deviceAddressCompatible) {
+    VkMemoryAllocateFlagsInfoKHR allocFlagsInfo = {};
+    allocFlagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHR;
+    allocFlagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR;
+
     VkMemoryAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = size;
     allocInfo.memoryTypeIndex = memoryTypeIndex;
+    if (deviceAddressCompatible) allocInfo.pNext = &allocFlagsInfo;
 
     VK_ASSERT(vkAllocateMemory(vkglobals.device, &allocInfo, VK_NULL_HANDLE, pMem), "failed to allocate memory\n");
 }

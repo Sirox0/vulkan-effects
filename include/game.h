@@ -98,11 +98,25 @@ typedef struct {
     VkFence frameFence;
 } game_globals_t;
 
+typedef struct {
+    VkDeviceOrHostAddressKHR cubeVertexBufferAddress;
+
+    VkDeviceMemory deviceLocalblAccelerationStructureStorageMemory;
+    VkDeviceMemory deviceLocaltlAccelerationStructureStorageMemory;
+
+    VkBuffer blAccelerationStructureStorageBuffer;
+    VkBuffer tlAccelerationStructureStorageBuffer;
+
+    VkAccelerationStructureKHR blAccelerationStructure;
+    VkAccelerationStructureKHR tlAccelerationStructure;
+} rt_globals_t;
+
 void gameInit();
 void gameEvent(SDL_Event* e);
 void gameRender();
 void gameQuit();
 
 extern game_globals_t gameglobals;
+extern rt_globals_t rtglobals;
 
 #endif
