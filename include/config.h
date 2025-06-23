@@ -14,6 +14,8 @@ typedef struct {
     f32 nearPlane;
     f32 farPlane;
 
+    u8 rayTracing;
+
     f32 ssaoResolutionFactor;
     u32 ssaoKernelSize;
     u32 ssaoNoiseDim;

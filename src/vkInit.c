@@ -8,6 +8,7 @@
 
 #include "numtypes.h"
 #include "vkFunctions.h"
+#include "vkRayTracingFunctions.h"
 #include "vkInit.h"
 #include "mathext.h"
 #include "pipeline.h"
@@ -21,6 +22,8 @@ void vkInit() {
 
     #define DEVICE_EXTENSION_COUNT 6
     const char* deviceExtensions[DEVICE_EXTENSION_COUNT] = {"VK_KHR_swapchain", "VK_KHR_dynamic_rendering", "VK_KHR_depth_stencil_resolve", "VK_KHR_create_renderpass2", "VK_KHR_multiview", "VK_KHR_maintenance2"};
+    #define DEVICE_RT_EXTENSION_COUNT 7
+    const char* deviceRtExtensions[DEVICE_RT_EXTENSION_COUNT] = {"VK_KHR_ray_tracing_pipeline", "VK_KHR_spirv_1_4", "VK_KHR_shader_float_controls", "VK_KHR_acceleration_structure", "VK_EXT_descriptor_indexing", "VK_KHR_buffer_device_address", "VK_KHR_deferred_host_operations"};
     #define INSTANCE_EXTENSION_COUNT 1
     const char* instanceExtensions[INSTANCE_EXTENSION_COUNT] = {"VK_KHR_get_physical_device_properties2"};
 
@@ -40,12 +43,17 @@ void vkInit() {
         for (u32 i = 0; i < sdlInstanceExtensionCount; i++) finalInstanceExtensions[i] = sdlInstanceExtensions[i];
         for (u32 i = sdlInstanceExtensionCount; i < sdlInstanceExtensionCount + INSTANCE_EXTENSION_COUNT; i++) finalInstanceExtensions[i] = instanceExtensions[i - sdlInstanceExtensionCount];
 
+        VkApplicationInfo appInfo = {};
+        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+        appInfo.apiVersion = VK_MAKE_VERSION(1, 1, 0);
+
         VkInstanceCreateInfo instanceInfo = {};
         instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         instanceInfo.enabledLayerCount = vkLayerCount;
         instanceInfo.ppEnabledLayerNames = vkLayers;
         instanceInfo.enabledExtensionCount = sdlInstanceExtensionCount + INSTANCE_EXTENSION_COUNT;
         instanceInfo.ppEnabledExtensionNames = (const char**)finalInstanceExtensions;
+        instanceInfo.pApplicationInfo = &appInfo;
 
         VK_ASSERT(vkCreateInstance(&instanceInfo, VK_NULL_HANDLE, &vkglobals.instance), "failed to create vulkan instance\n");
     }
@@ -77,6 +85,7 @@ void vkInit() {
                 for (u32 availableExt = 0; availableExt < extensionPropertyCount; availableExt++) {
                     if (strcmp(deviceExtensions[requiredExt], extensionProperties[availableExt].extensionName) == 0) {
                         foundExts = 1;
+                        break;
                     }
                 }
 
@@ -85,6 +94,25 @@ void vkInit() {
                 }
             }
             if (!foundExts) continue;
+
+            if (config.rayTracing) {
+                u8 foundRtExts;
+                for (u32 requiredExt = 0; requiredExt < DEVICE_RT_EXTENSION_COUNT; requiredExt++) {
+                    foundRtExts = 0;
+
+                    for (u32 availableExt = 0; availableExt < extensionPropertyCount; availableExt++) {
+                        if (strcmp(deviceRtExtensions[requiredExt], extensionProperties[availableExt].extensionName) == 0) {
+                            foundRtExts = 1;
+                            break;
+                        }
+                    }
+
+                    if (!foundRtExts) {
+                        break;
+                    }
+                }
+                if (!foundRtExts) continue;
+            }
 
             u32 queueFamilyPropertyCount;
             vkGetPhysicalDeviceQueueFamilyProperties(physicalDevices[i], &queueFamilyPropertyCount, VK_NULL_HANDLE);
@@ -166,9 +194,24 @@ void vkInit() {
     {
         f32 priorities[] = {1.0f};
 
+        VkPhysicalDeviceBufferDeviceAddressFeaturesKHR deviceBufferAddressFeatures = {};
+        deviceBufferAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
+        deviceBufferAddressFeatures.bufferDeviceAddress = VK_TRUE;
+
+        VkPhysicalDeviceAccelerationStructureFeaturesKHR deviceAccelerationStructureFeatures = {};
+        deviceAccelerationStructureFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+        deviceAccelerationStructureFeatures.accelerationStructure = VK_TRUE;
+        deviceAccelerationStructureFeatures.pNext = &deviceBufferAddressFeatures;
+
+        VkPhysicalDeviceRayTracingPipelineFeaturesKHR deviceRayTracingPipelineFeatures = {};
+        deviceRayTracingPipelineFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+        deviceRayTracingPipelineFeatures.rayTracingPipeline = VK_TRUE;
+        deviceRayTracingPipelineFeatures.pNext = &deviceAccelerationStructureFeatures;
+
         VkPhysicalDeviceDynamicRenderingFeaturesKHR deviceDynamicRenderingFeatures = {};
         deviceDynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
         deviceDynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+        if (config.rayTracing) deviceDynamicRenderingFeatures.pNext = &deviceRayTracingPipelineFeatures;
 
         VkDeviceQueueCreateInfo deviceQueueInfo = {};
         deviceQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -176,12 +219,21 @@ void vkInit() {
         deviceQueueInfo.queueCount = 1;
         deviceQueueInfo.queueFamilyIndex = vkglobals.queueFamilyIndex;
 
+        u32 finalDeviceExtensionCount = DEVICE_EXTENSION_COUNT;
+        const char* finalDeviceExtensions[DEVICE_EXTENSION_COUNT + DEVICE_RT_EXTENSION_COUNT];
+        for (u32 i = 0; i < DEVICE_EXTENSION_COUNT; i++) finalDeviceExtensions[i] = deviceExtensions[i];
+        for (u32 i = DEVICE_EXTENSION_COUNT; i < DEVICE_EXTENSION_COUNT + DEVICE_RT_EXTENSION_COUNT; i++) finalDeviceExtensions[i] = deviceRtExtensions[i - DEVICE_EXTENSION_COUNT];
+
+        if (config.rayTracing) {
+            finalDeviceExtensionCount += DEVICE_RT_EXTENSION_COUNT;
+        }
+
         VkDeviceCreateInfo deviceInfo = {};
         deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         deviceInfo.enabledLayerCount = vkLayerCount;
         deviceInfo.ppEnabledLayerNames = vkLayers;
-        deviceInfo.enabledExtensionCount = DEVICE_EXTENSION_COUNT;
-        deviceInfo.ppEnabledExtensionNames = deviceExtensions;
+        deviceInfo.enabledExtensionCount = finalDeviceExtensionCount;
+        deviceInfo.ppEnabledExtensionNames = finalDeviceExtensions;
         deviceInfo.queueCreateInfoCount = 1;
         deviceInfo.pQueueCreateInfos = &deviceQueueInfo;
         deviceInfo.pNext = &deviceDynamicRenderingFeatures;
@@ -190,6 +242,7 @@ void vkInit() {
     }
 
     loadVulkanDeviceFunctions(vkglobals.device);
+    if (config.rayTracing) loadVulkanDeviceRayTracingFunctions(vkglobals.device);
 
     vkGetDeviceQueue(vkglobals.device, vkglobals.queueFamilyIndex, 0, &vkglobals.queue);
 

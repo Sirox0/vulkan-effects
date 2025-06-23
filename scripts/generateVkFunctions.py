@@ -1,39 +1,42 @@
 import sys
 
-cfile = open("vkFunctions.c", "w");
-hfile = open("vkFunctions.h", "w");
+filename = sys.argv[1]
+defname = sys.argv[2]
+
+cfile = open(filename + ".c", "w")
+hfile = open(filename + ".h", "w")
 
 loaderFuncs = []
 instanceFuncs = []
 deviceFuncs = []
 
-for i in range(1, len(sys.argv)):
+for i in range(3, len(sys.argv)):
     func = sys.argv[i].split(':')
     match func[1]:
-        case 'l': loaderFuncs.append(func[0]);
-        case 'i': instanceFuncs.append(func[0]);
-        case 'd': deviceFuncs.append(func[0]);
+        case 'l': loaderFuncs.append(func[0])
+        case 'i': instanceFuncs.append(func[0])
+        case 'd': deviceFuncs.append(func[0])
 
 
 
 print("-- writing header file")
 
-hfile.write("#ifndef VK_FUNCTIONS_H\n#define VK_FUNCTIONS_H\n\n#include <vulkan/vulkan.h>\n\n#ifdef VK_NO_PROTOTYPES\n");
+hfile.write("#ifndef " + defname.upper() + "_H\n#define " + defname.upper() + "_H\n\n#include <vulkan/vulkan.h>\n\n#ifdef VK_NO_PROTOTYPES\n")
 
 hfile.write("// vulkan loader functions\n")
 hfile.write("extern PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr;\n")
 i = len(loaderFuncs) - 1
 while i >= 0:
-    hfile.write("extern PFN_" + loaderFuncs[i] + ' ' + loaderFuncs[i] + ";\n");
+    hfile.write("extern PFN_" + loaderFuncs[i] + ' ' + loaderFuncs[i] + ";\n")
     i -= 1
 
-hfile.write("\n");
+hfile.write("\n")
 
 hfile.write("// vulkan instance functions\n")
 hfile.write("extern PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr;\n")
 i = len(instanceFuncs) - 1
 while i >= 0:
-    hfile.write("extern PFN_" + instanceFuncs[i] + ' ' + instanceFuncs[i] + ";\n");
+    hfile.write("extern PFN_" + instanceFuncs[i] + ' ' + instanceFuncs[i] + ";\n")
     i -= 1
 
 hfile.write("\n")
@@ -41,7 +44,7 @@ hfile.write("\n")
 hfile.write("// vulkan device functions\n")
 i = len(deviceFuncs) - 1
 while i >= 0:
-    hfile.write("extern PFN_" + deviceFuncs[i] + ' ' + deviceFuncs[i] + ";\n");
+    hfile.write("extern PFN_" + deviceFuncs[i] + ' ' + deviceFuncs[i] + ";\n")
     i -= 1
 
 hfile.write("#endif\n")
@@ -62,16 +65,16 @@ cfile.write("// vulkan loader functions\n")
 cfile.write("PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr;\n")
 i = len(loaderFuncs) - 1
 while i >= 0:
-    cfile.write("PFN_" + loaderFuncs[i] + ' ' + loaderFuncs[i] + ";\n");
+    cfile.write("PFN_" + loaderFuncs[i] + ' ' + loaderFuncs[i] + ";\n")
     i -= 1
 
-cfile.write("\n");
+cfile.write("\n")
 
 cfile.write("// vulkan instance functions\n")
 cfile.write("PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr;\n")
 i = len(instanceFuncs) - 1
 while i >= 0:
-    cfile.write("PFN_" + instanceFuncs[i] + ' ' + instanceFuncs[i] + ";\n");
+    cfile.write("PFN_" + instanceFuncs[i] + ' ' + instanceFuncs[i] + ";\n")
     i -= 1
 
 cfile.write("\n")
@@ -79,7 +82,7 @@ cfile.write("\n")
 cfile.write("// vulkan device functions\n")
 i = len(deviceFuncs) - 1
 while i >= 0:
-    cfile.write("PFN_" + deviceFuncs[i] + ' ' + deviceFuncs[i] + ";\n");
+    cfile.write("PFN_" + deviceFuncs[i] + ' ' + deviceFuncs[i] + ";\n")
     i -= 1
 
 cfile.write("#endif\n\n")

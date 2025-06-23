@@ -1,0 +1,17 @@
+#ifndef VK_RAY_TRACING_FUNCTIONS_H
+#define VK_RAY_TRACING_FUNCTIONS_H
+
+#include <vulkan/vulkan.h>
+
+#ifdef VK_NO_PROTOTYPES
+extern PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR;
+extern PFN_vkCmdBuildAccelerationStructuresKHR vkCmdBuildAccelerationStructuresKHR;
+extern PFN_vkCreateAccelerationStructureKHR vkCreateAccelerationStructureKHR;
+extern PFN_vkDestroyAccelerationStructureKHR vkDestroyAccelerationStructureKHR;
+extern PFN_vkGetAccelerationStructureBuildSizesKHR vkGetAccelerationStructureBuildSizesKHR;
+extern PFN_vkGetBufferDeviceAddressKHR vkGetBufferDeviceAddressKHR;
+#endif
+
+void loadVulkanDeviceRayTracingFunctions(VkDevice device);
+
+#endif
