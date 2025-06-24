@@ -27,6 +27,7 @@ set(SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/temp.c
     ${CMAKE_CURRENT_LIST_DIR}/src/vkFunctions.c
     ${CMAKE_CURRENT_LIST_DIR}/src/util.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/vkModel.c
     ${CMAKE_CURRENT_LIST_DIR}/src/game.c
     ${CMAKE_CURRENT_LIST_DIR}/src/stb_image.c
 )
@@ -39,9 +40,17 @@ set(BUILD_EXAMPLES OFF)
 set(BUILD_DOCS OFF)
 add_subdirectory(external/iniparser)
 
+set(BUILD_SHARED_LIBS OFF)
+set(ASSIMP_DOUBLE_PRECISION OFF)
+set(ASSIMP_BUILD_TESTS OFF)
+set(ASSIMP_INSTALL OFF)
+set(ASSIMP_INSTALL_PDB OFF)
+set(USE_STATIC_CRT ON)
+set(ASSIMP_BUILD_ASSIMP_VIEW OFF)
+add_subdirectory(external/assimp)
 
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
-target_link_libraries(${CMAKE_PROJECT_NAME} SDL3::SDL3 Vulkan::Headers iniparser-static)
+target_link_libraries(${CMAKE_PROJECT_NAME} SDL3::SDL3 Vulkan::Headers iniparser-static assimp::assimp)
 if(UNIX)
     target_link_libraries(${CMAKE_PROJECT_NAME} m)
 endif()
