@@ -159,7 +159,23 @@ void vkInit() {
             VkSurfaceFormatKHR surfaceFormats[surfaceFormatCount];
             vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevices[i], vkglobals.surface, &surfaceFormatCount, surfaceFormats);
 
-            vkglobals.surfaceFormat = surfaceFormats[0];
+            u8 foundUNORMformat = 0;
+            for (u32 i = 0; i < surfaceFormatCount; i++) {
+                switch (surfaceFormats[i].format) {
+                    case VK_FORMAT_R8G8B8A8_UNORM:
+                    case VK_FORMAT_B8G8R8A8_UNORM:
+                    case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
+                    case VK_FORMAT_R8G8B8_UNORM:
+                    case VK_FORMAT_B8G8R8_UNORM:
+                    case VK_FORMAT_R8G8_UNORM:
+                    case VK_FORMAT_R8_UNORM:
+                        foundUNORMformat = 1;
+                        vkglobals.surfaceFormat = surfaceFormats[i];
+                    default: break;
+                }
+                if (foundUNORMformat) break;
+            }
+            if (!foundUNORMformat) vkglobals.surfaceFormat = surfaceFormats[0];
 
             vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevices[i], vkglobals.surface, &vkglobals.surfaceCapabilities);
             vkGetPhysicalDeviceMemoryProperties(physicalDevices[i], &vkglobals.deviceMemoryProperties);
