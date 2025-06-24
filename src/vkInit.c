@@ -184,6 +184,7 @@ void vkInit() {
             vkglobals.physicalDevice = physicalDevices[i];
             foundDevice = 1;
             memcpy(optionalExts, foundOptionalExts, sizeof(optionalExts));
+            break;
         }
 
         if (!foundDevice) {
