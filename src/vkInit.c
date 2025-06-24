@@ -14,6 +14,7 @@
 #include "pipeline.h"
 #include "util.h"
 #include "config.h"
+#include "game.h"
 
 vulkan_globals_t vkglobals = {};
 
@@ -311,9 +312,10 @@ void vkInit() {
     vkGetSwapchainImagesKHR(vkglobals.device, vkglobals.swapchain, &vkglobals.swapchainImageCount, VK_NULL_HANDLE);
 
     {
-        void* buf = malloc(sizeof(VkImage) * vkglobals.swapchainImageCount + sizeof(VkImageView) * vkglobals.swapchainImageCount);
+        void* buf = malloc((sizeof(VkImage) + sizeof(VkImageView) + sizeof(VkSemaphore)) * vkglobals.swapchainImageCount);
         vkglobals.swapchainImages = (VkImage*)buf;
         vkglobals.swapchainImageViews = (VkImageView*)(buf + sizeof(VkImage) * vkglobals.swapchainImageCount);
+        gameglobals.renderingDoneSemaphores = (VkSemaphore*)(buf + (sizeof(VkImage) + sizeof(VkImageView)) * vkglobals.swapchainImageCount);
 
         vkGetSwapchainImagesKHR(vkglobals.device, vkglobals.swapchain, &vkglobals.swapchainImageCount, vkglobals.swapchainImages);
 

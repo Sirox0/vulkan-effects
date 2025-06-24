@@ -863,8 +863,6 @@ void gameInit() {
     }
 
     {
-        gameglobals.renderingDoneSemaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * vkglobals.swapchainImageCount);
-
         VkSemaphoreCreateInfo semaphoreInfo = {};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -1372,7 +1370,6 @@ void gameQuit() {
     vkDestroyFence(vkglobals.device, gameglobals.swapchainReadyFence, VK_NULL_HANDLE);
 
     for (u32 i = 0; i < vkglobals.swapchainImageCount; i++) vkDestroySemaphore(vkglobals.device, gameglobals.renderingDoneSemaphores[i], VK_NULL_HANDLE);
-    free(gameglobals.renderingDoneSemaphores);
 
     vkDestroyPipelineLayout(vkglobals.device, gameglobals.uberPipelineLayout, VK_NULL_HANDLE);
     vkDestroyPipelineLayout(vkglobals.device, gameglobals.compositionPipelineLayout, VK_NULL_HANDLE);
