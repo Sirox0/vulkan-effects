@@ -7,3 +7,6 @@
 [submodule "external/iniparser"]
 	path = external/iniparser
 	url = https://gitlab.com/iniparser/iniparser
+[submodule "external/assimp"]
+	path = external/assimp
+	url = https://github.com/assimp/assimp
