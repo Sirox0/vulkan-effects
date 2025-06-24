@@ -6,6 +6,7 @@
 #include <SDL3/SDL.h>
 
 #include "numtypes.h"
+#include "vkModel.h"
 
 typedef struct {
     u8 loopActive;
@@ -17,7 +18,9 @@ typedef struct {
         f32 pitch, yaw;
     } cam;
 
-    vec4 input;
+    vec2 inputX;
+    vec2 inputY;
+    vec2 inputZ;
     u8 shift;
     VkFormat depthTextureFormat;
 
@@ -29,6 +32,8 @@ typedef struct {
     VkDeviceMemory deviceLocalSampledTransferDstMemory;
     VkDeviceMemory deviceLocalUniformTransferDstMemory;
     VkDeviceMemory deviceLocalVertexTransferDstMemory;
+    VkDeviceMemory deviceLocalIndexTransferDstMemory;
+    VkDeviceMemory deviceLocalIndirectTransferDstMemory;
 
     // host visible memory
     VkDeviceMemory hostVisibleUniformMemory;
@@ -60,7 +65,7 @@ typedef struct {
     VkImageView postProcessAttachmentView;
 
     // host visible resources
-    VkBuffer cubeUniformBuffer;
+    VkBuffer modelUniformBuffer;
 
 
     VkDescriptorPool descriptorPool;
@@ -81,12 +86,12 @@ typedef struct {
 
 
     VkPipelineLayout sampledImagePipelineLayout;
-    VkPipelineLayout cubePipelineLayout;
+    VkPipelineLayout modelPipelineLayout;
     VkPipelineLayout ssaoPipelineLayout;
     VkPipelineLayout compositionPipelineLayout;
     VkPipelineLayout uberPipelineLayout;
 
-    VkPipeline cubePipeline;
+    VkPipeline modelPipeline;
     VkPipeline ssaoPipeline;
     VkPipeline ssaoBlurPipeline;
     VkPipeline compositionPipeline;
@@ -96,6 +101,8 @@ typedef struct {
     VkSemaphore swapchainReadySemaphore;
     
     VkFence frameFence;
+
+    vk_model_t model;
 } game_globals_t;
 
 void gameInit();

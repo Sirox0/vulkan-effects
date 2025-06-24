@@ -227,6 +227,7 @@ void vkInit() {
         VkPhysicalDeviceFeatures2KHR deviceFeatures = {};
         deviceFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
         deviceFeatures.pNext = &deviceDynamicRenderingFeatures;
+        deviceFeatures.features.multiDrawIndirect = VK_TRUE;
         if (config.maxAnisotropy) deviceFeatures.features.samplerAnisotropy = VK_TRUE;
 
         VkDeviceQueueCreateInfo deviceQueueInfo = {};
