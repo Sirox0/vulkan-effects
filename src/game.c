@@ -867,14 +867,13 @@ void gameInit() {
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
         for (u32 i = 0; i < vkglobals.swapchainImageCount; i++) VK_ASSERT(vkCreateSemaphore(vkglobals.device, &semaphoreInfo, VK_NULL_HANDLE, &gameglobals.renderingDoneSemaphores[i]), "failed to create semaphore\n");
+        VK_ASSERT(vkCreateSemaphore(vkglobals.device, &semaphoreInfo, VK_NULL_HANDLE, &gameglobals.swapchainReadySemaphore), "failed to create semaphore\n");
 
-        VkFenceCreateInfo fenceInfos[2] = {};
+        VkFenceCreateInfo fenceInfos[1] = {};
         fenceInfos[0].sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceInfos[0].flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        fenceInfos[1].sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
         VK_ASSERT(vkCreateFence(vkglobals.device, &fenceInfos[0], VK_NULL_HANDLE, &gameglobals.frameFence), "failed to create fence\n");
-        VK_ASSERT(vkCreateFence(vkglobals.device, &fenceInfos[1], VK_NULL_HANDLE, &gameglobals.swapchainReadyFence), "failed to create fence\n");
     }
 
     gameglobals.loopActive = 1;
@@ -943,10 +942,11 @@ void updateCubeUbo() {
 }
 
 void gameRender() {
+    VK_ASSERT(vkWaitForFences(vkglobals.device, 1, &gameglobals.frameFence, VK_TRUE, 0xFFFFFFFFFFFFFFFF), "failed to wait for fences\n");
+    VK_ASSERT(vkResetFences(vkglobals.device, 1, &gameglobals.frameFence), "failed to reset fences\n");
+
     u32 imageIndex;
-    VK_ASSERT(vkAcquireNextImageKHR(vkglobals.device, vkglobals.swapchain, 0xFFFFFFFFFFFFFFFF, VK_NULL_HANDLE, gameglobals.swapchainReadyFence, &imageIndex), "failed to acquire swapchain image\n");
-    VK_ASSERT(vkWaitForFences(vkglobals.device, 2, (VkFence[]){gameglobals.swapchainReadyFence, gameglobals.frameFence}, VK_TRUE, 0xFFFFFFFFFFFFFFFF), "failed to wait for fences\n");
-    VK_ASSERT(vkResetFences(vkglobals.device, 2, (VkFence[]){gameglobals.swapchainReadyFence, gameglobals.frameFence}), "failed to reset fences\n");
+    VK_ASSERT(vkAcquireNextImageKHR(vkglobals.device, vkglobals.swapchain, 0xFFFFFFFFFFFFFFFF, gameglobals.swapchainReadySemaphore, VK_NULL_HANDLE, &imageIndex), "failed to acquire swapchain image\n");
 
     updateCubeUbo();
 
@@ -1344,8 +1344,8 @@ void gameRender() {
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.waitSemaphoreCount = 0;
-    submitInfo.pWaitSemaphores = VK_NULL_HANDLE;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &gameglobals.swapchainReadySemaphore;
     submitInfo.pWaitDstStageMask = &semaphoreSignalStage;
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &gameglobals.renderingDoneSemaphores[imageIndex];
@@ -1367,9 +1367,9 @@ void gameRender() {
 
 void gameQuit() {
     vkDestroyFence(vkglobals.device, gameglobals.frameFence, VK_NULL_HANDLE);
-    vkDestroyFence(vkglobals.device, gameglobals.swapchainReadyFence, VK_NULL_HANDLE);
 
     for (u32 i = 0; i < vkglobals.swapchainImageCount; i++) vkDestroySemaphore(vkglobals.device, gameglobals.renderingDoneSemaphores[i], VK_NULL_HANDLE);
+    vkDestroySemaphore(vkglobals.device, gameglobals.swapchainReadySemaphore, VK_NULL_HANDLE);
 
     vkDestroyPipelineLayout(vkglobals.device, gameglobals.uberPipelineLayout, VK_NULL_HANDLE);
     vkDestroyPipelineLayout(vkglobals.device, gameglobals.compositionPipelineLayout, VK_NULL_HANDLE);

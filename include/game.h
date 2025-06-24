@@ -93,8 +93,8 @@ typedef struct {
     VkPipeline uberPipeline;
 
     VkSemaphore* renderingDoneSemaphores;
-
-    VkFence swapchainReadyFence;
+    VkSemaphore swapchainReadySemaphore;
+    
     VkFence frameFence;
 } game_globals_t;
 
