@@ -25,6 +25,7 @@ PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices;
 PFN_vkDestroyInstance vkDestroyInstance;
 
 // vulkan device functions
+PFN_vkCmdDrawIndexedIndirect vkCmdDrawIndexedIndirect;
 PFN_vkGetPipelineCacheData vkGetPipelineCacheData;
 PFN_vkDestroyPipelineCache vkDestroyPipelineCache;
 PFN_vkCreatePipelineCache vkCreatePipelineCache;
@@ -126,6 +127,7 @@ void loadVulkanInstanceFunctions(VkInstance instance) {
 
 void loadVulkanDeviceFunctions(VkDevice device) {
 	#ifdef VK_NO_PROTOTYPES
+	vkCmdDrawIndexedIndirect = (PFN_vkCmdDrawIndexedIndirect)vkGetDeviceProcAddr(device, "vkCmdDrawIndexedIndirect");
 	vkGetPipelineCacheData = (PFN_vkGetPipelineCacheData)vkGetDeviceProcAddr(device, "vkGetPipelineCacheData");
 	vkDestroyPipelineCache = (PFN_vkDestroyPipelineCache)vkGetDeviceProcAddr(device, "vkDestroyPipelineCache");
 	vkCreatePipelineCache = (PFN_vkCreatePipelineCache)vkGetDeviceProcAddr(device, "vkCreatePipelineCache");
