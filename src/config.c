@@ -18,6 +18,7 @@ void configLoad(char* path) {
     config.fullscreen = iniparser_getboolean(conf, "window:fullscreen", 0);
 
     config.preferredTextureFilter = iniparser_getint(conf, "general:preferred-texture-filter", 2);
+    config.maxAnisotropy = iniparser_getdouble(conf, "general:max-anisotropy", 0.0f);
 
     config.fov = iniparser_getdouble(conf, "projection:fov", 80.0f);
     config.nearPlane = iniparser_getdouble(conf, "projection:near-plane", 0.01f);

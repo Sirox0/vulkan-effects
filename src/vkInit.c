@@ -224,6 +224,11 @@ void vkInit() {
         deviceDynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
         deviceDynamicRenderingFeatures.dynamicRendering = VK_TRUE;
 
+        VkPhysicalDeviceFeatures2KHR deviceFeatures = {};
+        deviceFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+        deviceFeatures.pNext = &deviceDynamicRenderingFeatures;
+        if (config.maxAnisotropy) deviceFeatures.features.samplerAnisotropy = VK_TRUE;
+
         VkDeviceQueueCreateInfo deviceQueueInfo = {};
         deviceQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         deviceQueueInfo.pQueuePriorities = priorities;
@@ -251,7 +256,7 @@ void vkInit() {
         deviceInfo.ppEnabledExtensionNames = finalDeviceExtensions;
         deviceInfo.queueCreateInfoCount = 1;
         deviceInfo.pQueueCreateInfos = &deviceQueueInfo;
-        deviceInfo.pNext = &deviceDynamicRenderingFeatures;
+        deviceInfo.pNext = &deviceFeatures;
 
         VK_ASSERT(vkCreateDevice(vkglobals.physicalDevice, &deviceInfo, VK_NULL_HANDLE, &vkglobals.device), "failed to create vulkan logical device\n");
     }

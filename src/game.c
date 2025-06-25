@@ -328,7 +328,8 @@ void gameInit() {
         samplerInfo.maxLod = 0.25f;
         samplerInfo.minFilter = vkglobals.textureFilter;
         samplerInfo.magFilter = vkglobals.textureFilter;
-        samplerInfo.anisotropyEnable = VK_FALSE;
+        if (config.maxAnisotropy) samplerInfo.anisotropyEnable = VK_TRUE;
+        samplerInfo.maxAnisotropy = config.maxAnisotropy;
         samplerInfo.compareEnable = VK_FALSE;
         samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
         samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;

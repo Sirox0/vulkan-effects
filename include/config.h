@@ -11,6 +11,7 @@ typedef struct {
     u8 fullscreen;
 
     u8 preferredTextureFilter;
+    f32 maxAnisotropy;
 
     f32 fov;
     f32 nearPlane;
