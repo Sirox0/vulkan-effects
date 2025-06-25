@@ -117,7 +117,7 @@ void gameInit() {
             exit(1);
         }
 
-        const struct aiScene* scene = vkModelLoadScene("assets/models/sponza/sponza.obj");
+        const struct aiScene* scene = vkModelLoadScene(config.modelPath);
 
         u32 vertexSize, indexSize, indirectSize;
         vkModelGetSizes(scene, &vertexSize, &indexSize, &indirectSize);
@@ -943,13 +943,13 @@ void gameInit() {
 
 void gameEvent(SDL_Event* e) {
     if (e->type == SDL_EVENT_KEY_DOWN) {
-        if (e->key.key == SDLK_W) gameglobals.inputZ[0] = 3.0f / 2000.0f;
-        else if (e->key.key == SDLK_S) gameglobals.inputZ[1] = -3.0f / 2000.0f;
-        else if (e->key.key == SDLK_A) gameglobals.inputX[0] = -3.0f / 2000.0f;
-        else if (e->key.key == SDLK_D) gameglobals.inputX[1] = 3.0f / 2000.0f;
-        else if (e->key.key == SDLK_SPACE) gameglobals.inputY[0] = -3.0f / 2000.0f;
-        else if (e->key.key == SDLK_LCTRL) gameglobals.inputY[1] = 3.0f / 2000.0f;
-        else if (e->key.key == SDLK_LSHIFT) gameglobals.shift = 3;
+        if (e->key.key == SDLK_W) gameglobals.inputZ[0] = config.playerSpeed / 2000.0f;
+        else if (e->key.key == SDLK_S) gameglobals.inputZ[1] = -config.playerSpeed / 2000.0f;
+        else if (e->key.key == SDLK_A) gameglobals.inputX[0] = -config.playerSpeed / 2000.0f;
+        else if (e->key.key == SDLK_D) gameglobals.inputX[1] = config.playerSpeed / 2000.0f;
+        else if (e->key.key == SDLK_SPACE) gameglobals.inputY[0] = -config.playerSpeed / 2000.0f;
+        else if (e->key.key == SDLK_LCTRL) gameglobals.inputY[1] = config.playerSpeed / 2000.0f;
+        else if (e->key.key == SDLK_LSHIFT) gameglobals.shift = config.shiftMultiplier;
         else if (e->key.key == SDLK_ESCAPE) gameglobals.loopActive = 0;
     } else if (e->type == SDL_EVENT_KEY_UP) {
         if (e->key.key == SDLK_W) gameglobals.inputZ[0] = 0;
@@ -989,8 +989,7 @@ void updateCubeUbo() {
     }
 
     glm_mat4_identity(modelMatrix);
-    glm_translate(modelMatrix, (vec3){0.0f, 1.5f, 0.0f});
-    glm_scale_uni(modelMatrix, 0.01f);
+    glm_scale_uni(modelMatrix, config.modelScale);
 
     VkMappedMemoryRange memoryRange = {};
     memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;

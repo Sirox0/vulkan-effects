@@ -12,6 +12,10 @@ typedef struct {
 
     u8 preferredTextureFilter;
     f32 maxAnisotropy;
+    char modelPath[256];
+    f32 modelScale;
+    f32 playerSpeed;
+    f32 shiftMultiplier;
 
     f32 fov;
     f32 nearPlane;

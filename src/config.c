@@ -1,6 +1,7 @@
 #include <iniparser.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "numtypes.h"
@@ -19,6 +20,15 @@ void configLoad(char* path) {
 
     config.preferredTextureFilter = iniparser_getint(conf, "general:preferred-texture-filter", 2);
     config.maxAnisotropy = iniparser_getdouble(conf, "general:max-anisotropy", 0.0f);
+    const char* modelPath = iniparser_getstring(conf, "general:model-path", "unknown");
+    if (strlen(modelPath) > 256) {
+        printf("general:model-path must contain no more than 256 symbols\n");
+        exit(1);
+    } 
+    strcpy(config.modelPath, iniparser_getstring(conf, "general:model-path", "unknown"));
+    config.modelScale = iniparser_getdouble(conf, "general:model-scale", 1.0f);
+    config.playerSpeed = iniparser_getdouble(conf, "general:player-speed", 1.0f);
+    config.shiftMultiplier = iniparser_getdouble(conf, "general:shift-multiplier", 3.0f);
 
     config.fov = iniparser_getdouble(conf, "projection:fov", 80.0f);
     config.nearPlane = iniparser_getdouble(conf, "projection:near-plane", 0.01f);

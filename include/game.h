@@ -21,7 +21,7 @@ typedef struct {
     vec2 inputX;
     vec2 inputY;
     vec2 inputZ;
-    u8 shift;
+    f32 shift;
     VkFormat depthTextureFormat;
 
     VkSampler sampler;
