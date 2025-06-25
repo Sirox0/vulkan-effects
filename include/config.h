@@ -23,9 +23,13 @@ typedef struct {
     u32 ssaoBlurSize;
     f32 ssaoPower;
 
+    u32 grainEnable;
     f32 grainIntensity;
     f32 grainSignalToNoise;
     f32 grainNoiseShift;
+
+    u32 ditheringEnable;
+    f32 ditheringToneCount;
 } config_t;
 
 void configLoad(char* path);

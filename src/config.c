@@ -30,9 +30,13 @@ void configLoad(char* path) {
     config.ssaoBlurSize = iniparser_getint(conf, "ssao:blur-size", 2);
     config.ssaoPower = iniparser_getdouble(conf, "ssao:power", 8.0f);
     
+    config.grainEnable = iniparser_getboolean(conf, "grain:enable", 1);
     config.grainIntensity = iniparser_getdouble(conf, "grain:intensity", 18.0f);
     config.grainSignalToNoise = iniparser_getdouble(conf, "grain:signal-to-noise", 1.0f);
     config.grainNoiseShift = iniparser_getdouble(conf, "grain:noise-shift", 0.0f);
+
+    config.ditheringEnable = iniparser_getboolean(conf, "dithering:enable", 1);
+    config.ditheringToneCount = iniparser_getdouble(conf, "dithering:tone-count", 32.0f);
 
     iniparser_freedict(conf);
 }

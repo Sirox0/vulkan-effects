@@ -671,7 +671,7 @@ void gameInit() {
             VK_ASSERT(vkCreatePipelineLayout(vkglobals.device, &pipelineLayoutInfo, VK_NULL_HANDLE, &gameglobals.uberPipelineLayout), "failed to create pipeline layout\n");
         }
 
-        VkSpecializationMapEntry specializationMapEntrys[7] = {};
+        VkSpecializationMapEntry specializationMapEntrys[10] = {};
         specializationMapEntrys[0].constantID = 0;
         specializationMapEntrys[0].offset = 0;
         specializationMapEntrys[0].size = sizeof(u32);
@@ -688,13 +688,22 @@ void gameInit() {
 
         specializationMapEntrys[4].constantID = 0;
         specializationMapEntrys[4].offset = 0;
-        specializationMapEntrys[4].size = sizeof(f32);
+        specializationMapEntrys[4].size = sizeof(u32);
         specializationMapEntrys[5].constantID = 1;
-        specializationMapEntrys[5].offset = sizeof(f32);
+        specializationMapEntrys[5].offset = sizeof(u32);
         specializationMapEntrys[5].size = sizeof(f32);
         specializationMapEntrys[6].constantID = 2;
-        specializationMapEntrys[6].offset = sizeof(f32) * 2;
+        specializationMapEntrys[6].offset = sizeof(u32) + sizeof(f32);
         specializationMapEntrys[6].size = sizeof(f32);
+        specializationMapEntrys[7].constantID = 3;
+        specializationMapEntrys[7].offset = sizeof(u32) + sizeof(f32) * 2;
+        specializationMapEntrys[7].size = sizeof(f32);
+        specializationMapEntrys[8].constantID = 4;
+        specializationMapEntrys[8].offset = sizeof(u32) + sizeof(f32) * 3;
+        specializationMapEntrys[8].size = sizeof(u32);
+        specializationMapEntrys[9].constantID = 5;
+        specializationMapEntrys[9].offset = sizeof(u32) * 2 + sizeof(f32) * 3;
+        specializationMapEntrys[9].size = sizeof(f32);
 
         struct {
             u32 kernelSize;
@@ -707,10 +716,17 @@ void gameInit() {
         } ssaoBlurSpecializationData = {config.ssaoBlurSize};
 
         struct {
-            f32 intensity;
-            f32 signalToNoiseRatio;
-            f32 noiseShift;
-        } grainSpecializationData = {config.grainIntensity, config.grainSignalToNoise, config.grainNoiseShift};
+            u32 grainEnable;
+            f32 grainIntensity;
+            f32 grainSignalToNoiseRatio;
+            f32 grainNoiseShift;
+
+            u32 ditheringEnable;
+            f32 ditheringToneCount;
+        } uberSpecializationData = {
+            config.grainEnable, config.grainIntensity, config.grainSignalToNoise, config.grainNoiseShift,
+            config.ditheringEnable, config.ditheringToneCount
+        };
 
         VkSpecializationInfo specializationInfos[3] = {};
         specializationInfos[0].mapEntryCount = 3;
@@ -723,10 +739,10 @@ void gameInit() {
         specializationInfos[1].dataSize = sizeof(i32);
         specializationInfos[1].pData = &ssaoBlurSpecializationData;
 
-        specializationInfos[2].mapEntryCount = 3;
+        specializationInfos[2].mapEntryCount = 6;
         specializationInfos[2].pMapEntries = specializationMapEntrys + 4;
-        specializationInfos[2].dataSize = sizeof(f32) * 3;
-        specializationInfos[2].pData = &grainSpecializationData;
+        specializationInfos[2].dataSize = sizeof(u32) * 2 + sizeof(f32) * 4;
+        specializationInfos[2].pData = &uberSpecializationData;
 
         VkVertexInputBindingDescription bindingDescs[1] = {};
         bindingDescs[0].binding = 0;
