@@ -235,6 +235,7 @@ void vkInit() {
         deviceFeatures.pNext = &deviceDescriptorIndexingFeatures;
         deviceFeatures.features.multiDrawIndirect = VK_TRUE;
         if (config.maxAnisotropy) deviceFeatures.features.samplerAnisotropy = VK_TRUE;
+        if (config.wireframe) deviceFeatures.features.fillModeNonSolid = VK_TRUE;
 
         VkDeviceQueueCreateInfo deviceQueueInfo = {};
         deviceQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;

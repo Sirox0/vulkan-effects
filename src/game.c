@@ -401,7 +401,7 @@ void gameInit() {
     createImageView(&gameglobals.ssaoAttachmentView, gameglobals.ssaoAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&gameglobals.ssaoBlurAttachmentView, gameglobals.ssaoAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&gameglobals.postProcessAttachmentView, gameglobals.postProcessAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
-    
+
     for (u32 i = 0; i < gameglobals.model.textureCount; i++) createImageView(&gameglobals.model.views[i], gameglobals.model.textures[i], VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     
     {
@@ -947,6 +947,12 @@ void gameInit() {
         pipelineInfos[0].rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         pipelineInfos[0].colorBlendState.attachmentCount = 3;
         pipelineInfos[0].colorBlendState.pAttachments = (VkPipelineColorBlendAttachmentState[]){pipelineInfos[0].colorBlendAttachment, pipelineInfos[0].colorBlendAttachment, pipelineInfos[0].colorBlendAttachment};
+
+        if (config.wireframe) {
+            pipelineInfos[0].rasterizationState.polygonMode = VK_POLYGON_MODE_LINE;
+            // since triangles are transparent in wireframe mode, we disable culling
+            pipelineInfos[0].rasterizationState.cullMode = VK_CULL_MODE_NONE;
+        }
 
         pipelineInfos[0].renderingInfo.colorAttachmentCount = 3;
         pipelineInfos[0].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM};

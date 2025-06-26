@@ -10,6 +10,7 @@ typedef struct {
     u8 vsyncRelaxed;
     u8 fullscreen;
 
+    u8 wireframe;
     u8 preferredTextureFilter;
     f32 maxAnisotropy;
     char modelDirectoryPath[256];
