@@ -31,6 +31,7 @@ typedef struct {
     VkDeviceMemory deviceLocalColorAttachmentSampledMemory;
     VkDeviceMemory deviceLocalSampledTransferDstMemory;
     VkDeviceMemory deviceLocalUniformTransferDstMemory;
+    VkDeviceMemory deviceLocalStorageTransferDstMemory;
     VkDeviceMemory deviceLocalVertexTransferDstMemory;
     VkDeviceMemory deviceLocalIndexTransferDstMemory;
     VkDeviceMemory deviceLocalIndirectTransferDstMemory;
@@ -75,6 +76,7 @@ typedef struct {
     VkDescriptorSetLayout ssaoDataDescriptorSetLayout;
     VkDescriptorSetLayout gbufferDescriptorSetLayout;
     VkDescriptorSetLayout sampledImageDescriptorSetLayout;
+    VkDescriptorSetLayout modelDescriptorSetLayout;
     
     VkDescriptorSet projectionMatrixdescriptorSet;
     VkDescriptorSet cubeDescriptorSet;

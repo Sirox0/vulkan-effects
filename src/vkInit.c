@@ -21,8 +21,8 @@ vulkan_globals_t vkglobals = {};
 void vkInit() {
     loadVulkanLoaderFunctions();
 
-    #define DEVICE_EXTENSION_COUNT 6
-    const char* deviceExtensions[DEVICE_EXTENSION_COUNT] = {"VK_KHR_swapchain", "VK_KHR_dynamic_rendering", "VK_KHR_depth_stencil_resolve", "VK_KHR_create_renderpass2", "VK_KHR_multiview", "VK_KHR_maintenance2"};
+    #define DEVICE_EXTENSION_COUNT 9
+    const char* deviceExtensions[DEVICE_EXTENSION_COUNT] = {"VK_KHR_swapchain", "VK_KHR_dynamic_rendering", "VK_KHR_depth_stencil_resolve", "VK_KHR_create_renderpass2", "VK_KHR_multiview", "VK_KHR_maintenance2", "VK_KHR_shader_draw_parameters", "VK_EXT_descriptor_indexing", "VK_KHR_maintenance3"};
     #define DEVICE_OPTIONAL_EXTENSION_COUNT 2
     const char* deviceOptionalExtensions[DEVICE_OPTIONAL_EXTENSION_COUNT] = {"VK_IMG_filter_cubic", "VK_EXT_filter_cubic"};
     u8 optionalExts[DEVICE_OPTIONAL_EXTENSION_COUNT] = {0};
@@ -224,9 +224,15 @@ void vkInit() {
         deviceDynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
         deviceDynamicRenderingFeatures.dynamicRendering = VK_TRUE;
 
+        VkPhysicalDeviceDescriptorIndexingFeaturesEXT deviceDescriptorIndexingFeatures = {};
+        deviceDescriptorIndexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
+        deviceDescriptorIndexingFeatures.pNext = &deviceDynamicRenderingFeatures;
+        deviceDescriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
+        deviceDescriptorIndexingFeatures.descriptorBindingVariableDescriptorCount = VK_TRUE;
+
         VkPhysicalDeviceFeatures2KHR deviceFeatures = {};
         deviceFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
-        deviceFeatures.pNext = &deviceDynamicRenderingFeatures;
+        deviceFeatures.pNext = &deviceDescriptorIndexingFeatures;
         deviceFeatures.features.multiDrawIndirect = VK_TRUE;
         if (config.maxAnisotropy) deviceFeatures.features.samplerAnisotropy = VK_TRUE;
 

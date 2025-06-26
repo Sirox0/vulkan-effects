@@ -20,12 +20,21 @@ void configLoad(char* path) {
 
     config.preferredTextureFilter = iniparser_getint(conf, "general:preferred-texture-filter", 2);
     config.maxAnisotropy = iniparser_getdouble(conf, "general:max-anisotropy", 0.0f);
-    const char* modelPath = iniparser_getstring(conf, "general:model-path", "unknown");
-    if (strlen(modelPath) > 256) {
-        printf("general:model-path must contain no more than 256 symbols\n");
+
+    const char* modelDirectoryPath = iniparser_getstring(conf, "general:model-directory-path", "unknown");
+    if (strlen(modelDirectoryPath) > 256) {
+        printf("general:model-directory-path must contain no more than 256 symbols\n");
         exit(1);
     } 
-    strcpy(config.modelPath, iniparser_getstring(conf, "general:model-path", "unknown"));
+    strcpy(config.modelDirectoryPath, modelDirectoryPath);
+
+    const char* modelPath = iniparser_getstring(conf, "general:model-file", "unknown");
+    if (strlen(modelPath) > 64) {
+        printf("general:model-file must contain no more than 64 symbols\n");
+        exit(1);
+    } 
+    strcpy(config.modelFile, modelPath);
+
     config.modelScale = iniparser_getdouble(conf, "general:model-scale", 1.0f);
     config.playerSpeed = iniparser_getdouble(conf, "general:player-speed", 1.0f);
     config.shiftMultiplier = iniparser_getdouble(conf, "general:shift-multiplier", 3.0f);

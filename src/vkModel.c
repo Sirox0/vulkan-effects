@@ -3,10 +3,19 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <cglm/cglm.h>
+#include <stb_image.h>
+
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "numtypes.h"
 #include "vkFunctions.h"
 #include "vkModel.h"
+#include "util.h"
+#include "vkInit.h"
+#include "config.h"
+#include "game.h"
+
 
 struct aiLogStream logStream;
 
@@ -29,6 +38,7 @@ const struct aiScene* vkModelLoadScene(const char* path) {
         aiProcess_CalcTangentSpace |
         aiProcess_GenUVCoords |
         aiProcess_MakeLeftHanded |
+        aiProcess_FlipUVs |
         aiProcess_RemoveRedundantMaterials |
         // transition to zeux/meshoptimizer?
         aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality
@@ -56,18 +66,70 @@ void vkModelGetNodeSizes(const struct aiScene* scene, const struct aiNode* node,
     }
 }
 
-void vkModelGetSizes(const struct aiScene* scene, u32* pVertexSize, u32* pIndexSize, u32* pIndirectSize) {
+void vkModelGetTexturesInfo(const struct aiScene* scene, u32* pImagesSize, u32* pImageCount, u32* pImageWidths, u32* pImageHeights) {
+    u32 curImagesSize = 0;
+    u32 curImageCount = 0;
+
+    for (u32 i = 0; i < scene->mNumMaterials; i++) {
+        const struct aiMaterial* mat = scene->mMaterials[i];
+
+        if (aiGetMaterialTextureCount(mat, aiTextureType_DIFFUSE) > 0) {
+            struct aiString path;
+
+            if (aiGetMaterialTexture(mat, aiTextureType_DIFFUSE, 0, &path, NULL, NULL, NULL, NULL, NULL, NULL) != AI_SUCCESS) goto normalsSize;
+
+            i32 w, h;
+            char p[512] = {};
+            strcat(p, config.modelDirectoryPath);
+            strcat(p, path.data);
+            stbi_info(p, &w, &h, NULL);
+            if (pImageWidths != NULL && pImageHeights != NULL) {
+                pImageWidths[curImageCount] = w;
+                pImageHeights[curImageCount] = h;
+            }
+            curImagesSize += w * h * 4;
+            curImageCount++;
+        }
+        
+        normalsSize:
+        if (aiGetMaterialTextureCount(mat, aiTextureType_NORMALS) > 0) {
+            struct aiString path;
+
+            if (aiGetMaterialTexture(mat, aiTextureType_NORMALS, 0, &path, NULL, NULL, NULL, NULL, NULL, NULL) != AI_SUCCESS) continue;
+
+            i32 w, h;
+            char p[512] = {};
+            strcat(p, config.modelDirectoryPath);
+            strcat(p, path.data);
+            stbi_info(p, &w, &h, NULL);
+            if (pImageWidths != NULL && pImageHeights != NULL) {
+                pImageWidths[curImageCount] = w;
+                pImageHeights[curImageCount] = h;
+            }
+            curImagesSize += w * h * 4;
+            curImageCount++;
+        }
+    }
+
+    *pImagesSize = curImagesSize;
+    *pImageCount = curImageCount;
+}
+
+void vkModelGetSizes(const struct aiScene* scene, u32* pVertexSize, u32* pIndexSize, u32* pIndirectSize, u32* pStorageBufferMaterialsSize, u32* pStorageBufferMaterialIndicesSize) {
     *pVertexSize = 0;
     *pIndexSize = 0;
     *pIndirectSize = 0;
+    *pStorageBufferMaterialsSize = scene->mNumMaterials * sizeof(vk_model_material_t);
+    *pStorageBufferMaterialIndicesSize = scene->mNumMeshes * sizeof(u32);
     
     vkModelGetNodeSizes(scene, scene->mRootNode, pVertexSize, pIndexSize, pIndirectSize);
 }
 
-void vkModelProcessNode(const struct aiScene* scene, const struct aiNode* node, VkDeviceSize tempBufferVertexOffset, VkDeviceSize tempBufferIndexOffset, VkDeviceSize tempBufferIndirectOffset, void* pTempBufferRaw, u32* pCurVertexCount, u32* pCurIndexCount, u32* pCurIndirectCount) {
+void vkModelProcessNode(const struct aiScene* scene, const struct aiNode* node, VkDeviceSize tempBufferVertexOffset, VkDeviceSize tempBufferIndexOffset, VkDeviceSize tempBufferIndirectOffset, VkDeviceSize tempBufferStorageOffset, void* pTempBufferRaw, u32* pCurVertexCount, u32* pCurIndexCount, u32* pCurIndirectCount, u32* pCurStorageOffset) {
     u32 curVertexCount = *pCurVertexCount;
     u32 curIndexCount = *pCurIndexCount;
     u32 curIndirectCount = *pCurIndirectCount;
+    u32 curStorageOffset = *pCurStorageOffset;
 
     for (u32 i = 0; i < node->mNumMeshes; i++) {
         struct aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
@@ -114,27 +176,92 @@ void vkModelProcessNode(const struct aiScene* scene, const struct aiNode* node, 
         drawCommand.indexCount = curIndexCount - drawCommand.firstIndex;
         memcpy(pTempBufferRaw + tempBufferIndirectOffset + curIndirectCount * sizeof(VkDrawIndexedIndirectCommand), &drawCommand, sizeof(VkDrawIndexedIndirectCommand));
         curIndirectCount++;
+
+        u32 materialIndex = mesh->mMaterialIndex;
+        memcpy(pTempBufferRaw + tempBufferStorageOffset + curStorageOffset, &materialIndex, sizeof(u32));
+        curStorageOffset += sizeof(u32);
     }
 
     *pCurVertexCount += curVertexCount - *pCurVertexCount;
     *pCurIndexCount += curIndexCount - *pCurIndexCount;
     *pCurIndirectCount += curIndirectCount - *pCurIndirectCount;
+    *pCurStorageOffset += curStorageOffset - *pCurStorageOffset;
 
     for (u32 i = 0; i < node->mNumChildren; i++) {
-        vkModelProcessNode(scene, node->mChildren[i], tempBufferVertexOffset, tempBufferIndexOffset, tempBufferIndirectOffset, pTempBufferRaw, pCurVertexCount, pCurIndexCount, pCurIndirectCount);
+        vkModelProcessNode(scene, node->mChildren[i], tempBufferVertexOffset, tempBufferIndexOffset, tempBufferIndirectOffset, tempBufferStorageOffset, pTempBufferRaw, pCurVertexCount, pCurIndexCount, pCurIndirectCount, pCurStorageOffset);
     }
 }
 
-void vkModelInit(const struct aiScene* scene, VkCommandBuffer tempCmdBuf, VkBuffer tempBuffer, VkDeviceSize tempBufferVertexOffset, VkDeviceSize tempBufferIndexOffset, VkDeviceSize tempBufferIndirectOffset, void* pTempBufferRaw, vk_model_t* pModel) {
+u32 vkModelLoadTexture(const struct aiMaterial* mat, enum aiTextureType type, VkCommandBuffer tempCmdBuf, VkBuffer tempBuffer, VkDeviceSize tempBufferTexturesOffset, void* pTempBufferRaw, u32* pCurImageOffset, u32* pCurImageCount, vk_model_t* pModel) {
+    struct aiString path;
+
+    if (aiGetMaterialTexture(mat, type, 0, &path, NULL, NULL, NULL, NULL, NULL, NULL) != AI_SUCCESS) return 1;
+
+    if (path.data[0] == '*') {
+        printf("models with embedded textures are not supporte\n");
+        exit(1);
+        /*
+        TODO: implement embedded textures
+
+        u32 id = atoi(path->data + 1);
+
+        const struct aiTexture* tex = scene->mTextures[id];
+        */
+    } else {
+        i32 w, h;
+        char p[512] = {};
+        strcat(p, config.modelDirectoryPath);
+        strcat(p, path.data);
+        stbi_uc* tex = stbi_load(p, &w, &h, NULL, STBI_rgb_alpha);
+
+        u32 size = w * h * 4;
+        memcpy(pTempBufferRaw + tempBufferTexturesOffset + *pCurImageOffset, tex, size);
+
+        stbi_image_free(tex);
+
+        copyTempBufferToImage(tempCmdBuf, tempBuffer, tempBufferTexturesOffset + *pCurImageOffset, pModel->textures[*pCurImageCount], w, h, 1, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        *pCurImageOffset += size;
+        (*pCurImageCount)++;
+    }
+
+    return 0;
+}
+
+void vkModelCreate(const struct aiScene* scene, VkCommandBuffer tempCmdBuf, VkBuffer tempBuffer, VkDeviceSize tempBufferVertexOffset, VkDeviceSize tempBufferIndexOffset, VkDeviceSize tempBufferIndirectOffset, VkDeviceSize tempBufferStorageOffset, VkDeviceSize tempBufferTexturesOffset, VkDeviceSize storageBufferMaterialIndicesOffset, void* pTempBufferRaw, vk_model_t* pModel) {
     u32 curVertexCount = 0;
     u32 curIndexCount = 0;
     u32 curIndirectCount = 0;
+    u32 curStorageOffset = 0;
+    u32 curImageOffset = 0;
+    u32 curImageCount = 0;
 
-    vkModelProcessNode(scene, scene->mRootNode, tempBufferVertexOffset, tempBufferIndexOffset, tempBufferIndirectOffset, pTempBufferRaw, &curVertexCount, &curIndexCount, &curIndirectCount);
+    for (u32 i = 0; i < scene->mNumMaterials; i++) {
+        const struct aiMaterial* mat = scene->mMaterials[i];
+
+        vk_model_material_t modelMat = {};
+
+        if (aiGetMaterialTextureCount(mat, aiTextureType_DIFFUSE) > 0) {
+            modelMat.diffuseIndex = curImageCount;
+            if (vkModelLoadTexture(mat, aiTextureType_DIFFUSE, tempCmdBuf, tempBuffer, tempBufferTexturesOffset, pTempBufferRaw, &curImageOffset, &curImageCount, pModel) != 0)
+                modelMat.diffuseIndex = -1;
+        }
+        
+        if (aiGetMaterialTextureCount(mat, aiTextureType_NORMALS) > 0) {
+            modelMat.normalMapIndex = curImageCount;
+            if (vkModelLoadTexture(mat, aiTextureType_NORMALS, tempCmdBuf, tempBuffer, tempBufferTexturesOffset, pTempBufferRaw, &curImageOffset, &curImageCount, pModel) != 0)
+                modelMat.normalMapIndex = -1;
+        }
+
+        memcpy(pTempBufferRaw + tempBufferStorageOffset + curStorageOffset, &modelMat, sizeof(vk_model_material_t));
+        curStorageOffset += sizeof(vk_model_material_t);
+    }
+
+    vkModelProcessNode(scene, scene->mRootNode, tempBufferVertexOffset, tempBufferIndexOffset, tempBufferIndirectOffset, tempBufferStorageOffset, pTempBufferRaw, &curVertexCount, &curIndexCount, &curIndirectCount, &curStorageOffset);
 
     pModel->drawCount = curIndirectCount;
 
-    VkBufferCopy copyInfo[3] = {};
+    VkBufferCopy copyInfo[5] = {};
     copyInfo[0].srcOffset = tempBufferVertexOffset;
     copyInfo[0].dstOffset = 0;
     copyInfo[0].size = curVertexCount * sizeof(vk_model_vertex_t);
@@ -147,9 +274,79 @@ void vkModelInit(const struct aiScene* scene, VkCommandBuffer tempCmdBuf, VkBuff
     copyInfo[2].dstOffset = 0;
     copyInfo[2].size = curIndirectCount * sizeof(VkDrawIndexedIndirectCommand);
 
+    copyInfo[3].srcOffset = tempBufferStorageOffset;
+    copyInfo[3].dstOffset = 0;
+    copyInfo[3].size = scene->mNumMaterials * sizeof(vk_model_material_t);
+
+    copyInfo[4].srcOffset = tempBufferStorageOffset + scene->mNumMaterials * sizeof(vk_model_material_t);
+    copyInfo[4].dstOffset = storageBufferMaterialIndicesOffset;
+    copyInfo[4].size = scene->mNumMeshes * sizeof(u32);
+
     vkCmdCopyBuffer(tempCmdBuf, tempBuffer, pModel->vertexBuffer, 1, &copyInfo[0]);
     vkCmdCopyBuffer(tempCmdBuf, tempBuffer, pModel->indexBuffer, 1, &copyInfo[1]);
     vkCmdCopyBuffer(tempCmdBuf, tempBuffer, pModel->indirectBuffer, 1, &copyInfo[2]);
+    vkCmdCopyBuffer(tempCmdBuf, tempBuffer, pModel->storageBuffer, 2, copyInfo + 3);
+}
+
+void vkModelGetDescriptorWrites(vk_model_t* pModel, u32* pDescriptorBufferCount, VkDescriptorBufferInfo* pDescriptorBuffers, u32* pDescriptorImageCount, VkDescriptorImageInfo* pDescriptorImages, u32* pDescriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites) {
+    *pDescriptorBufferCount = 2;
+    *pDescriptorImageCount = pModel->textureCount;
+    *pDescriptorWriteCount = 2 + pModel->textureCount;
+    if (pDescriptorBuffers == NULL || pDescriptorImages == NULL || pDescriptorWrites == NULL) return;
+
+    pDescriptorBuffers[0].buffer = pModel->storageBuffer;
+    pDescriptorBuffers[0].offset = 0;
+    pDescriptorBuffers[0].range = pModel->storageBufferMaterialsSize;
+
+    pDescriptorBuffers[1].buffer = pModel->storageBuffer;
+    pDescriptorBuffers[1].offset = pModel->storageBufferMaterialIndicesOffset;
+    pDescriptorBuffers[1].range = VK_WHOLE_SIZE;
+
+    for (u32 i = 0; i < pModel->textureCount; i++) {
+        pDescriptorImages[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        pDescriptorImages[i].imageView = pModel->views[i];
+        pDescriptorImages[i].sampler = gameglobals.sampler;
+        
+        pDescriptorWrites[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        pDescriptorWrites[i].pNext = VK_NULL_HANDLE;
+        pDescriptorWrites[i].descriptorCount = 1;
+        pDescriptorWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        pDescriptorWrites[i].dstBinding = 2;
+        pDescriptorWrites[i].dstArrayElement = i;
+        pDescriptorWrites[i].dstSet = gameglobals.model.descriptorSet;
+        pDescriptorWrites[i].pImageInfo = pDescriptorImages + i;
+    }
+
+    pDescriptorWrites[pModel->textureCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    pDescriptorWrites[pModel->textureCount].pNext = VK_NULL_HANDLE;
+    pDescriptorWrites[pModel->textureCount].descriptorCount = 1;
+    pDescriptorWrites[pModel->textureCount].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    pDescriptorWrites[pModel->textureCount].dstBinding = 0;
+    pDescriptorWrites[pModel->textureCount].dstArrayElement = 0;
+    pDescriptorWrites[pModel->textureCount].dstSet = pModel->descriptorSet;
+    pDescriptorWrites[pModel->textureCount].pBufferInfo = &pDescriptorBuffers[0];
+
+    pDescriptorWrites[pModel->textureCount + 1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    pDescriptorWrites[pModel->textureCount + 1].pNext = VK_NULL_HANDLE;
+    pDescriptorWrites[pModel->textureCount + 1].descriptorCount = 1;
+    pDescriptorWrites[pModel->textureCount + 1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    pDescriptorWrites[pModel->textureCount + 1].dstBinding = 1;
+    pDescriptorWrites[pModel->textureCount + 1].dstArrayElement = 0;
+    pDescriptorWrites[pModel->textureCount + 1].dstSet = pModel->descriptorSet;
+    pDescriptorWrites[pModel->textureCount + 1].pBufferInfo = &pDescriptorBuffers[1];
+}
+
+void vkModelDestroyModel(vk_model_t* pModel) {
+    for (u32 i = 0; i < pModel->textureCount; i++ ) {
+        vkDestroyImage(vkglobals.device, pModel->textures[i], VK_NULL_HANDLE);
+        vkDestroyImageView(vkglobals.device, pModel->views[i], VK_NULL_HANDLE);
+    }
+    free(pModel->textures);
+
+    vkDestroyBuffer(vkglobals.device, pModel->storageBuffer, VK_NULL_HANDLE);
+    vkDestroyBuffer(vkglobals.device, pModel->vertexBuffer, VK_NULL_HANDLE);
+    vkDestroyBuffer(vkglobals.device, pModel->indexBuffer, VK_NULL_HANDLE);
+    vkDestroyBuffer(vkglobals.device, pModel->indirectBuffer, VK_NULL_HANDLE);
 }
 
 void vkModelUnloadScene(const struct aiScene* scene) {
