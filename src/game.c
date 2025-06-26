@@ -164,7 +164,7 @@ void gameInit() {
 
                     vkGetImageMemoryRequirements(vkglobals.device, gameglobals.model.textures[i], &memReqs[i+2]);
 
-                    imageOffsets[i+1] = imageOffsets[i] + memReqs[i+1].size + getAlignCooficient(memReqs[i+1].size, memReqs[i+2].alignment);
+                    imageOffsets[i+1] = imageOffsets[i] + memReqs[i+1].size + getAlignCooficient(imageOffsets[i] + memReqs[i+1].size, memReqs[i+2].alignment);
 
                     filter &= memReqs[i+2].memoryTypeBits;
                 }
