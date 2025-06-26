@@ -1539,7 +1539,8 @@ void gameRender() {
     presentInfo.pWaitSemaphores = &gameglobals.renderingDoneSemaphores[imageIndex];
     presentInfo.pImageIndices = &imageIndex;
 
-    VK_ASSERT(vkQueuePresentKHR(vkglobals.queue, &presentInfo), "failed to present swapchain image\n");
+    VkResult res = vkQueuePresentKHR(vkglobals.queue, &presentInfo);
+    if (res != VK_SUBOPTIMAL_KHR) VK_ASSERT(res, "failed to present swapchain image\n");
 }
 
 void gameQuit() {
