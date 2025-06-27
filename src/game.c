@@ -2,6 +2,7 @@
 #include <SDL3/SDL.h>
 #include <cglm/cglm.h>
 #include <stb_image.h>
+#include <ktx.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,52 +56,49 @@ void gameInit() {
     {
         struct {
             vec3 pos;
-            vec3 normal;
-            vec2 uv;
-            u32 textureIndex;
         } vertexbuf[] = {
              // left face
-            {{-1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
-            {{-1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
-            {{-1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, 0},
-            {{-1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
-            {{-1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
-            {{-1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, 0},
+            {{-1000.0f, -1000.0f, -1000.0f}},
+            {{-1000.0f, 1000.0f, 1000.0f}},
+            {{-1000.0f, -1000.0f, 1000.0f}},
+            {{-1000.0f, 1000.0f, 1000.0f}},
+            {{-1000.0f, -1000.0f, -1000.0f}},
+            {{-1000.0f, 1000.0f, -1000.0f}},
             // back face
-            {{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}, 0},
-            {{1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}, 0},
-            {{1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}, 0},
-            {{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}, 0},
-            {{1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}, 0},
-            {{-1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}, 0},
+            {{-1000.0f, -1000.0f, -1000.0f}},
+            {{1000.0f, -1000.0f, -1000.0f}},
+            {{1000.0f, 1000.0f, -1000.0f}},
+            {{-1000.0f, -1000.0f, -1000.0f}},
+            {{1000.0f, 1000.0f, -1000.0f}},
+            {{-1000.0f, 1000.0f, -1000.0f}},
             // top face
-            {{-1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}, 2},
-            {{1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}, 2},
-            {{1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, 2},
-            {{-1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}, 2},
-            {{-1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, 2},
-            {{1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}, 2},
+            {{-1000.0f, -1000.0f, -1000.0f}},
+            {{1000.0f, -1000.0f, 1000.0f}},
+            {{1000.0f, -1000.0f, -1000.0f}},
+            {{-1000.0f, -1000.0f, -1000.0f}},
+            {{-1000.0f, -1000.0f, 1000.0f}},
+            {{1000.0f, -1000.0f, 1000.0f}},
             // bottom face
-            {{-1.0f, 1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f}, 1},
-            {{1.0f, 1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f}, 1},
-            {{-1.0f, 1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 1.0f}, 1},
-            {{-1.0f, 1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {0.0f, 0.0f}, 1},
-            {{1.0f, 1.0f, -1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 0.0f}, 1},
-            {{1.0f, 1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}, {1.0f, 1.0f}, 1},
+            {{-1000.0f, 1000.0f, -1000.0f}},
+            {{1000.0f, 1000.0f, 1000.0f}},
+            {{-1000.0f, 1000.0f, 1000.0f}},
+            {{-1000.0f, 1000.0f, -1000.0f}},
+            {{1000.0f, 1000.0f, -1000.0f}},
+            {{1000.0f, 1000.0f, 1000.0f}},
             // right face
-            {{1.0f, 1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
-            {{1.0f, -1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
-            {{1.0f, 1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, 0},
-            {{1.0f, -1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, 0},
-            {{1.0f, 1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, 0},
-            {{1.0f, -1.0f, -1.0f}, {-1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, 0},
+            {{1000.0f, 1000.0f, -1000.0f}},
+            {{1000.0f, -1000.0f, 1000.0f}},
+            {{1000.0f, 1000.0f, 1000.0f}},
+            {{1000.0f, -1000.0f, 1000.0f}},
+            {{1000.0f, 1000.0f, -1000.0f}},
+            {{1000.0f, -1000.0f, -1000.0f}},
             // front face
-            {{-1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f}, 0},
-            {{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f}, 0},
-            {{-1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f}, 0},
-            {{-1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 0.0f}, 0},
-            {{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 1.0f}, 0},
-            {{1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {0.0f, 0.0f}, 0},
+            {{-1000.0f, 1000.0f, 1000.0f}},
+            {{1000.0f, 1000.0f, 1000.0f}},
+            {{-1000.0f, -1000.0f, 1000.0f}},
+            {{-1000.0f, -1000.0f, 1000.0f}},
+            {{1000.0f, 1000.0f, 1000.0f}},
+            {{1000.0f, -1000.0f, 1000.0f}}
         };
 
         int32_t wallpaperX, wallpaperY;
@@ -116,6 +114,13 @@ void gameInit() {
             printf("wallpaper, carpet and ceiling textures must have identical dimensions\n");
             exit(1);
         }
+
+        ktxTexture* skyboxTexture;
+        if (ktxTexture_CreateFromNamedFile("assets/textures/skybox.ktx2", KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &skyboxTexture) != KTX_SUCCESS) {
+            printf("failed to load skybox texture\n");
+            exit(1);
+        }
+        u32 skyboxTextureSize = ktxTexture_GetDataSize(skyboxTexture);
 
         char modelPath[256 + 64] = {};
         strcat(modelPath, config.modelDirectoryPath);
@@ -137,7 +142,7 @@ void gameInit() {
 
         {
             {
-                createImage(&gameglobals.depthTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, gameglobals.depthTextureFormat, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+                createImage(&gameglobals.depthTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, gameglobals.depthTextureFormat, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 0);
 
                 VkMemoryRequirements memReqs[1];
                 vkGetImageMemoryRequirements(vkglobals.device, gameglobals.depthTexture, &memReqs[0]);
@@ -148,32 +153,36 @@ void gameInit() {
             }
 
             {
-                createImage(&gameglobals.cubeTextures, wallpaperX, wallpaperY, VK_FORMAT_R8G8B8A8_UNORM, 3, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-                createImage(&gameglobals.ssaoNoiseTexture, config.ssaoNoiseDim, config.ssaoNoiseDim, VK_FORMAT_R32G32B32A32_SFLOAT, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+                createImage(&gameglobals.cubeTextures, wallpaperX, wallpaperY, VK_FORMAT_R8G8B8A8_UNORM, 3, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
+                createImage(&gameglobals.ssaoNoiseTexture, config.ssaoNoiseDim, config.ssaoNoiseDim, VK_FORMAT_R32G32B32A32_SFLOAT, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
+                createImage(&gameglobals.skyboxCubemap, skyboxTexture->baseWidth, skyboxTexture->baseHeight, VK_FORMAT_R8G8B8A8_UNORM, 6, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
 
-                VkMemoryRequirements memReqs[2 + imageCount];
+                VkMemoryRequirements memReqs[3 + imageCount];
                 vkGetImageMemoryRequirements(vkglobals.device, gameglobals.cubeTextures, &memReqs[0]);
                 vkGetImageMemoryRequirements(vkglobals.device, gameglobals.ssaoNoiseTexture, &memReqs[1]);
+                vkGetImageMemoryRequirements(vkglobals.device, gameglobals.skyboxCubemap, &memReqs[2]);
 
-                VkDeviceSize imageOffsets[imageCount + 1];
+                VkDeviceSize imageOffsets[imageCount + 2];
                 imageOffsets[0] = memReqs[0].size + getAlignCooficient(memReqs[0].size, memReqs[1].alignment);
-                u32 filter = memReqs[0].memoryTypeBits & memReqs[1].memoryTypeBits;
+                imageOffsets[1] = imageOffsets[0] + memReqs[1].size + getAlignCooficient(imageOffsets[0] + memReqs[1].size, memReqs[2].alignment);
+                u32 filter = memReqs[0].memoryTypeBits & memReqs[1].memoryTypeBits & memReqs[2].memoryTypeBits;
 
                 for (u32 i = 0; i < imageCount; i++) {
-                    createImage(&gameglobals.model.textures[i], imageWidths[i], imageHeights[i], VK_FORMAT_R8G8B8A8_UNORM, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+                    createImage(&gameglobals.model.textures[i], imageWidths[i], imageHeights[i], VK_FORMAT_R8G8B8A8_UNORM, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
 
-                    vkGetImageMemoryRequirements(vkglobals.device, gameglobals.model.textures[i], &memReqs[i+2]);
+                    vkGetImageMemoryRequirements(vkglobals.device, gameglobals.model.textures[i], &memReqs[i+3]);
 
-                    imageOffsets[i+1] = imageOffsets[i] + memReqs[i+1].size + getAlignCooficient(imageOffsets[i] + memReqs[i+1].size, memReqs[i+2].alignment);
+                    imageOffsets[i+2] = imageOffsets[i+1] + memReqs[i+2].size + getAlignCooficient(imageOffsets[i+1] + memReqs[i+2].size, memReqs[i+3].alignment);
 
-                    filter &= memReqs[i+2].memoryTypeBits;
+                    filter &= memReqs[i+3].memoryTypeBits;
                 }
 
-                allocateMemory(&gameglobals.deviceLocalSampledTransferDstMemory, imageOffsets[imageCount] + memReqs[imageCount + 1].size, getMemoryTypeIndex(filter, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
+                allocateMemory(&gameglobals.deviceLocalSampledTransferDstMemory, imageOffsets[imageCount + 1] + memReqs[imageCount + 2].size, getMemoryTypeIndex(filter, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
 
                 VK_ASSERT(vkBindImageMemory(vkglobals.device, gameglobals.cubeTextures, gameglobals.deviceLocalSampledTransferDstMemory,  0), "failed to bind image memory\n");
                 VK_ASSERT(vkBindImageMemory(vkglobals.device, gameglobals.ssaoNoiseTexture, gameglobals.deviceLocalSampledTransferDstMemory,  imageOffsets[0]), "failed to bind image memory\n");
-                for (u32 i = 0; i < imageCount; i++) VK_ASSERT(vkBindImageMemory(vkglobals.device, gameglobals.model.textures[i], gameglobals.deviceLocalSampledTransferDstMemory,  imageOffsets[i+1]), "failed to bind image memory\n");
+                VK_ASSERT(vkBindImageMemory(vkglobals.device, gameglobals.skyboxCubemap, gameglobals.deviceLocalSampledTransferDstMemory,  imageOffsets[1]), "failed to bind image memory\n");
+                for (u32 i = 0; i < imageCount; i++) VK_ASSERT(vkBindImageMemory(vkglobals.device, gameglobals.model.textures[i], gameglobals.deviceLocalSampledTransferDstMemory,  imageOffsets[i+2]), "failed to bind image memory\n");
             }
 
             {
@@ -247,7 +256,7 @@ void gameInit() {
 
         {
             createBuffer(&tempBuffers[0], VK_BUFFER_USAGE_TRANSFER_SRC_BIT, sizeof(vertexbuf) + wallpaperX * wallpaperY * 4 + carpetX * carpetY * 4 + ceilingX * ceilingY * 4 +
-                config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) + vertexSize + indexSize + indirectSize + gameglobals.model.storageBufferMaterialsSize + storageMaterialIndicesSize + imagesSize);
+                config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) + vertexSize + indexSize + indirectSize + gameglobals.model.storageBufferMaterialsSize + storageMaterialIndicesSize + imagesSize + skyboxTextureSize);
 
             VkMemoryRequirements memReq;
             vkGetBufferMemoryRequirements(vkglobals.device, tempBuffers[0], &memReq);
@@ -294,6 +303,9 @@ void gameInit() {
                     tempBufferMemRaw, &gameglobals.model
                 );
 
+                memcpy(tempBufferMemRawWithSSAOoffset + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) + vertexSize + indexSize + indirectSize + gameglobals.model.storageBufferMaterialsSize + storageMaterialIndicesSize + imagesSize,
+                    ktxTexture_GetData(skyboxTexture), skyboxTextureSize);
+
                 VkMappedMemoryRange memoryRange = {};
                 memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
                 memoryRange.offset = 0;
@@ -326,11 +338,17 @@ void gameInit() {
                 copyTempBufferToImage(tempCmdBuffers[0], tempBuffers[0], sizeof(vertexbuf), gameglobals.cubeTextures, wallpaperX, wallpaperY, 3, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
                 copyTempBufferToImage(tempCmdBuffers[0], tempBuffers[0],
                     sizeof(vertexbuf) + wallpaperX * wallpaperY * 4 + carpetX * carpetY * 4 + ceilingX * ceilingY * 4,
-                    gameglobals.ssaoNoiseTexture, config.ssaoNoiseDim, config.ssaoNoiseDim, 1, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                    gameglobals.ssaoNoiseTexture, config.ssaoNoiseDim, config.ssaoNoiseDim, 1, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                );
+                copyTempBufferToImage(tempCmdBuffers[0], tempBuffers[0],
+                    sizeof(vertexbuf) + wallpaperX * wallpaperY * 4 + carpetX * carpetY * 4 + ceilingX * ceilingY * 4 + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) + vertexSize + indexSize + indirectSize + gameglobals.model.storageBufferMaterialsSize + storageMaterialIndicesSize + imagesSize,
+                    gameglobals.skyboxCubemap, skyboxTexture->baseWidth, skyboxTexture->baseHeight, 6, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                );
             }
         }
 
         vkModelUnloadScene(scene);
+        ktxTexture_Destroy(skyboxTexture);
         stbi_image_free(ceilingTexture);
         stbi_image_free(carpetTexture);
         stbi_image_free(wallpaperTexture);
@@ -368,10 +386,10 @@ void gameInit() {
 
     {
         {
-            createImage(&gameglobals.gbufferPosition, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-            createImage(&gameglobals.gbufferNormalAlbedo, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 2, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-            createImage(&gameglobals.ssaoAttachment, vkglobals.swapchainExtent.width / config.ssaoResolutionFactor, vkglobals.swapchainExtent.height / config.ssaoResolutionFactor, VK_FORMAT_R8_UNORM, 2, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-            createImage(&gameglobals.postProcessAttachment, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+            createImage(&gameglobals.gbufferPosition, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&gameglobals.gbufferNormalAlbedo, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 2, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&gameglobals.ssaoAttachment, vkglobals.swapchainExtent.width / config.ssaoResolutionFactor, vkglobals.swapchainExtent.height / config.ssaoResolutionFactor, VK_FORMAT_R8_UNORM, 2, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&gameglobals.postProcessAttachment, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
 
             VkMemoryRequirements memReqs[4];
             vkGetImageMemoryRequirements(vkglobals.device, gameglobals.gbufferPosition, &memReqs[0]);
@@ -394,6 +412,7 @@ void gameInit() {
 
     createImageView(&gameglobals.depthTextureView, gameglobals.depthTexture, VK_IMAGE_VIEW_TYPE_2D, gameglobals.depthTextureFormat, 1, 0, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
     createImageView(&gameglobals.cubeTexturesView, gameglobals.cubeTextures, VK_IMAGE_VIEW_TYPE_2D_ARRAY, VK_FORMAT_R8G8B8A8_UNORM, 3, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+    createImageView(&gameglobals.skyboxCubemapView, gameglobals.skyboxCubemap, VK_IMAGE_VIEW_TYPE_CUBE, VK_FORMAT_R8G8B8A8_UNORM, 6, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&gameglobals.gbufferPositionView, gameglobals.gbufferPosition, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&gameglobals.gbufferNormalView, gameglobals.gbufferNormalAlbedo, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&gameglobals.gbufferAlbedoView, gameglobals.gbufferNormalAlbedo, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -446,13 +465,13 @@ void gameInit() {
         poolSizes[1].descriptorCount = 2;
 
         poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSizes[2].descriptorCount = 8 + gameglobals.model.textureCount;
+        poolSizes[2].descriptorCount = 9 + gameglobals.model.textureCount;
 
         VkDescriptorPoolCreateInfo poolInfo = {};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         poolInfo.poolSizeCount = 3;
         poolInfo.pPoolSizes = poolSizes;
-        poolInfo.maxSets = 8;
+        poolInfo.maxSets = 9;
 
         VK_ASSERT(vkCreateDescriptorPool(vkglobals.device, &poolInfo, VK_NULL_HANDLE, &gameglobals.descriptorPool), "failed to create descriptor pool\n");
     }
@@ -580,22 +599,22 @@ void gameInit() {
 
     {
         {
-            u32 variableDescriptorCounts[8] = {};
+            u32 variableDescriptorCounts[9] = {};
             variableDescriptorCounts[7] = gameglobals.model.textureCount;
 
             VkDescriptorSetVariableDescriptorCountAllocateInfoEXT variableDescriptorCountAllocateInfo = {};
             variableDescriptorCountAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
-            variableDescriptorCountAllocateInfo.descriptorSetCount = 8;
+            variableDescriptorCountAllocateInfo.descriptorSetCount = 9;
             variableDescriptorCountAllocateInfo.pDescriptorCounts = variableDescriptorCounts;
 
             VkDescriptorSetAllocateInfo descriptorSetsInfo = {};
             descriptorSetsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
             descriptorSetsInfo.pNext = &variableDescriptorCountAllocateInfo;
             descriptorSetsInfo.descriptorPool = gameglobals.descriptorPool;
-            descriptorSetsInfo.descriptorSetCount = 8;
-            descriptorSetsInfo.pSetLayouts = (VkDescriptorSetLayout[]){gameglobals.cubeDescriptorSetLayout, gameglobals.gbufferDescriptorSetLayout, gameglobals.ssaoDataDescriptorSetLayout, gameglobals.projectionMatrixdescriptorSetLayout, gameglobals.sampledImageDescriptorSetLayout, gameglobals.sampledImageDescriptorSetLayout, gameglobals.sampledImageDescriptorSetLayout, gameglobals.modelDescriptorSetLayout};
+            descriptorSetsInfo.descriptorSetCount = 9;
+            descriptorSetsInfo.pSetLayouts = (VkDescriptorSetLayout[]){gameglobals.cubeDescriptorSetLayout, gameglobals.gbufferDescriptorSetLayout, gameglobals.ssaoDataDescriptorSetLayout, gameglobals.projectionMatrixdescriptorSetLayout, gameglobals.sampledImageDescriptorSetLayout, gameglobals.sampledImageDescriptorSetLayout, gameglobals.sampledImageDescriptorSetLayout, gameglobals.modelDescriptorSetLayout, gameglobals.sampledImageDescriptorSetLayout};
 
-            VkDescriptorSet sets[8];
+            VkDescriptorSet sets[9];
 
             VK_ASSERT(vkAllocateDescriptorSets(vkglobals.device, &descriptorSetsInfo, sets), "failed to allocate descriptor sets\n");
 
@@ -607,6 +626,7 @@ void gameInit() {
             gameglobals.ssaoBlurAttachmentDescriptorSet = sets[5];
             gameglobals.postProcessAttachmentDescriptorSet = sets[6];
             gameglobals.model.descriptorSet = sets[7];
+            gameglobals.skyboxCubemapDescriptorSet = sets[8];
         }
 
         u32 modelDescriptorBufferCount, modelDescriptorImageCount, modelDescriptorWriteCount;
@@ -625,7 +645,7 @@ void gameInit() {
         descriptorBufferInfos[2].offset = 0;
         descriptorBufferInfos[2].range = VK_WHOLE_SIZE;
 
-        VkDescriptorImageInfo descriptorImageInfos[8 + modelDescriptorImageCount];
+        VkDescriptorImageInfo descriptorImageInfos[9 + modelDescriptorImageCount];
         descriptorImageInfos[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         descriptorImageInfos[0].imageView = gameglobals.cubeTexturesView;
         descriptorImageInfos[0].sampler = gameglobals.sampler;
@@ -658,7 +678,11 @@ void gameInit() {
         descriptorImageInfos[7].imageView = gameglobals.postProcessAttachmentView;
         descriptorImageInfos[7].sampler = gameglobals.sampler;
 
-        VkWriteDescriptorSet descriptorWrites[11 + modelDescriptorWriteCount];
+        descriptorImageInfos[8].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        descriptorImageInfos[8].imageView = gameglobals.skyboxCubemapView;
+        descriptorImageInfos[8].sampler = gameglobals.sampler;
+
+        VkWriteDescriptorSet descriptorWrites[12 + modelDescriptorWriteCount];
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].pNext = VK_NULL_HANDLE;
         descriptorWrites[0].descriptorCount = 1;
@@ -758,9 +782,18 @@ void gameInit() {
         descriptorWrites[10].dstSet = gameglobals.postProcessAttachmentDescriptorSet;
         descriptorWrites[10].pImageInfo = &descriptorImageInfos[7];
 
-        vkModelGetDescriptorWrites(&gameglobals.model, &modelDescriptorBufferCount, descriptorBufferInfos + 3, &modelDescriptorImageCount, descriptorImageInfos + 8, &modelDescriptorWriteCount, descriptorWrites + 11);
+        descriptorWrites[11].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[11].pNext = VK_NULL_HANDLE;
+        descriptorWrites[11].descriptorCount = 1;
+        descriptorWrites[11].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[11].dstBinding = 0;
+        descriptorWrites[11].dstArrayElement = 0;
+        descriptorWrites[11].dstSet = gameglobals.skyboxCubemapDescriptorSet;
+        descriptorWrites[11].pImageInfo = &descriptorImageInfos[8];
 
-        vkUpdateDescriptorSets(vkglobals.device, 11 + modelDescriptorWriteCount, descriptorWrites, 0, VK_NULL_HANDLE);
+        vkModelGetDescriptorWrites(&gameglobals.model, &modelDescriptorBufferCount, descriptorBufferInfos + 3, &modelDescriptorImageCount, descriptorImageInfos + 9, &modelDescriptorWriteCount, descriptorWrites + 12);
+
+        vkUpdateDescriptorSets(vkglobals.device, 12 + modelDescriptorWriteCount, descriptorWrites, 0, VK_NULL_HANDLE);
     }
 
     {
@@ -771,6 +804,15 @@ void gameInit() {
             pipelineLayoutInfo.pSetLayouts = (VkDescriptorSetLayout[]){gameglobals.projectionMatrixdescriptorSetLayout, gameglobals.cubeDescriptorSetLayout, gameglobals.modelDescriptorSetLayout};
 
             VK_ASSERT(vkCreatePipelineLayout(vkglobals.device, &pipelineLayoutInfo, VK_NULL_HANDLE, &gameglobals.modelPipelineLayout), "failed to create pipeline layout\n");
+        }
+
+        {
+            VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+            pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipelineLayoutInfo.setLayoutCount = 3;
+            pipelineLayoutInfo.pSetLayouts = (VkDescriptorSetLayout[]){gameglobals.projectionMatrixdescriptorSetLayout, gameglobals.cubeDescriptorSetLayout, gameglobals.sampledImageDescriptorSetLayout};
+
+            VK_ASSERT(vkCreatePipelineLayout(vkglobals.device, &pipelineLayoutInfo, VK_NULL_HANDLE, &gameglobals.skyboxPipelineLayout), "failed to create pipeline layout\n");
         }
 
         {
@@ -896,10 +938,14 @@ void gameInit() {
         specializationInfos[2].dataSize = sizeof(u32) * 2 + sizeof(f32) * 4;
         specializationInfos[2].pData = &uberSpecializationData;
 
-        VkVertexInputBindingDescription bindingDescs[1] = {};
+        VkVertexInputBindingDescription bindingDescs[2] = {};
         bindingDescs[0].binding = 0;
         bindingDescs[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         bindingDescs[0].stride = sizeof(vec3) * 3 + sizeof(vec2);
+
+        bindingDescs[1].binding = 0;
+        bindingDescs[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        bindingDescs[1].stride = sizeof(vec3);
 
         VkVertexInputAttributeDescription attributeDescs[4] = {};
         attributeDescs[0].binding = 0;
@@ -925,12 +971,13 @@ void gameInit() {
         VkShaderModule fullscreenVertexModule = createShaderModuleFromAsset("assets/shaders/fullscreen.vert.spv");
         VkShaderModule fullscreenNoUVVertexModule = createShaderModuleFromAsset("assets/shaders/fullscreenNoUV.vert.spv");
 
-        graphics_pipeline_info_t pipelineInfos[5] = {};
+        graphics_pipeline_info_t pipelineInfos[6] = {};
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[0]);
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[1]);
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[2]);
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[3]);
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[4]);
+        pipelineFillDefaultGraphicsPipeline(&pipelineInfos[5]);
 
         pipelineInfos[0].stageCount = 2;
         pipelineInfos[0].stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -1011,21 +1058,44 @@ void gameInit() {
         pipelineInfos[4].renderingInfo.pColorAttachmentFormats = &vkglobals.surfaceFormat.format;
         pipelineInfos[4].layout = gameglobals.uberPipelineLayout;
 
+        pipelineInfos[5].stageCount = 2;
+        pipelineInfos[5].stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+        pipelineInfos[5].stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        pipelineInfos[5].stages[0].module = createShaderModuleFromAsset("assets/shaders/skybox.vert.spv");
+        pipelineInfos[5].stages[1].module = createShaderModuleFromAsset("assets/shaders/skybox.frag.spv");
+
+        pipelineInfos[5].vertexInputState.vertexAttributeDescriptionCount = 1;
+        pipelineInfos[5].vertexInputState.pVertexAttributeDescriptions = attributeDescs;
+        pipelineInfos[5].vertexInputState.vertexBindingDescriptionCount = 1;
+        pipelineInfos[5].vertexInputState.pVertexBindingDescriptions = bindingDescs + 1;
+        pipelineInfos[5].rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        pipelineInfos[5].depthStencilState.depthTestEnable = VK_TRUE;
+        pipelineInfos[5].colorBlendState.attachmentCount = 3;
+        pipelineInfos[5].colorBlendState.pAttachments = (VkPipelineColorBlendAttachmentState[]){pipelineInfos[0].colorBlendAttachment, pipelineInfos[0].colorBlendAttachment, pipelineInfos[0].colorBlendAttachment};
+
+        pipelineInfos[5].renderingInfo.colorAttachmentCount = 3;
+        pipelineInfos[5].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM};
+        pipelineInfos[5].renderingInfo.depthAttachmentFormat = gameglobals.depthTextureFormat;
+        pipelineInfos[5].layout = gameglobals.skyboxPipelineLayout;
+
         VkPipelineCache pipelineCache = loadPipelineCache("pipelinecache.dat");
 
-        VkPipeline pipelines[5];
+        VkPipeline pipelines[6];
 
-        pipelineCreateGraphicsPipelines(pipelineCache, 5, pipelineInfos, pipelines);
+        pipelineCreateGraphicsPipelines(pipelineCache, 6, pipelineInfos, pipelines);
 
         gameglobals.modelPipeline = pipelines[0];
         gameglobals.ssaoPipeline = pipelines[1];
         gameglobals.ssaoBlurPipeline = pipelines[2];
         gameglobals.compositionPipeline = pipelines[3];
         gameglobals.uberPipeline = pipelines[4];
+        gameglobals.skyboxPipeline = pipelines[5];
 
         storePipelineCache(pipelineCache, "pipelinecache.dat");
         vkDestroyPipelineCache(vkglobals.device, pipelineCache, VK_NULL_HANDLE);
 
+        vkDestroyShaderModule(vkglobals.device, pipelineInfos[5].stages[0].module, VK_NULL_HANDLE);
+        vkDestroyShaderModule(vkglobals.device, pipelineInfos[5].stages[1].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[4].stages[1].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[3].stages[1].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[2].stages[1].module, VK_NULL_HANDLE);
@@ -1219,6 +1289,12 @@ void gameRender() {
         vkCmdBindDescriptorSets(vkglobals.cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gameglobals.modelPipelineLayout, 0, 3, (VkDescriptorSet[]){gameglobals.projectionMatrixdescriptorSet, gameglobals.cubeDescriptorSet, gameglobals.model.descriptorSet}, 0, VK_NULL_HANDLE);
 
         vkCmdDrawIndexedIndirect(vkglobals.cmdBuffer, gameglobals.model.indirectBuffer, 0, gameglobals.model.drawCount, sizeof(VkDrawIndexedIndirectCommand));
+
+        vkCmdBindPipeline(vkglobals.cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gameglobals.skyboxPipeline);
+        vkCmdBindVertexBuffers(vkglobals.cmdBuffer, 0, 1, &gameglobals.cubeVertexBuffer, vertexBufferOffsets);
+        vkCmdBindDescriptorSets(vkglobals.cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, gameglobals.skyboxPipelineLayout, 0, 3, (VkDescriptorSet[]){gameglobals.projectionMatrixdescriptorSet, gameglobals.cubeDescriptorSet, gameglobals.skyboxCubemapDescriptorSet}, 0, VK_NULL_HANDLE);
+
+        vkCmdDraw(vkglobals.cmdBuffer, 36, 1, 0, 0);
 
         vkCmdEndRenderingKHR(vkglobals.cmdBuffer);
 
@@ -1553,12 +1629,14 @@ void gameQuit() {
     vkDestroyPipelineLayout(vkglobals.device, gameglobals.compositionPipelineLayout, VK_NULL_HANDLE);
     vkDestroyPipelineLayout(vkglobals.device, gameglobals.sampledImagePipelineLayout, VK_NULL_HANDLE);
     vkDestroyPipelineLayout(vkglobals.device, gameglobals.ssaoPipelineLayout, VK_NULL_HANDLE);
+    vkDestroyPipelineLayout(vkglobals.device, gameglobals.skyboxPipelineLayout, VK_NULL_HANDLE);
     vkDestroyPipelineLayout(vkglobals.device, gameglobals.modelPipelineLayout, VK_NULL_HANDLE);
 
     vkDestroyPipeline(vkglobals.device, gameglobals.uberPipeline, VK_NULL_HANDLE);
     vkDestroyPipeline(vkglobals.device, gameglobals.compositionPipeline, VK_NULL_HANDLE);
     vkDestroyPipeline(vkglobals.device, gameglobals.ssaoBlurPipeline, VK_NULL_HANDLE);
     vkDestroyPipeline(vkglobals.device, gameglobals.ssaoPipeline, VK_NULL_HANDLE);
+    vkDestroyPipeline(vkglobals.device, gameglobals.skyboxPipeline, VK_NULL_HANDLE);
     vkDestroyPipeline(vkglobals.device, gameglobals.modelPipeline, VK_NULL_HANDLE);
 
     vkDestroyDescriptorSetLayout(vkglobals.device, gameglobals.modelDescriptorSetLayout, VK_NULL_HANDLE);
@@ -1579,6 +1657,7 @@ void gameQuit() {
     vkDestroyImageView(vkglobals.device, gameglobals.gbufferNormalView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, gameglobals.gbufferPositionView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, gameglobals.gbufferAlbedoView, VK_NULL_HANDLE);
+    vkDestroyImageView(vkglobals.device, gameglobals.skyboxCubemapView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, gameglobals.cubeTexturesView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, gameglobals.depthTextureView, VK_NULL_HANDLE);
     
@@ -1587,6 +1666,7 @@ void gameQuit() {
     vkDestroyImage(vkglobals.device, gameglobals.ssaoNoiseTexture, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, gameglobals.gbufferNormalAlbedo, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, gameglobals.gbufferPosition, VK_NULL_HANDLE);
+    vkDestroyImage(vkglobals.device, gameglobals.skyboxCubemap, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, gameglobals.cubeTextures, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, gameglobals.depthTexture, VK_NULL_HANDLE);
 
@@ -1598,7 +1678,7 @@ void gameQuit() {
 
     vkFreeMemory(vkglobals.device, gameglobals.hostVisibleUniformMemory, VK_NULL_HANDLE);
 
-    vkModelDestroyModel(&gameglobals.model);
+    vkModelDestroy(&gameglobals.model);
 
     vkFreeMemory(vkglobals.device, gameglobals.deviceLocalIndirectTransferDstMemory, VK_NULL_HANDLE);
     vkFreeMemory(vkglobals.device, gameglobals.deviceLocalIndexTransferDstMemory, VK_NULL_HANDLE);

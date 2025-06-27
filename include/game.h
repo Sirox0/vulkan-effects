@@ -49,6 +49,7 @@ typedef struct {
 
     VkImage depthTexture;
     VkImage cubeTextures;
+    VkImage skyboxCubemap;
     VkImage gbufferPosition;
     VkImage gbufferNormalAlbedo;
     VkImage ssaoNoiseTexture;
@@ -57,6 +58,7 @@ typedef struct {
 
     VkImageView depthTextureView;
     VkImageView cubeTexturesView;
+    VkImageView skyboxCubemapView;
     VkImageView gbufferPositionView;
     VkImageView gbufferNormalView;
     VkImageView gbufferAlbedoView;
@@ -80,6 +82,7 @@ typedef struct {
     
     VkDescriptorSet projectionMatrixdescriptorSet;
     VkDescriptorSet cubeDescriptorSet;
+    VkDescriptorSet skyboxCubemapDescriptorSet;
     VkDescriptorSet ssaoDataDescriptorSet;
     VkDescriptorSet gbufferDescriptorSet;
     VkDescriptorSet ssaoAttachmentDescriptorSet;
@@ -89,11 +92,13 @@ typedef struct {
 
     VkPipelineLayout sampledImagePipelineLayout;
     VkPipelineLayout modelPipelineLayout;
+    VkPipelineLayout skyboxPipelineLayout;
     VkPipelineLayout ssaoPipelineLayout;
     VkPipelineLayout compositionPipelineLayout;
     VkPipelineLayout uberPipelineLayout;
 
     VkPipeline modelPipeline;
+    VkPipeline skyboxPipeline;
     VkPipeline ssaoPipeline;
     VkPipeline ssaoBlurPipeline;
     VkPipeline compositionPipeline;

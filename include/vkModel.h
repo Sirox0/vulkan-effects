@@ -43,7 +43,7 @@ void vkModelGetTexturesInfo(const struct aiScene* scene, u32* pImagesSize, u32* 
 void vkModelGetSizes(const struct aiScene* scene, u32* pVertexSize, u32* pIndexSize, u32* pIndirectSize, u32* pStorageBufferMaterialsSize, u32* pStorageBufferMaterialIndicesSize);
 void vkModelCreate(const struct aiScene* scene, VkCommandBuffer tempCmdBuf, VkBuffer tempBuffer, VkDeviceSize tempBufferVertexOffset, VkDeviceSize tempBufferIndexOffset, VkDeviceSize tempBufferIndirectOffset, VkDeviceSize tempBufferStorageOffset, VkDeviceSize tempBufferTexturesOffset, VkDeviceSize storageBufferMaterialIndicesOffset, void* pTempBufferRaw, vk_model_t* pModel);
 void vkModelGetDescriptorWrites(vk_model_t* pModel, u32* pDescriptorBufferCount, VkDescriptorBufferInfo* pDescriptorBuffers, u32* pDescriptorImageCount, VkDescriptorImageInfo* pDescriptorImages, u32* pDescriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites);
-void vkModelDestroyModel(vk_model_t* pModel);
+void vkModelDestroy(vk_model_t* pModel);
 void vkModelUnloadScene(const struct aiScene* scene);
 
 #endif

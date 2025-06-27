@@ -31,7 +31,7 @@ void main() {
     light += ambientLightColor.rgb * ambientLightColor.a * texelFetch(occlusionMapBlurred, ivec2(uv * (textureSize(occlusionMapBlurred, 0) - 1)), 0).r;
 
     vec4 color = texelFetch(gbuffer[2], ivec2(gl_FragCoord.xy), 0);
-    color.rgb *= light;
+    color.rgb *= color.a > 0.0 ? light : vec3(1.0);
 
     outColor = color;
 }

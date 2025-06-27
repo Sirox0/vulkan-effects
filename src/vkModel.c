@@ -336,7 +336,7 @@ void vkModelGetDescriptorWrites(vk_model_t* pModel, u32* pDescriptorBufferCount,
     pDescriptorWrites[pModel->textureCount + 1].pBufferInfo = &pDescriptorBuffers[1];
 }
 
-void vkModelDestroyModel(vk_model_t* pModel) {
+void vkModelDestroy(vk_model_t* pModel) {
     for (u32 i = 0; i < pModel->textureCount; i++ ) {
         vkDestroyImage(vkglobals.device, pModel->textures[i], VK_NULL_HANDLE);
         vkDestroyImageView(vkglobals.device, pModel->views[i], VK_NULL_HANDLE);
