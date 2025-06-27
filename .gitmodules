@@ -1,6 +1,3 @@
-[submodule "external/cglm"]
-	path = external/cglm
-	url = https://github.com/recp/cglm
 [submodule "external/stb"]
 	path = external/stb
 	url = https://github.com/nothings/stb
@@ -13,3 +10,6 @@
 [submodule "external/ktx"]
 	path = external/ktx
 	url = https://github.com/KhronosGroup/KTX-Software
+[submodule "external/cglm"]
+	path = external/cglm
+	url = https://github.com/recp/cglm
