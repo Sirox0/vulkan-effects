@@ -160,7 +160,7 @@ VkPipelineCache loadPipelineCache(char* path) {
     cacheInfo.pInitialData = cacheData;
 
     VK_ASSERT(vkCreatePipelineCache(vkglobals.device, &cacheInfo, VK_NULL_HANDLE, &cache), "failed to create pipeline cache\n");
-    free(cacheData);
+    if (cacheData != NULL) free(cacheData);
     return cache;
 }
 
