@@ -134,7 +134,7 @@ void gameInit() {
         vkModelGetTexturesInfo(scene, &imagesSize, &imageCount, imageWidths, imageHeights);
 
         gameglobals.model.textures = (VkImage*)malloc((sizeof(VkImage) + sizeof(VkImageView)) * imageCount);
-        gameglobals.model.views = (VkImageView*)(gameglobals.model.textures + sizeof(VkImage) * imageCount);
+        gameglobals.model.views = (VkImageView*)(((void*)gameglobals.model.textures) + sizeof(VkImage) * imageCount);
         gameglobals.model.textureCount = imageCount;
 
         u32 vertexSize, indexSize, indirectSize, storageMaterialsSize, storageMaterialIndicesSize;
