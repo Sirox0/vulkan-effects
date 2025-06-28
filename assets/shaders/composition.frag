@@ -1,10 +1,12 @@
 #version 450
 
+#extension GL_EXT_samplerless_texture_functions : require
+
 layout(location = 0) in vec2 uv;
 
-layout(binding = 0, set = 0) uniform sampler2D gbuffer[3];
+layout(binding = 0, set = 0) uniform texture2D gbuffer[3];
 
-layout(binding = 0, set = 1) uniform sampler2D occlusionMapBlurred;
+layout(binding = 0, set = 1) uniform texture2D occlusionMapBlurred;
 
 layout(push_constant) uniform PC {
     vec3 viewLightPos;

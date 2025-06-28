@@ -1,5 +1,7 @@
 #version 450
 
+#extension GL_EXT_samplerless_texture_functions : require
+
 layout(constant_id = 0) const bool GRAIN_ENABLE = true;
 layout(constant_id = 1) const float GRAIN_INTESITY = 0.25;
 layout(constant_id = 2) const float GRAIN_SIGNAL_TO_NOISE = 4.0;
@@ -10,7 +12,7 @@ layout(constant_id = 5) const float DITHERING_TONE_COUNT = 32.0;
 
 layout(location = 0) in vec2 uv;
 
-layout(binding = 0) uniform sampler2D frame;
+layout(binding = 0) uniform texture2D frame;
 
 layout(push_constant) uniform PC {
     float time;

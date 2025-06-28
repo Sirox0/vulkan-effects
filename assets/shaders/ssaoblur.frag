@@ -1,8 +1,10 @@
 #version 450
 
+#extension GL_EXT_samplerless_texture_functions : require
+
 layout(constant_id = 0) const int SSAO_BLUR_SIZE = 4;
 
-layout(binding = 0) uniform sampler2D occlusionMap;
+layout(binding = 0) uniform texture2D occlusionMap;
 
 layout(location = 0) out float occlusionBlur;
 

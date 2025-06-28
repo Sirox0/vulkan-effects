@@ -1,5 +1,7 @@
 #version 450
 
+#extension GL_EXT_samplerless_texture_functions : require
+
 layout(constant_id = 0) const uint SSAO_KERNEL_SIZE = 12;
 layout(constant_id = 1) const float SSAO_RADIUS = 0.3;
 layout(constant_id = 2) const float SSAO_POWER = 4.0;
@@ -14,9 +16,9 @@ layout(binding = 0, set = 1) uniform SSAOKernel {
     vec4 kernelSamples[SSAO_KERNEL_SIZE];
 };
 
-layout(binding = 1, set = 1) uniform sampler2D ssaoNoise;
+layout(binding = 1, set = 1) uniform texture2D ssaoNoise;
 
-layout(binding = 0, set = 2) uniform sampler2D gbuffer[3];
+layout(binding = 0, set = 2) uniform texture2D gbuffer[3];
 
 layout(location = 0) out float outOcclusion;
 

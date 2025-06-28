@@ -78,6 +78,7 @@ typedef struct {
     VkDescriptorSetLayout ssaoDataDescriptorSetLayout;
     VkDescriptorSetLayout gbufferDescriptorSetLayout;
     VkDescriptorSetLayout sampledImageDescriptorSetLayout;
+    VkDescriptorSetLayout combinedImageSamplerDescriptorSetLayout;
     VkDescriptorSetLayout modelDescriptorSetLayout;
     
     VkDescriptorSet projectionMatrixdescriptorSet;
