@@ -2,12 +2,11 @@
 
 layout(location = 0) in vec3 pos;
 
-layout(binding = 0, set = 0) uniform Proj {
+layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
     mat4 projection;
 };
 
-layout(binding = 0, set = 1) uniform ModelView {
-    mat4 model;
+layout(binding = 1, set = 0) uniform UniformBufferViewMatrix {
     mat4 view;
 };
 

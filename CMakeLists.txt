@@ -22,13 +22,13 @@ set(SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/config.c
     ${CMAKE_CURRENT_LIST_DIR}/src/main.c
     ${CMAKE_CURRENT_LIST_DIR}/src/mathext.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/vkInit.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/vk.c
     ${CMAKE_CURRENT_LIST_DIR}/src/pipeline.c
     ${CMAKE_CURRENT_LIST_DIR}/src/temp.c
     ${CMAKE_CURRENT_LIST_DIR}/src/vkFunctions.c
     ${CMAKE_CURRENT_LIST_DIR}/src/util.c
     ${CMAKE_CURRENT_LIST_DIR}/src/vkModel.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/game.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/modelViewScene.c
     ${CMAKE_CURRENT_LIST_DIR}/src/stb_image.c
 )
 

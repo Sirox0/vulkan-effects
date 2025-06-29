@@ -9,10 +9,6 @@
 #include "vkModel.h"
 
 typedef struct {
-    u8 loopActive;
-    u32 deltaTime;
-    u32 time;
-
     struct {
         vec3 position;
         f32 pitch, yaw;
@@ -38,8 +34,10 @@ typedef struct {
 
     // host visible memory
     VkDeviceMemory hostVisibleUniformMemory;
+    VkDeviceMemory hostVisibleStorageMemory;
 
     void* hostVisibleUniformMemoryRaw;
+    void* hostVisibleStorageMemoryRaw;
 
 
     // device local resources
@@ -48,7 +46,6 @@ typedef struct {
     VkBuffer cubeVertexBuffer;
 
     VkImage depthTexture;
-    VkImage cubeTextures;
     VkImage skyboxCubemap;
     VkImage gbufferPosition;
     VkImage gbufferNormalAlbedo;
@@ -57,7 +54,6 @@ typedef struct {
     VkImage postProcessAttachment;
 
     VkImageView depthTextureView;
-    VkImageView cubeTexturesView;
     VkImageView skyboxCubemapView;
     VkImageView gbufferPositionView;
     VkImageView gbufferNormalView;
@@ -68,21 +64,21 @@ typedef struct {
     VkImageView postProcessAttachmentView;
 
     // host visible resources
-    VkBuffer modelUniformBuffer;
+    VkBuffer viewMatrixBuffer;
 
 
     VkDescriptorPool descriptorPool;
 
-    VkDescriptorSetLayout projectionMatrixdescriptorSetLayout;
-    VkDescriptorSetLayout cubeDescriptorSetLayout;
     VkDescriptorSetLayout ssaoDataDescriptorSetLayout;
     VkDescriptorSetLayout gbufferDescriptorSetLayout;
+    VkDescriptorSetLayout modelDescriptorSetLayout;
+
+    VkDescriptorSetLayout PVmatrixdescriptorSetLayout;
+    VkDescriptorSetLayout uniformDescriptorSetLayout;
     VkDescriptorSetLayout sampledImageDescriptorSetLayout;
     VkDescriptorSetLayout combinedImageSamplerDescriptorSetLayout;
-    VkDescriptorSetLayout modelDescriptorSetLayout;
     
-    VkDescriptorSet projectionMatrixdescriptorSet;
-    VkDescriptorSet cubeDescriptorSet;
+    VkDescriptorSet PVmatrixdescriptorSet;
     VkDescriptorSet skyboxCubemapDescriptorSet;
     VkDescriptorSet ssaoDataDescriptorSet;
     VkDescriptorSet gbufferDescriptorSet;
@@ -110,14 +106,12 @@ typedef struct {
     
     VkFence frameFence;
 
-    vk_model_t model;
-} game_globals_t;
+    VkModel_t model;
+} ModelViewSceneGlobals_t;
 
-void gameInit();
-void gameEvent(SDL_Event* e);
-void gameRender();
-void gameQuit();
-
-extern game_globals_t gameglobals;
+void modelViewSceneInit();
+void modelViewSceneEvent(SDL_Event* e);
+void modelViewSceneRender();
+void modelViewSceneQuit();
 
 #endif

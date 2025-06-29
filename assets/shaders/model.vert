@@ -7,13 +7,16 @@ layout(location = 1) in vec3 normal;
 layout(location = 2) in vec3 tangent;
 layout(location = 3) in vec2 uv;
 
-layout(binding = 0, set = 0) uniform P {
+layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
     mat4 projection;
 };
 
-layout(binding = 0, set = 1) uniform MV {
-    mat4 model;
+layout(binding = 1, set = 0) uniform UniformBufferViewMatrix {
     mat4 view;
+};
+
+layout(binding = 0, set = 1, std430) readonly buffer StorageBufferModelMatrix {
+    mat4 model;
 };
 
 struct material {
@@ -21,11 +24,11 @@ struct material {
     int normalMapIndex;
 };
 
-layout(binding = 0, set = 2, std430) readonly buffer StorageBufferMaterials {
+layout(binding = 1, set = 1, std430) readonly buffer StorageBufferMaterials {
     material mats[];
 };
 
-layout(binding = 1, set = 2, std430) readonly buffer StorageBufferMaterialIndicies {
+layout(binding = 2, set = 1, std430) readonly buffer StorageBufferMaterialIndicies {
     uint matIndices[];
 };
 

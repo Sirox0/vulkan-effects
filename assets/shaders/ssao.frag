@@ -8,8 +8,12 @@ layout(constant_id = 2) const float SSAO_POWER = 4.0;
 
 layout(location = 0) in vec2 uv;
 
-layout(binding = 0, set = 0) uniform P {
+layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
     mat4 projection;
+};
+
+layout(binding = 1, set = 0) uniform UniformBufferViewMatrix {
+    mat4 view;
 };
 
 layout(binding = 0, set = 1) uniform SSAOKernel {

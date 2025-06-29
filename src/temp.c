@@ -1,7 +1,7 @@
 #include <vulkan/vulkan.h>
 
 #include "numtypes.h"
-#include "vkInit.h"
+#include "vk.h"
 #include "vkFunctions.h"
 #include "util.h"
 

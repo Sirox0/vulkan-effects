@@ -6,8 +6,7 @@
 #include "numtypes.h"
 #include "mathext.h"
 #include "vkFunctions.h"
-#include "vkInit.h"
-#include "game.h"
+#include "vk.h"
 #include "util.h"
 
 void copyTempBufferToImage(VkCommandBuffer cmdBuffer, VkBuffer buffer, VkDeviceSize bufferOffset, VkImage image, u32 w, u32 h, u32 arrayLayers, u32 baseArrayLayer, VkImageLayout newLayout) {
@@ -65,13 +64,47 @@ void createBuffer(VkBuffer* pBuffer, VkBufferUsageFlags usage, VkDeviceSize size
     VK_ASSERT(vkCreateBuffer(vkglobals.device, &bufferInfo, VK_NULL_HANDLE, pBuffer), "failed to create buffer\n");
 }
 
-void allocateMemory(VkDeviceMemory* pMem, VkDeviceSize size, u32 memoryTypeIndex) {
+void vkAllocateMemoryCluster(VkMemoryAllocClusterInfo_t* info, VkDeviceMemory* pMem) {
+    VkMemoryRequirements memReqs[info->handleCount];
+    VkDeviceSize offsets[info->handleCount];
+    u32 memoryTypeFilter;
+
+    for (u32 i = 0; i < info->handleCount; i++) {
+        switch (info->handleType) {
+            case VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER:
+                vkGetBufferMemoryRequirements(vkglobals.device, ((const VkBuffer*)info->pHandles)[i], &memReqs[i]);
+                break;
+            case VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_IMAGE:
+                vkGetImageMemoryRequirements(vkglobals.device, ((const VkImage*)info->pHandles)[i], &memReqs[i]);
+                break;
+        }
+
+        if (i == 0) {
+            offsets[i] = 0;
+            memoryTypeFilter = memReqs[i].memoryTypeBits;
+        } else {
+            offsets[i] = offsets[i-1] + memReqs[i-1].size + getAlignCooficient(offsets[i-1] + memReqs[i-1].size, memReqs[i].alignment);
+            memoryTypeFilter &= memReqs[i].memoryTypeBits;
+        }
+    }
+
     VkMemoryAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = size;
-    allocInfo.memoryTypeIndex = memoryTypeIndex;
+    allocInfo.allocationSize = offsets[info->handleCount - 1] + memReqs[info->handleCount - 1].size;
+    allocInfo.memoryTypeIndex = getMemoryTypeIndex(memoryTypeFilter, info->memoryProperties);
 
     VK_ASSERT(vkAllocateMemory(vkglobals.device, &allocInfo, VK_NULL_HANDLE, pMem), "failed to allocate memory\n");
+
+    for (u32 i = 0; i < info->handleCount; i++) {
+        switch (info->handleType) {
+            case VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER:
+                VK_ASSERT(vkBindBufferMemory(vkglobals.device, ((const VkBuffer*)info->pHandles)[i], *pMem, offsets[i]), "failed to bind buffer memory\n");
+                break;
+            case VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_IMAGE:
+                VK_ASSERT(vkBindImageMemory(vkglobals.device, ((const VkImage*)info->pHandles)[i], *pMem,  offsets[i]), "failed to bind image memory\n");
+                break;
+        }
+    }
 }
 
 void createImage(VkImage* pImage, i32 w, i32 h, VkFormat textureFormat, u32 arrayLayers, VkImageUsageFlags usage, VkImageCreateFlags flags) {
@@ -186,16 +219,4 @@ VkDeviceSize getAlignCooficient(VkDeviceSize size, u32 alignment) {
 VkDeviceSize getAlignCooficientByTwo(VkDeviceSize size, u32 alignment1, u32 alignment2) {
     u32 alignFactor = lcm(alignment1, alignment2);
     return alignFactor - (size % alignFactor);
-}
-
-offset_size_t getAlignedMaxOffsetAndMinSize(VkDeviceSize unalignedOffset, VkDeviceSize size, u32 alignment) {
-    VkDeviceSize maxOffset = 0, newsize = 0;
-    do {
-        maxOffset += alignment;
-    } while (maxOffset < unalignedOffset);
-    maxOffset -= alignment;
-    do {
-        newsize += alignment;
-    } while (newsize < size);
-    return (offset_size_t){maxOffset, newsize};
 }

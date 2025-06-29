@@ -2,10 +2,10 @@
 
 #include "numtypes.h"
 #include "vkFunctions.h"
-#include "vkInit.h"
+#include "vk.h"
 #include "pipeline.h"
 
-void pipelineFillDefaultGraphicsPipeline(graphics_pipeline_info_t* pInfo) {
+void pipelineFillDefaultGraphicsPipeline(VkGraphicsPipelineInfo_t* pInfo) {
     pInfo->pNext = VK_NULL_HANDLE;
     pInfo->flags = 0;
     pInfo->stageCount = 0; // must be set by user
@@ -126,7 +126,7 @@ void pipelineFillDefaultGraphicsPipeline(graphics_pipeline_info_t* pInfo) {
     pInfo->basePipelineIndex = 0;
 }
 
-void pipelineFillDefaultComputePipeline(compute_pipeline_info_t* pInfo) {
+void pipelineFillDefaultComputePipeline(VkComputePipelineInfo_t* pInfo) {
     pInfo->pNext = VK_NULL_HANDLE;
     pInfo->flags = 0;
     pInfo->stage.pNext = VK_NULL_HANDLE;
@@ -141,7 +141,7 @@ void pipelineFillDefaultComputePipeline(compute_pipeline_info_t* pInfo) {
     pInfo->basePipelineIndex = 0;
 }
 
-void pipelineCreateComputePipelines(VkPipelineCache cache, u32 infoCount, compute_pipeline_info_t* pInfos, VkPipeline* pPipelines) {
+void pipelineCreateComputePipelines(VkPipelineCache cache, u32 infoCount, VkComputePipelineInfo_t* pInfos, VkPipeline* pPipelines) {
     VkComputePipelineCreateInfo createInfos[infoCount];
 
     for (u32 i = 0; i < infoCount; i++) {
@@ -157,7 +157,7 @@ void pipelineCreateComputePipelines(VkPipelineCache cache, u32 infoCount, comput
     VK_ASSERT(vkCreateComputePipelines(vkglobals.device, cache, infoCount, createInfos, VK_NULL_HANDLE, pPipelines), "failed to create compute pipelines\n");
 }
 
-void pipelineCreateGraphicsPipelines(VkPipelineCache cache, u32 infoCount, graphics_pipeline_info_t* pInfos, VkPipeline* pPipelines) {
+void pipelineCreateGraphicsPipelines(VkPipelineCache cache, u32 infoCount, VkGraphicsPipelineInfo_t* pInfos, VkPipeline* pPipelines) {
     VkGraphicsPipelineCreateInfo createInfos[infoCount];
 
     for (u32 i = 0; i < infoCount; i++) {

@@ -26,7 +26,7 @@ typedef struct {
     VkPipelineLayout layout;
     VkPipeline basePipelineHandle;
     i32 basePipelineIndex;
-} graphics_pipeline_info_t;
+} VkGraphicsPipelineInfo_t;
 
 typedef struct {
     void* pNext;
@@ -35,11 +35,11 @@ typedef struct {
     VkPipelineLayout layout;
     VkPipeline basePipelineHandle;
     i32 basePipelineIndex;
-} compute_pipeline_info_t;
+} VkComputePipelineInfo_t;
 
-void pipelineFillDefaultGraphicsPipeline(graphics_pipeline_info_t* pInfo);
-void pipelineFillDefaultComputePipeline(compute_pipeline_info_t* pInfo);
-void pipelineCreateComputePipelines(VkPipelineCache cache, u32 infoCount, compute_pipeline_info_t* pInfos, VkPipeline* pPipelines);
-void pipelineCreateGraphicsPipelines(VkPipelineCache cache, u32 infoCount, graphics_pipeline_info_t* pInfos, VkPipeline* pPipelines);
+void pipelineFillDefaultGraphicsPipeline(VkGraphicsPipelineInfo_t* pInfo);
+void pipelineFillDefaultComputePipeline(VkComputePipelineInfo_t* pInfo);
+void pipelineCreateComputePipelines(VkPipelineCache cache, u32 infoCount, VkComputePipelineInfo_t* pInfos, VkPipeline* pPipelines);
+void pipelineCreateGraphicsPipelines(VkPipelineCache cache, u32 infoCount, VkGraphicsPipelineInfo_t* pInfos, VkPipeline* pPipelines);
 
 #endif

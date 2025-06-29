@@ -2,7 +2,7 @@
 
 layout(location = 0) in vec3 uvw;
 
-layout(binding = 0, set = 2) uniform samplerCube skyboxCubemap;
+layout(binding = 0, set = 1) uniform samplerCube skyboxCubemap;
 
 layout(location = 0) out vec4 gbufferPosition;
 layout(location = 1) out vec4 gbufferNormal;

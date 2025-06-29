@@ -9,14 +9,12 @@
 
 #include "numtypes.h"
 #include "vkFunctions.h"
-#include "vkInit.h"
+#include "vk.h"
 #include "mathext.h"
-#include "pipeline.h"
 #include "util.h"
 #include "config.h"
-#include "game.h"
 
-vulkan_globals_t vkglobals = {};
+VulkanGlobals_t vkglobals = {};
 
 void vkInit() {
     loadVulkanLoaderFunctions();
@@ -342,10 +340,9 @@ void vkInit() {
     vkGetSwapchainImagesKHR(vkglobals.device, vkglobals.swapchain, &vkglobals.swapchainImageCount, VK_NULL_HANDLE);
 
     {
-        void* buf = malloc((sizeof(VkImage) + sizeof(VkImageView) + sizeof(VkSemaphore)) * vkglobals.swapchainImageCount);
+        void* buf = malloc((sizeof(VkImage) + sizeof(VkImageView)) * vkglobals.swapchainImageCount);
         vkglobals.swapchainImages = (VkImage*)buf;
         vkglobals.swapchainImageViews = (VkImageView*)(buf + sizeof(VkImage) * vkglobals.swapchainImageCount);
-        gameglobals.renderingDoneSemaphores = (VkSemaphore*)(buf + (sizeof(VkImage) + sizeof(VkImageView)) * vkglobals.swapchainImageCount);
 
         vkGetSwapchainImagesKHR(vkglobals.device, vkglobals.swapchain, &vkglobals.swapchainImageCount, vkglobals.swapchainImages);
 

@@ -5,9 +5,12 @@
 #include <time.h>
 
 #include "config.h"
-#include "vkInit.h"
+#include "vk.h"
 #include "vkFunctions.h"
-#include "game.h"
+#include "modelViewScene.h"
+#include "scene.h"
+
+scene_t curscene = {};
 
 int main(int argc, char** argv) {
     (void)argc;
@@ -29,26 +32,34 @@ int main(int argc, char** argv) {
     srand(time(NULL));
 
     vkInit();
-    gameInit();
+
+    curscene.globals = malloc(sizeof(ModelViewSceneGlobals_t));
+    curscene.init = modelViewSceneInit;
+    curscene.event = modelViewSceneEvent;
+    curscene.render = modelViewSceneRender;
+    curscene.quit = modelViewSceneQuit;
+
+    curscene.init();
 
     SDL_Event event;
-    while (gameglobals.loopActive) {
+    while (vkglobals.loopActive) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) {
-                gameglobals.loopActive = 0;
+                vkglobals.loopActive = 0;
                 break;
-            } else gameEvent(&event);
+            } else curscene.event(&event);
         }
 
-        gameglobals.time = SDL_GetTicks();
+        vkglobals.time = SDL_GetTicks();
 
-        gameRender();
+        curscene.render();
 
-        gameglobals.deltaTime = SDL_GetTicks() - gameglobals.time;
+        vkglobals.deltaTime = SDL_GetTicks() - vkglobals.time;
     }
 
     vkDeviceWaitIdle(vkglobals.device);
-    gameQuit();
+    curscene.quit();
+    free(curscene.globals);
     vkQuit();
 
     SDL_DestroyWindow(vkglobals.window);

@@ -10,13 +10,19 @@
 #include "numtypes.h"
 
 #define VK_ASSERT(expression, message) \
-    if (expression != VK_SUCCESS) { \
-        printf(message); \
-        exit(1); \
+    { \
+        VkResult err = expression; \
+        if (err != VK_SUCCESS) { \
+            printf(__FILE__ ":%d VkResult: %d. " message, __LINE__, err); \
+            exit(1); \
+        } \
     }
 
 typedef struct {
     SDL_Window* window;
+    u8 loopActive;
+    u32 deltaTime;
+    u32 time;
 
     VkFilter textureFilter;
 
@@ -40,7 +46,7 @@ typedef struct {
     VkImage* swapchainImages;
     VkImageView* swapchainImageViews;
     VkCommandBuffer cmdBuffer;
-} vulkan_globals_t;
+} VulkanGlobals_t;
 
 u32 getMemoryTypeIndex(u32 filter, VkMemoryPropertyFlags props);
 VkShaderModule createShaderModuleFromFile(char* path);
@@ -48,6 +54,6 @@ VkShaderModule createShaderModuleFromFile(char* path);
 void vkInit();
 void vkQuit();
 
-extern vulkan_globals_t vkglobals;
+extern VulkanGlobals_t vkglobals;
 
 #endif

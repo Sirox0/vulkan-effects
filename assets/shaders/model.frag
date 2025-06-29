@@ -8,9 +8,7 @@ layout(location = 2) in vec3 tangent;
 layout(location = 3) in vec2 uv;
 layout(location = 4) in flat int textureIndex;
 
-layout(binding = 1, set = 1) uniform sampler2DArray textures;
-
-layout(binding = 2, set = 2) uniform sampler2D textures2[];
+layout(binding = 3, set = 1) uniform sampler2D textures[];
 
 layout(location = 0) out vec4 gbufferPosition;
 layout(location = 1) out vec4 gbufferNormal;
@@ -20,7 +18,7 @@ void main() {
     gbufferPosition = vec4(pos, 1.0);
     gbufferNormal = vec4(normalize(normal) * 0.5 + 0.5, 1.0);
     if (textureIndex >= 0) {
-        gbufferAlbedo = texture(textures2[textureIndex], uv);
+        gbufferAlbedo = texture(textures[textureIndex], uv);
     } else {
         gbufferAlbedo = vec4(1.0);
     }
