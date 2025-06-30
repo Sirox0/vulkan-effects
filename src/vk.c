@@ -271,29 +271,6 @@ void vkInit() {
 
     vkGetDeviceQueue(vkglobals.device, vkglobals.queueFamilyIndex, 0, &vkglobals.queue);
 
-    {
-        VkCommandPoolCreateInfo commandPoolInfo = {};
-        commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        commandPoolInfo.queueFamilyIndex = vkglobals.queueFamilyIndex;
-
-        VK_ASSERT(vkCreateCommandPool(vkglobals.device, &commandPoolInfo, VK_NULL_HANDLE, &vkglobals.commandPool), "failed to create command pool\n");
-
-        commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-
-        VK_ASSERT(vkCreateCommandPool(vkglobals.device, &commandPoolInfo, VK_NULL_HANDLE, &vkglobals.shortCommandPool), "failed to create command pool\n");
-    }
-
-    {
-        VkCommandBufferAllocateInfo cmdBufferInfo = {};
-        cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        cmdBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        cmdBufferInfo.commandBufferCount = 1;
-        cmdBufferInfo.commandPool = vkglobals.commandPool;
-
-        VK_ASSERT(vkAllocateCommandBuffers(vkglobals.device, &cmdBufferInfo, &vkglobals.cmdBuffer), "failed to allocate command buffer\n");
-    }
-
     // 0xFFFFFFFF means that the extent is defined by the swapchain
     if (vkglobals.surfaceCapabilities.currentExtent.width != 0xFFFFFFFF) {
         vkglobals.swapchainExtent = vkglobals.surfaceCapabilities.currentExtent;
@@ -337,29 +314,13 @@ void vkInit() {
         VK_ASSERT(vkCreateSwapchainKHR(vkglobals.device, &swapchainInfo, VK_NULL_HANDLE, &vkglobals.swapchain), "failed to create swapchain\n");
     }
 
-    vkGetSwapchainImagesKHR(vkglobals.device, vkglobals.swapchain, &vkglobals.swapchainImageCount, VK_NULL_HANDLE);
-
-    {
-        void* buf = malloc((sizeof(VkImage) + sizeof(VkImageView)) * vkglobals.swapchainImageCount);
-        vkglobals.swapchainImages = (VkImage*)buf;
-        vkglobals.swapchainImageViews = (VkImageView*)(buf + sizeof(VkImage) * vkglobals.swapchainImageCount);
-
-        vkGetSwapchainImagesKHR(vkglobals.device, vkglobals.swapchain, &vkglobals.swapchainImageCount, vkglobals.swapchainImages);
-
-        for (u32 i = 0; i < vkglobals.swapchainImageCount; i++) {
-            createImageView(&vkglobals.swapchainImageViews[i], vkglobals.swapchainImages[i], VK_IMAGE_VIEW_TYPE_2D, vkglobals.surfaceFormat.format, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
-        }
-    }
+    vkglobals.loopActive = 1;
+    vkglobals.deltaTime = 0;
+    vkglobals.time = 0;
 }
 
 void vkQuit() {
-    for (u32 i = 0; i < vkglobals.swapchainImageCount; i++) {
-        vkDestroyImageView(vkglobals.device, vkglobals.swapchainImageViews[i], VK_NULL_HANDLE);
-    }
-    free(vkglobals.swapchainImages);
     vkDestroySwapchainKHR(vkglobals.device, vkglobals.swapchain, VK_NULL_HANDLE);
-    vkDestroyCommandPool(vkglobals.device, vkglobals.shortCommandPool, VK_NULL_HANDLE);
-    vkDestroyCommandPool(vkglobals.device, vkglobals.commandPool, VK_NULL_HANDLE);
     vkDestroyDevice(vkglobals.device, VK_NULL_HANDLE);
     SDL_Vulkan_DestroySurface(vkglobals.instance, vkglobals.surface, VK_NULL_HANDLE);
     vkDestroyInstance(vkglobals.instance, VK_NULL_HANDLE);

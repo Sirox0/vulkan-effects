@@ -257,6 +257,7 @@ void vkModelCreate(const struct aiScene* scene, const char* modelDirPath, VkComm
     vkModelProcessNode(scene, scene->mRootNode, tempBufferVertexOffset, tempBufferIndexOffset, tempBufferIndirectOffset, tempBufferStorageOffset, pTempBufferRaw, &curVertexCount, &curIndexCount, &curIndirectCount, &curStorageOffset);
 
     pModel->drawCount = curIndirectCount;
+    pModel->textureCount = curImageCount;
 
     VkBufferCopy copyInfo[5] = {};
     copyInfo[0].srcOffset = tempBufferVertexOffset;
@@ -297,10 +298,10 @@ void vkModelGetDescriptorWrites(VkModel_t* pModel, VkSampler sampler, u32* pDesc
 
     pDescriptorBuffers[1].buffer = pModel->storageBuffer;
     pDescriptorBuffers[1].offset = 0;
-    pDescriptorBuffers[1].range = pModel->storageBufferMaterialsSize;
+    pDescriptorBuffers[1].range = pModel->materialsSize;
 
     pDescriptorBuffers[2].buffer = pModel->storageBuffer;
-    pDescriptorBuffers[2].offset = pModel->storageBufferMaterialIndicesOffset;
+    pDescriptorBuffers[2].offset = pModel->materialIndicesOffset;
     pDescriptorBuffers[2].range = VK_WHOLE_SIZE;
 
     for (u32 i = 0; i < pModel->textureCount; i++) {

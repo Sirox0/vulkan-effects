@@ -24,8 +24,8 @@ typedef struct {
     u32 drawCount;
 
     VkBuffer storageBuffer;
-    VkDeviceSize storageBufferMaterialsSize;
-    VkDeviceSize storageBufferMaterialIndicesOffset;
+    VkDeviceSize materialsSize;
+    VkDeviceSize materialIndicesOffset;
 
     VkBuffer hostVisibleStorageBuffer;
 
@@ -42,8 +42,8 @@ void vkModelAttachLogStream();
 void vkModelDetachLogStream();
 const struct aiScene* vkModelLoadScene(const char* path);
 void vkModelGetTexturesInfo(const struct aiScene* scene, const char* modelDirPath, u32* pImagesSize, u32* pImageCount, u32* pImageWidths, u32* pImageHeights);
-void vkModelGetSizes(const struct aiScene* scene, u32* pVertexSize, u32* pIndexSize, u32* pIndirectSize, u32* pStorageBufferMaterialsSize, u32* pStorageBufferMaterialIndicesSize);
-void vkModelCreate(const struct aiScene* scene, const char* modelDirPath, VkCommandBuffer tempCmdBuf, VkBuffer tempBuffer, VkDeviceSize tempBufferVertexOffset, VkDeviceSize tempBufferIndexOffset, VkDeviceSize tempBufferIndirectOffset, VkDeviceSize tempBufferStorageOffset, VkDeviceSize tempBufferTexturesOffset, VkDeviceSize storageBufferMaterialIndicesOffset, void* pTempBufferRaw, VkModel_t* pModel);
+void vkModelGetSizes(const struct aiScene* scene, u32* pVertexSize, u32* pIndexSize, u32* pIndirectSize, u32* pmaterialsSize, u32* pStorageBufferMaterialIndicesSize);
+void vkModelCreate(const struct aiScene* scene, const char* modelDirPath, VkCommandBuffer tempCmdBuf, VkBuffer tempBuffer, VkDeviceSize tempBufferVertexOffset, VkDeviceSize tempBufferIndexOffset, VkDeviceSize tempBufferIndirectOffset, VkDeviceSize tempBufferStorageOffset, VkDeviceSize tempBufferTexturesOffset, VkDeviceSize materialIndicesOffset, void* pTempBufferRaw, VkModel_t* pModel);
 void vkModelGetDescriptorWrites(VkModel_t* pModel, VkSampler sampler, u32* pDescriptorBufferCount, VkDescriptorBufferInfo* pDescriptorBuffers, u32* pDescriptorImageCount, VkDescriptorImageInfo* pDescriptorImages, u32* pDescriptorWriteCount, VkWriteDescriptorSet* pDescriptorWrites);
 void vkModelDestroy(VkModel_t* pModel);
 void vkModelUnloadScene(const struct aiScene* scene);

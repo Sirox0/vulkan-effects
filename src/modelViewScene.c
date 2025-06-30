@@ -24,18 +24,49 @@
 
 #define globals ((ModelViewSceneGlobals_t*)curscene.globals)
 
-#define TEMP_CMD_BUFFER_NUM 1
-#define TEMP_BUFFER_NUM 1
-#define TEMP_BUFFER_MEMORY_NUM 1
-#define TEMP_FENCE_NUM 1
-
 void modelViewSceneInit() {
-    VkCommandBuffer tempCmdBuffers[TEMP_CMD_BUFFER_NUM];
-    VkBuffer tempBuffers[TEMP_BUFFER_NUM];
-    VkDeviceMemory tempBuffersMemory[TEMP_BUFFER_MEMORY_NUM];
-    VkFence tempFences[TEMP_FENCE_NUM];
+    {
+        VkCommandPoolCreateInfo commandPoolInfo = {};
+        commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        commandPoolInfo.queueFamilyIndex = vkglobals.queueFamilyIndex;
 
-    tempResourcesCreate(TEMP_CMD_BUFFER_NUM, tempCmdBuffers, TEMP_FENCE_NUM, tempFences);
+        VK_ASSERT(vkCreateCommandPool(vkglobals.device, &commandPoolInfo, VK_NULL_HANDLE, &vkglobals.commandPool), "failed to create command pool\n");
+
+        commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+
+        VK_ASSERT(vkCreateCommandPool(vkglobals.device, &commandPoolInfo, VK_NULL_HANDLE, &vkglobals.shortCommandPool), "failed to create command pool\n");
+    }
+
+    VkCommandBuffer tempCmdBuffer;
+    VkBuffer tempBuffer;
+    VkDeviceMemory tempBufferMemory;
+    VkFence tempFence;
+
+    tempResourcesCreate(1, &tempCmdBuffer, 1, &tempFence);
+
+    {
+        VkCommandBufferAllocateInfo cmdBufferInfo = {};
+        cmdBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cmdBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cmdBufferInfo.commandBufferCount = 1;
+        cmdBufferInfo.commandPool = vkglobals.commandPool;
+
+        VK_ASSERT(vkAllocateCommandBuffers(vkglobals.device, &cmdBufferInfo, &vkglobals.cmdBuffer), "failed to allocate command buffer\n");
+    }
+
+    {
+        vkGetSwapchainImagesKHR(vkglobals.device, vkglobals.swapchain, &globals->swapchainImageCount, VK_NULL_HANDLE);
+
+        globals->swapchainImages = (VkImage*)malloc((sizeof(VkImage) + sizeof(VkImageView)) * globals->swapchainImageCount);
+        globals->swapchainImageViews = (VkImageView*)(((void*)globals->swapchainImages) + sizeof(VkImage) * globals->swapchainImageCount);
+
+        vkGetSwapchainImagesKHR(vkglobals.device, vkglobals.swapchain, &globals->swapchainImageCount, globals->swapchainImages);
+
+        for (u32 i = 0; i < globals->swapchainImageCount; i++) {
+            createImageView(&globals->swapchainImageViews[i], globals->swapchainImages[i], VK_IMAGE_VIEW_TYPE_2D, vkglobals.surfaceFormat.format, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+        }
+    }
 
     {
         #define DEPTH_FORMAT_COUNT 3
@@ -58,7 +89,7 @@ void modelViewSceneInit() {
     {
         struct {
             vec3 pos;
-        } vertexbuf[] = {
+        } skyboxVertexbuf[] = {
              // left face
             {{-1000.0f, -1000.0f, -1000.0f}},
             {{-1000.0f, 1000.0f, 1000.0f}},
@@ -123,15 +154,40 @@ void modelViewSceneInit() {
 
         globals->model.textures = (VkImage*)malloc((sizeof(VkImage) + sizeof(VkImageView)) * imageCount);
         globals->model.views = (VkImageView*)(((void*)globals->model.textures) + sizeof(VkImage) * imageCount);
-        globals->model.textureCount = imageCount;
 
         u32 vertexSize, indexSize, indirectSize, storageMaterialsSize, storageMaterialIndicesSize;
         vkModelGetSizes(scene, &vertexSize, &indexSize, &indirectSize, &storageMaterialsSize, &storageMaterialIndicesSize);
 
-        {
-            {
-                createImage(&globals->depthTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, globals->depthTextureFormat, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 0);
+        globals->model.materialsSize = storageMaterialsSize;
+        globals->model.materialIndicesOffset = storageMaterialsSize + getAlignCooficient(storageMaterialsSize, vkglobals.deviceProperties.limits.minStorageBufferOffsetAlignment);
 
+        {
+            // device-local resources
+            createImage(&globals->depthTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, globals->depthTextureFormat, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 0);
+
+            createImage(&globals->ssaoNoiseTexture, config.ssaoNoiseDim, config.ssaoNoiseDim, VK_FORMAT_R32G32B32A32_SFLOAT, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
+            createImage(&globals->skyboxCubemap, skyboxTexture->baseWidth, skyboxTexture->baseHeight, VK_FORMAT_R8G8B8A8_UNORM, 6, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+            for (u32 i = 0; i < imageCount; i++)
+                createImage(&globals->model.textures[i], imageWidths[i], imageHeights[i], VK_FORMAT_R8G8B8A8_UNORM, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
+            
+            createBuffer(&globals->projectionMatrixBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(mat4));
+            createBuffer(&globals->ssaoKernelBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, config.ssaoKernelSize * sizeof(vec4));
+
+            createBuffer(&globals->model.storageBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, globals->model.materialIndicesOffset + storageMaterialIndicesSize);
+
+            createBuffer(&globals->skyboxVertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(skyboxVertexbuf));
+            createBuffer(&globals->model.vertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, vertexSize);
+
+            createBuffer(&globals->model.indexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, indexSize);
+
+            createBuffer(&globals->model.indirectBuffer, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, indirectSize);
+            
+            createImage(&globals->gbufferPosition, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&globals->gbufferNormalAlbedo, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 2, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&globals->ssaoAttachment, vkglobals.swapchainExtent.width / config.ssaoResolutionFactor, vkglobals.swapchainExtent.height / config.ssaoResolutionFactor, VK_FORMAT_R8_UNORM, 2, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&globals->postProcessAttachment, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+
+            {
                 VkMemoryAllocClusterInfo_t allocInfo = {};
                 allocInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_IMAGE;
@@ -140,14 +196,8 @@ void modelViewSceneInit() {
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalDepthStencilAttachmentMemory);
             }
-
+            
             {
-                createImage(&globals->ssaoNoiseTexture, config.ssaoNoiseDim, config.ssaoNoiseDim, VK_FORMAT_R32G32B32A32_SFLOAT, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
-                createImage(&globals->skyboxCubemap, skyboxTexture->baseWidth, skyboxTexture->baseHeight, VK_FORMAT_R8G8B8A8_UNORM, 6, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
-
-                for (u32 i = 0; i < imageCount; i++)
-                    createImage(&globals->model.textures[i], imageWidths[i], imageHeights[i], VK_FORMAT_R8G8B8A8_UNORM, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
-                
                 VkImage images[2 + imageCount];
                 images[0] = globals->ssaoNoiseTexture;
                 images[1] = globals->skyboxCubemap;
@@ -163,9 +213,6 @@ void modelViewSceneInit() {
             }
 
             {
-                createBuffer(&globals->projectionMatrixBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(mat4));
-                createBuffer(&globals->ssaoKernelBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, config.ssaoKernelSize * sizeof(vec4));
-
                 VkMemoryAllocClusterInfo_t allocInfo = {};
                 allocInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
@@ -176,11 +223,6 @@ void modelViewSceneInit() {
             }
 
             {
-                globals->model.storageBufferMaterialsSize = storageMaterialsSize;
-                globals->model.storageBufferMaterialIndicesOffset = storageMaterialsSize + getAlignCooficient(storageMaterialsSize, vkglobals.deviceProperties.limits.minStorageBufferOffsetAlignment);
-
-                createBuffer(&globals->model.storageBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, globals->model.storageBufferMaterialIndicesOffset + storageMaterialIndicesSize);
-
                 VkMemoryAllocClusterInfo_t allocInfo = {};
                 allocInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
@@ -191,21 +233,16 @@ void modelViewSceneInit() {
             }
 
             {
-                createBuffer(&globals->cubeVertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(vertexbuf));
-                createBuffer(&globals->model.vertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, vertexSize);
-
                 VkMemoryAllocClusterInfo_t allocInfo = {};
                 allocInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
                 allocInfo.handleCount = 2;
-                allocInfo.pHandles = (VkBuffer[]){globals->cubeVertexBuffer, globals->model.vertexBuffer};
+                allocInfo.pHandles = (VkBuffer[]){globals->skyboxVertexBuffer, globals->model.vertexBuffer};
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalVertexTransferDstMemory);
             }
 
             {
-                createBuffer(&globals->model.indexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, indexSize);
-
                 VkMemoryAllocClusterInfo_t allocInfo = {};
                 allocInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
@@ -216,8 +253,6 @@ void modelViewSceneInit() {
             }
 
             {
-                createBuffer(&globals->model.indirectBuffer, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, indirectSize);
-
                 VkMemoryAllocClusterInfo_t allocInfo = {};
                 allocInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
@@ -226,29 +261,79 @@ void modelViewSceneInit() {
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalIndirectTransferDstMemory);
             }
+
+            {
+                VkMemoryAllocClusterInfo_t allocInfo = {};
+                allocInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+                allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_IMAGE;
+                allocInfo.handleCount = 4;
+                allocInfo.pHandles = (VkImage[]){globals->gbufferPosition, globals->gbufferNormalAlbedo, globals->ssaoAttachment, globals->postProcessAttachment};
+
+                vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalColorAttachmentSampledMemory);
+            }
+
+
+
+            // host-visible resources
+            createBuffer(&globals->viewMatrixBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(mat4));
+
+            {
+                VkMemoryAllocClusterInfo_t allocInfo = {};
+                allocInfo.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+                allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
+                allocInfo.handleCount = 1;
+                allocInfo.pHandles = (VkBuffer[]){globals->viewMatrixBuffer};
+
+                vkAllocateMemoryCluster(&allocInfo, &globals->hostVisibleUniformMemory);
+
+                VK_ASSERT(vkMapMemory(vkglobals.device, globals->hostVisibleUniformMemory, 0, VK_WHOLE_SIZE, 0, &globals->hostVisibleUniformMemoryRaw), "failed to map memory\n");
+            }
+
+            createBuffer(&globals->model.hostVisibleStorageBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, sizeof(mat4));
+
+            {
+                VkMemoryAllocClusterInfo_t allocInfo = {};
+                allocInfo.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+                allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
+                allocInfo.handleCount = 1;
+                allocInfo.pHandles = (VkBuffer[]){globals->model.hostVisibleStorageBuffer};
+
+                vkAllocateMemoryCluster(&allocInfo, &globals->hostVisibleStorageMemory);
+
+                VK_ASSERT(vkMapMemory(vkglobals.device, globals->hostVisibleStorageMemory, 0, VK_WHOLE_SIZE, 0, &globals->hostVisibleStorageMemoryRaw), "failed to map memory\n");
+            }
+
+
+
+            // temporary resources
+            createBuffer(&tempBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, sizeof(skyboxVertexbuf) +
+                config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) + vertexSize + indexSize + indirectSize + globals->model.materialsSize + storageMaterialIndicesSize + imagesSize + skyboxTextureSize);
+            
+            {
+                VkMemoryAllocClusterInfo_t allocInfo = {};
+                allocInfo.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+                allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
+                allocInfo.handleCount = 1;
+                allocInfo.pHandles = &tempBuffer;
+
+                vkAllocateMemoryCluster(&allocInfo, &tempBufferMemory);
+            }
         }
 
         {
-            createBuffer(&tempBuffers[0], VK_BUFFER_USAGE_TRANSFER_SRC_BIT, sizeof(vertexbuf) +
-                config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) + vertexSize + indexSize + indirectSize + globals->model.storageBufferMaterialsSize + storageMaterialIndicesSize + imagesSize + skyboxTextureSize);
-
-            VkMemoryAllocClusterInfo_t allocInfo = {};
-            allocInfo.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-            allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
-            allocInfo.handleCount = 1;
-            allocInfo.pHandles = &tempBuffers[0];
-
-            vkAllocateMemoryCluster(&allocInfo, &tempBuffersMemory[0]);
-
-            void* tempBufferMemRaw;
-            VK_ASSERT(vkMapMemory(vkglobals.device, tempBuffersMemory[0], 0, VK_WHOLE_SIZE, 0, &tempBufferMemRaw), "failed to map memory\n");
+            #define tempBufferMemRawSSAOoffset (sizeof(skyboxVertexbuf))
+            #define tempBufferMemRawProjectionMatrixoffset (tempBufferMemRawSSAOoffset + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4))
+            #define tempBufferMemRawModeloffset (tempBufferMemRawProjectionMatrixoffset + sizeof(mat4))
+            #define tempBufferMemRawSkyboxCubemapoffset (tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize + globals->model.materialsSize + storageMaterialIndicesSize + imagesSize)
 
             {
-                memcpy(tempBufferMemRaw, vertexbuf, sizeof(vertexbuf));
+                void* tempBufferMemRaw;
+                VK_ASSERT(vkMapMemory(vkglobals.device, tempBufferMemory, 0, VK_WHOLE_SIZE, 0, &tempBufferMemRaw), "failed to map memory\n");
 
-                #define tempBufferMemRawWithSSAOoffset (tempBufferMemRaw + sizeof(vertexbuf))
+                memcpy(tempBufferMemRaw, skyboxVertexbuf, sizeof(skyboxVertexbuf));
+
                 for (u32 i = 0; i < config.ssaoNoiseDim * config.ssaoNoiseDim; i++) {
-                    glm_vec4_copy((vec4){randFloat() * 2.0f - 1.0f, randFloat() * 2.0f - 1.0f, 0.0f, 0.0f}, tempBufferMemRawWithSSAOoffset + i * sizeof(vec4));
+                    glm_vec4_copy((vec4){randFloat() * 2.0f - 1.0f, randFloat() * 2.0f - 1.0f, 0.0f, 0.0f}, tempBufferMemRaw + tempBufferMemRawSSAOoffset + i * sizeof(vec4));
                 }
 
                 for (u32 i = 0; i < config.ssaoKernelSize; i++) {
@@ -259,60 +344,58 @@ void modelViewSceneInit() {
                     f32 scale = (f32)i / config.ssaoKernelSize;
                     scale = lerpf(0.1f, 1.0f, scale * scale);
                     glm_vec3_scale(sample, scale, sample);
-                    glm_vec4_copy((vec4){sample[0], sample[1], sample[2], 0.0f}, tempBufferMemRawWithSSAOoffset + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + i * sizeof(vec4));
+                    glm_vec4_copy((vec4){sample[0], sample[1], sample[2], 0.0f}, tempBufferMemRaw + tempBufferMemRawSSAOoffset + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + i * sizeof(vec4));
                 }
 
                 // use reverse depth
-                glm_perspective(glm_rad(config.fov), (f32)vkglobals.swapchainExtent.width / vkglobals.swapchainExtent.height, config.farPlane, config.nearPlane, tempBufferMemRawWithSSAOoffset + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4));
+                glm_perspective(glm_rad(config.fov), (f32)vkglobals.swapchainExtent.width / vkglobals.swapchainExtent.height, config.farPlane, config.nearPlane, tempBufferMemRaw + tempBufferMemRawProjectionMatrixoffset);
 
-                vkModelCreate(scene, config.modelDirectoryPath, tempCmdBuffers[0], tempBuffers[0], 
-                    sizeof(vertexbuf) + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4),
-                    sizeof(vertexbuf) + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) + vertexSize,
-                    sizeof(vertexbuf) + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) + vertexSize + indexSize,
-                    sizeof(vertexbuf) + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) + vertexSize + indexSize + indirectSize,
-                    sizeof(vertexbuf) + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) + vertexSize + indexSize + indirectSize + globals->model.storageBufferMaterialsSize + storageMaterialIndicesSize,
-                    globals->model.storageBufferMaterialIndicesOffset,
+                vkModelCreate(scene, config.modelDirectoryPath, tempCmdBuffer, tempBuffer, 
+                    tempBufferMemRawModeloffset,
+                    tempBufferMemRawModeloffset + vertexSize,
+                    tempBufferMemRawModeloffset + vertexSize + indexSize,
+                    tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize,
+                    tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize + globals->model.materialsSize + storageMaterialIndicesSize,
+                    globals->model.materialIndicesOffset,
                     tempBufferMemRaw, &globals->model
                 );
 
-                memcpy(tempBufferMemRawWithSSAOoffset + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) + vertexSize + indexSize + indirectSize + globals->model.storageBufferMaterialsSize + storageMaterialIndicesSize + imagesSize,
-                    ktxTexture_GetData(skyboxTexture), skyboxTextureSize);
+                memcpy(tempBufferMemRaw + tempBufferMemRawSkyboxCubemapoffset, ktxTexture_GetData(skyboxTexture), skyboxTextureSize);
 
                 VkMappedMemoryRange memoryRange = {};
                 memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
                 memoryRange.offset = 0;
                 memoryRange.size = VK_WHOLE_SIZE;
-                memoryRange.memory = tempBuffersMemory[0];
+                memoryRange.memory = tempBufferMemory;
 
                 VK_ASSERT(vkFlushMappedMemoryRanges(vkglobals.device, 1, &memoryRange), "failed to flush device memory\n");
             }
             
-            vkUnmapMemory(vkglobals.device, tempBuffersMemory[0]);
+            vkUnmapMemory(vkglobals.device, tempBufferMemory);
 
             {
                 VkBufferCopy copyInfo[3] = {};
                 copyInfo[0].srcOffset = 0;
                 copyInfo[0].dstOffset = 0;
-                copyInfo[0].size = sizeof(vertexbuf);
+                copyInfo[0].size = sizeof(skyboxVertexbuf);
 
-                copyInfo[1].srcOffset = sizeof(vertexbuf) + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4);
+                copyInfo[1].srcOffset = tempBufferMemRawSSAOoffset + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4);
                 copyInfo[1].dstOffset = 0;
                 copyInfo[1].size = config.ssaoKernelSize * sizeof(vec4);
 
-                copyInfo[2].srcOffset = sizeof(vertexbuf) + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4);
+                copyInfo[2].srcOffset = tempBufferMemRawProjectionMatrixoffset;
                 copyInfo[2].dstOffset = 0;
                 copyInfo[2].size = sizeof(mat4);
 
-                vkCmdCopyBuffer(tempCmdBuffers[0], tempBuffers[0], globals->cubeVertexBuffer, 1, &copyInfo[0]);
-                vkCmdCopyBuffer(tempCmdBuffers[0], tempBuffers[0], globals->ssaoKernelBuffer, 1, &copyInfo[1]);
-                vkCmdCopyBuffer(tempCmdBuffers[0], tempBuffers[0], globals->projectionMatrixBuffer, 1, &copyInfo[2]);
+                vkCmdCopyBuffer(tempCmdBuffer, tempBuffer, globals->skyboxVertexBuffer, 1, &copyInfo[0]);
+                vkCmdCopyBuffer(tempCmdBuffer, tempBuffer, globals->ssaoKernelBuffer, 1, &copyInfo[1]);
+                vkCmdCopyBuffer(tempCmdBuffer, tempBuffer, globals->projectionMatrixBuffer, 1, &copyInfo[2]);
 
-                copyTempBufferToImage(tempCmdBuffers[0], tempBuffers[0],
-                    sizeof(vertexbuf),
+                copyTempBufferToImage(tempCmdBuffer, tempBuffer, tempBufferMemRawSSAOoffset,
                     globals->ssaoNoiseTexture, config.ssaoNoiseDim, config.ssaoNoiseDim, 1, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                 );
-                copyTempBufferToImage(tempCmdBuffers[0], tempBuffers[0],
-                    sizeof(vertexbuf) + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) + vertexSize + indexSize + indirectSize + globals->model.storageBufferMaterialsSize + storageMaterialIndicesSize + imagesSize,
+                copyTempBufferToImage(tempCmdBuffer, tempBuffer,
+                    tempBufferMemRawSkyboxCubemapoffset,
                     globals->skyboxCubemap, skyboxTexture->baseWidth, skyboxTexture->baseHeight, 6, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                 );
             }
@@ -338,33 +421,18 @@ void modelViewSceneInit() {
         imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-        vkCmdPipelineBarrier(tempCmdBuffers[0], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &imageBarrier);
+        vkCmdPipelineBarrier(tempCmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &imageBarrier);
     }
 
     {
-        VK_ASSERT(vkEndCommandBuffer(tempCmdBuffers[0]), "failed to end command buffer\n");
+        VK_ASSERT(vkEndCommandBuffer(tempCmdBuffer), "failed to end command buffer\n");
 
         VkSubmitInfo submitInfo = {};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &tempCmdBuffers[0];
+        submitInfo.pCommandBuffers = &tempCmdBuffer;
 
-        VK_ASSERT(vkQueueSubmit(vkglobals.queue, 1, &submitInfo, tempFences[0]), "failed to submit command buffer\n");
-    }
-
-    {
-        createImage(&globals->gbufferPosition, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
-        createImage(&globals->gbufferNormalAlbedo, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 2, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
-        createImage(&globals->ssaoAttachment, vkglobals.swapchainExtent.width / config.ssaoResolutionFactor, vkglobals.swapchainExtent.height / config.ssaoResolutionFactor, VK_FORMAT_R8_UNORM, 2, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
-        createImage(&globals->postProcessAttachment, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
-
-        VkMemoryAllocClusterInfo_t allocInfo = {};
-        allocInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_IMAGE;
-        allocInfo.handleCount = 4;
-        allocInfo.pHandles = (VkImage[]){globals->gbufferPosition, globals->gbufferNormalAlbedo, globals->ssaoAttachment, globals->postProcessAttachment};
-
-        vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalColorAttachmentSampledMemory);
+        VK_ASSERT(vkQueueSubmit(vkglobals.queue, 1, &submitInfo, tempFence), "failed to submit command buffer\n");
     }
 
     createImageView(&globals->depthTextureView, globals->depthTexture, VK_IMAGE_VIEW_TYPE_2D, globals->depthTextureFormat, 1, 0, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
@@ -397,36 +465,6 @@ void modelViewSceneInit() {
         samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
         VK_ASSERT(vkCreateSampler(vkglobals.device, &samplerInfo, VK_NULL_HANDLE, &globals->sampler), "failed to create sampler\n");
-    }
-
-    {
-        {
-            createBuffer(&globals->viewMatrixBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(mat4));
-
-            VkMemoryAllocClusterInfo_t allocInfo = {};
-            allocInfo.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-            allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
-            allocInfo.handleCount = 1;
-            allocInfo.pHandles = (VkBuffer[]){globals->viewMatrixBuffer};
-
-            vkAllocateMemoryCluster(&allocInfo, &globals->hostVisibleUniformMemory);
-
-            VK_ASSERT(vkMapMemory(vkglobals.device, globals->hostVisibleUniformMemory, 0, VK_WHOLE_SIZE, 0, &globals->hostVisibleUniformMemoryRaw), "failed to map memory\n");
-        }
-
-        {
-            createBuffer(&globals->model.hostVisibleStorageBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, sizeof(mat4));
-
-            VkMemoryAllocClusterInfo_t allocInfo = {};
-            allocInfo.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-            allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
-            allocInfo.handleCount = 1;
-            allocInfo.pHandles = (VkBuffer[]){globals->model.hostVisibleStorageBuffer};
-
-            vkAllocateMemoryCluster(&allocInfo, &globals->hostVisibleStorageMemory);
-
-            VK_ASSERT(vkMapMemory(vkglobals.device, globals->hostVisibleStorageMemory, 0, VK_WHOLE_SIZE, 0, &globals->hostVisibleStorageMemoryRaw), "failed to map memory\n");
-        }
     }
 
     {
@@ -1085,12 +1123,12 @@ void modelViewSceneInit() {
     }
 
     {
-        globals->renderingDoneSemaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * vkglobals.swapchainImageCount);
+        globals->renderingDoneSemaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * globals->swapchainImageCount);
 
         VkSemaphoreCreateInfo semaphoreInfo = {};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-        for (u32 i = 0; i < vkglobals.swapchainImageCount; i++) VK_ASSERT(vkCreateSemaphore(vkglobals.device, &semaphoreInfo, VK_NULL_HANDLE, &globals->renderingDoneSemaphores[i]), "failed to create semaphore\n");
+        for (u32 i = 0; i < globals->swapchainImageCount; i++) VK_ASSERT(vkCreateSemaphore(vkglobals.device, &semaphoreInfo, VK_NULL_HANDLE, &globals->renderingDoneSemaphores[i]), "failed to create semaphore\n");
         VK_ASSERT(vkCreateSemaphore(vkglobals.device, &semaphoreInfo, VK_NULL_HANDLE, &globals->swapchainReadySemaphore), "failed to create semaphore\n");
 
         VkFenceCreateInfo fenceInfos[1] = {};
@@ -1100,12 +1138,20 @@ void modelViewSceneInit() {
         VK_ASSERT(vkCreateFence(vkglobals.device, &fenceInfos[0], VK_NULL_HANDLE, &globals->frameFence), "failed to create fence\n");
     }
 
-    vkglobals.loopActive = 1;
-    vkglobals.deltaTime = 0;
-    vkglobals.time = 0;
     globals->shift = 1;
 
-    tempResourcesWaitAndDestroy(TEMP_CMD_BUFFER_NUM, tempCmdBuffers, TEMP_BUFFER_NUM, tempBuffers, TEMP_BUFFER_MEMORY_NUM, tempBuffersMemory, TEMP_FENCE_NUM, tempFences);
+    globals->cam.position[0] = 0.0f;
+    globals->cam.position[1] = 0.0f;
+    globals->cam.position[2] = 0.0f;
+
+    globals->inputX[0] = 0.0f;
+    globals->inputX[1] = 0.0f;
+    globals->inputY[0] = 0.0f;
+    globals->inputY[1] = 0.0f;
+    globals->inputZ[0] = 0.0f;
+    globals->inputZ[1] = 0.0f;
+
+    tempResourcesWaitAndDestroy(1, &tempCmdBuffer, 1, &tempBuffer, 1, &tempBufferMemory, 1, &tempFence);
 }
 
 void modelViewSceneEvent(SDL_Event* e) {
@@ -1276,7 +1322,7 @@ void modelViewSceneRender() {
         vkCmdDrawIndexedIndirect(vkglobals.cmdBuffer, globals->model.indirectBuffer, 0, globals->model.drawCount, sizeof(VkDrawIndexedIndirectCommand));
 
         vkCmdBindPipeline(vkglobals.cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->skyboxPipeline);
-        vkCmdBindVertexBuffers(vkglobals.cmdBuffer, 0, 1, &globals->cubeVertexBuffer, vertexBufferOffsets);
+        vkCmdBindVertexBuffers(vkglobals.cmdBuffer, 0, 1, &globals->skyboxVertexBuffer, vertexBufferOffsets);
         vkCmdBindDescriptorSets(vkglobals.cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->skyboxPipelineLayout, 0, 2, (VkDescriptorSet[]){globals->PVmatrixdescriptorSet, globals->skyboxCubemapDescriptorSet}, 0, VK_NULL_HANDLE);
 
         vkCmdDraw(vkglobals.cmdBuffer, 36, 1, 0, 0);
@@ -1489,7 +1535,7 @@ void modelViewSceneRender() {
         {
             VkImageMemoryBarrier imageBarriers[2] = {};
             imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            imageBarriers[0].image = vkglobals.swapchainImages[imageIndex];
+            imageBarriers[0].image = globals->swapchainImages[imageIndex];
             imageBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             imageBarriers[0].subresourceRange.baseArrayLayer = 0;
             imageBarriers[0].subresourceRange.layerCount = 1;
@@ -1523,7 +1569,7 @@ void modelViewSceneRender() {
         {
             VkRenderingAttachmentInfoKHR attachments[1] = {};
             attachments[0].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-            attachments[0].imageView = vkglobals.swapchainImageViews[imageIndex];
+            attachments[0].imageView = globals->swapchainImageViews[imageIndex];
             attachments[0].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             attachments[0].resolveMode = VK_RESOLVE_MODE_NONE_KHR;
             attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -1555,7 +1601,7 @@ void modelViewSceneRender() {
         {
             VkImageMemoryBarrier imageBarriers[1] = {};
             imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            imageBarriers[0].image = vkglobals.swapchainImages[imageIndex];
+            imageBarriers[0].image = globals->swapchainImages[imageIndex];
             imageBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             imageBarriers[0].subresourceRange.baseArrayLayer = 0;
             imageBarriers[0].subresourceRange.layerCount = 1;
@@ -1603,7 +1649,7 @@ void modelViewSceneRender() {
 void modelViewSceneQuit() {
     vkDestroyFence(vkglobals.device, globals->frameFence, VK_NULL_HANDLE);
 
-    for (u32 i = 0; i < vkglobals.swapchainImageCount; i++) vkDestroySemaphore(vkglobals.device, globals->renderingDoneSemaphores[i], VK_NULL_HANDLE);
+    for (u32 i = 0; i < globals->swapchainImageCount; i++) vkDestroySemaphore(vkglobals.device, globals->renderingDoneSemaphores[i], VK_NULL_HANDLE);
     free(globals->renderingDoneSemaphores);
     
     vkDestroySemaphore(vkglobals.device, globals->swapchainReadySemaphore, VK_NULL_HANDLE);
@@ -1652,7 +1698,7 @@ void modelViewSceneQuit() {
     vkDestroyImage(vkglobals.device, globals->skyboxCubemap, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, globals->depthTexture, VK_NULL_HANDLE);
 
-    vkDestroyBuffer(vkglobals.device, globals->cubeVertexBuffer, VK_NULL_HANDLE);
+    vkDestroyBuffer(vkglobals.device, globals->skyboxVertexBuffer, VK_NULL_HANDLE);
     vkDestroyBuffer(vkglobals.device, globals->ssaoKernelBuffer, VK_NULL_HANDLE);
     vkDestroyBuffer(vkglobals.device, globals->projectionMatrixBuffer, VK_NULL_HANDLE);
 
@@ -1674,4 +1720,10 @@ void modelViewSceneQuit() {
     vkFreeMemory(vkglobals.device, globals->deviceLocalDepthStencilAttachmentMemory, VK_NULL_HANDLE);
 
     vkDestroySampler(vkglobals.device, globals->sampler, VK_NULL_HANDLE);
+
+    for (u32 i = 0; i < globals->swapchainImageCount; i++) vkDestroyImageView(vkglobals.device, globals->swapchainImageViews[i], VK_NULL_HANDLE);
+    free(globals->swapchainImages);
+
+    vkDestroyCommandPool(vkglobals.device, vkglobals.shortCommandPool, VK_NULL_HANDLE);
+    vkDestroyCommandPool(vkglobals.device, vkglobals.commandPool, VK_NULL_HANDLE);
 }

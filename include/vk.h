@@ -42,9 +42,6 @@ typedef struct {
     VkSurfaceFormatKHR surfaceFormat;
     VkSwapchainKHR swapchain;
     VkExtent2D swapchainExtent;
-    u32 swapchainImageCount;
-    VkImage* swapchainImages;
-    VkImageView* swapchainImageViews;
     VkCommandBuffer cmdBuffer;
 } VulkanGlobals_t;
 

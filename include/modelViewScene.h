@@ -9,6 +9,10 @@
 #include "vkModel.h"
 
 typedef struct {
+    u32 swapchainImageCount;
+    VkImage* swapchainImages;
+    VkImageView* swapchainImageViews;
+
     struct {
         vec3 position;
         f32 pitch, yaw;
@@ -43,7 +47,7 @@ typedef struct {
     // device local resources
     VkBuffer projectionMatrixBuffer;
     VkBuffer ssaoKernelBuffer;
-    VkBuffer cubeVertexBuffer;
+    VkBuffer skyboxVertexBuffer;
 
     VkImage depthTexture;
     VkImage skyboxCubemap;
