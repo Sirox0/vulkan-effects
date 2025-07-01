@@ -67,5 +67,10 @@ void configLoad(char* path) {
     config.motionBlurMaxSamples = iniparser_getint(conf, "motion-blur:max-samples", 8);
     config.motionBlurVelocityReductionFactor = iniparser_getdouble(conf, "motion-blur:velocity-reduction-factor", 4.0f);
 
+    config.fxaaEnable = iniparser_getboolean(conf, "fxaa:enable", 1);
+    config.fxaaReduceMin = iniparser_getdouble(conf, "fxaa:reduce-min", 0.0078125f);
+    config.fxaaReduceMul = iniparser_getdouble(conf, "fxaa:reduce-mul", 0.03125f);
+    config.fxaaSpanMax = iniparser_getdouble(conf, "fxaa:span-max", 8.0f);
+
     iniparser_freedict(conf);
 }

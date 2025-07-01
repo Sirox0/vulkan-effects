@@ -45,6 +45,11 @@ typedef struct {
     u8 motionBlurEnable;
     u32 motionBlurMaxSamples;
     f32 motionBlurVelocityReductionFactor;
+
+    u8 fxaaEnable;
+    f32 fxaaReduceMin;
+    f32 fxaaReduceMul;
+    f32 fxaaSpanMax;
 } config_t;
 
 void configLoad(char* path);

@@ -16,6 +16,11 @@ layout(constant_id = 7) const bool MOTION_BLUR_ENABLE = true;
 layout(constant_id = 8) const uint MOTION_BLUR_MAX_SAMPLES = 8;
 layout(constant_id = 9) const float MOTION_BLUR_VELOCITY_REDUCTION_FACTOR = 4.0;
 
+layout(constant_id = 10) const bool FXAA_ENABLE = true;
+layout(constant_id = 11) const float FXAA_REDUCE_MIN = 0.0078125;
+layout(constant_id = 12) const float FXAA_REDUCE_MUL = 0.03125;
+layout(constant_id = 13) const float FXAA_SPAN_MAX = 8.0;
+
 layout(location = 0) in vec2 uv;
 
 layout(binding = 0, set = 0) uniform texture2D frame;
@@ -89,8 +94,40 @@ vec3 motionBlur(vec3 color) {
     return res;
 }
 
+vec3 fxaa(vec3 middlePixel) {
+    vec3 northWestPixel = texelFetchOffset(frame, ivec2(gl_FragCoord.xy), 0, ivec2(-1, -1)).rgb;
+    vec3 northEastPixel = texelFetchOffset(frame, ivec2(gl_FragCoord.xy), 0, ivec2(1, -1)).rgb;
+    vec3 southWestPixel = texelFetchOffset(frame, ivec2(gl_FragCoord.xy), 0, ivec2(-1, 1)).rgb;
+    vec3 southEastPixel = texelFetchOffset(frame, ivec2(gl_FragCoord.xy), 0, ivec2(1, 1)).rgb;
+
+    float northWestLuma = luma(northWestPixel);
+    float northEastLuma = luma(northEastPixel);
+    float southWestLuma = luma(southWestPixel);
+    float southEastLuma = luma(southEastPixel);
+    float middleLuma = luma(middlePixel);
+
+    float minLuma = min(middleLuma, min(northWestLuma, min(northEastLuma, min(southWestLuma, southEastLuma))));
+    float maxLuma = max(middleLuma, max(northWestLuma, max(northEastLuma, max(southWestLuma, southEastLuma))));
+
+    vec2 dir = vec2(-((northWestLuma + northEastLuma) - (southWestLuma + southEastLuma)), (northWestLuma + southWestLuma) - (northEastLuma + southEastLuma));
+
+    float invDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + max((northWestLuma + northEastLuma + southWestLuma + southEastLuma) * FXAA_REDUCE_MUL, FXAA_REDUCE_MIN));
+    dir = min(vec2(FXAA_SPAN_MAX, FXAA_SPAN_MAX), max(vec2(-FXAA_SPAN_MAX, -FXAA_SPAN_MAX), dir * invDirMin));
+
+    vec3 color1 = 0.5 * (texelFetch(frame, ivec2(gl_FragCoord.xy) + int(dir * (1.0 / 3.0 - 0.5)), 0).rgb +
+        texelFetch(frame, ivec2(gl_FragCoord.xy) + int(dir * (2.0 / 3.0 - 0.5)), 0).rgb);
+    vec3 color2 = color1 * 0.5 + 0.25 * (texelFetch(frame, ivec2(gl_FragCoord.xy) + int(dir * -0.5), 0).rgb +
+        texelFetch(frame, ivec2(gl_FragCoord.xy) + int(dir * 0.5), 0).rgb);
+    
+    float luma2 = luma(color2);
+    if (luma2 < minLuma || luma2 > maxLuma) return color1;
+    else return color2;
+}
+
 void main() {
     vec4 color = texelFetch(frame, ivec2(gl_FragCoord.xy), 0);
+
+    if (FXAA_ENABLE) color.rgb = fxaa(color.rgb);
 
     if (MOTION_BLUR_ENABLE) color.rgb = motionBlur(color.rgb);
 

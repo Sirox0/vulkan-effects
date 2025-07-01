@@ -895,7 +895,7 @@ void modelViewSceneInit() {
             VK_ASSERT(vkCreatePipelineLayout(vkglobals.device, &pipelineLayoutInfo, VK_NULL_HANDLE, &globals->uberPipelineLayout), "failed to create pipeline layout\n");
         }
 
-        VkSpecializationMapEntry specializationMapEntrys[14] = {};
+        VkSpecializationMapEntry specializationMapEntrys[18] = {};
         specializationMapEntrys[0].constantID = 0;
         specializationMapEntrys[0].offset = 0;
         specializationMapEntrys[0].size = sizeof(u32);
@@ -944,6 +944,19 @@ void modelViewSceneInit() {
         specializationMapEntrys[13].offset = sizeof(u32) * 4 + sizeof(f32) * 5;
         specializationMapEntrys[13].size = sizeof(f32);
 
+        specializationMapEntrys[14].constantID = 10;
+        specializationMapEntrys[14].offset = sizeof(u32) * 4 + sizeof(f32) * 6;
+        specializationMapEntrys[14].size = sizeof(u32);
+        specializationMapEntrys[15].constantID = 11;
+        specializationMapEntrys[15].offset = sizeof(u32) * 5 + sizeof(f32) * 6;
+        specializationMapEntrys[15].size = sizeof(f32);
+        specializationMapEntrys[16].constantID = 12;
+        specializationMapEntrys[16].offset = sizeof(u32) * 5 + sizeof(f32) * 7;
+        specializationMapEntrys[16].size = sizeof(f32);
+        specializationMapEntrys[17].constantID = 13;
+        specializationMapEntrys[17].offset = sizeof(u32) * 5 + sizeof(f32) * 8;
+        specializationMapEntrys[17].size = sizeof(f32);
+
         struct {
             u32 kernelSize;
             f32 radius;
@@ -968,11 +981,17 @@ void modelViewSceneInit() {
             u32 motionBlurEnable;
             u32 motionBlurMaxSamples;
             f32 motionBlurVelocityReductionFactor;
+
+            u32 fxaaEnable;
+            f32 fxaaReduceMin;
+            f32 fxaaReduceMul;
+            f32 fxaaSpanMax;
         } uberSpecializationData = {
             config.targetFps,
             config.grainEnable, config.grainIntensity, config.grainSignalToNoise, config.grainNoiseShift,
             config.ditheringEnable, config.ditheringToneCount,
-            config.motionBlurEnable, config.motionBlurMaxSamples, config.motionBlurVelocityReductionFactor
+            config.motionBlurEnable, config.motionBlurMaxSamples, config.motionBlurVelocityReductionFactor,
+            config.fxaaEnable, config.fxaaReduceMin, config.fxaaReduceMul, config.fxaaSpanMax
         };
 
         VkSpecializationInfo specializationInfos[3] = {};
@@ -986,9 +1005,9 @@ void modelViewSceneInit() {
         specializationInfos[1].dataSize = sizeof(i32);
         specializationInfos[1].pData = &ssaoBlurSpecializationData;
 
-        specializationInfos[2].mapEntryCount = 10;
+        specializationInfos[2].mapEntryCount = 14;
         specializationInfos[2].pMapEntries = specializationMapEntrys + 4;
-        specializationInfos[2].dataSize = sizeof(u32) * 4 + sizeof(f32) * 6;
+        specializationInfos[2].dataSize = sizeof(u32) * 5 + sizeof(f32) * 9;
         specializationInfos[2].pData = &uberSpecializationData;
 
         VkVertexInputBindingDescription bindingDescs[2] = {};
