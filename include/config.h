@@ -18,6 +18,10 @@ typedef struct {
     f32 modelScale;
     f32 playerSpeed;
     f32 shiftMultiplier;
+    f32 targetFps;
+
+    u8 mouseSmoothingEnable;
+    f32 mouseSmoothingSpeed;
 
     f32 fov;
     f32 nearPlane;
@@ -37,6 +41,10 @@ typedef struct {
 
     u32 ditheringEnable;
     f32 ditheringToneCount;
+
+    u8 motionBlurEnable;
+    u32 motionBlurMaxSamples;
+    f32 motionBlurVelocityReductionFactor;
 } config_t;
 
 void configLoad(char* path);

@@ -10,9 +10,10 @@ layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
 
 layout(binding = 1, set = 0) uniform UniformBufferViewMatrix {
     mat4 view;
+    mat4 oldView;
 };
 
-layout(binding = 0, set = 1) uniform texture2D gbuffer[3];
+layout(binding = 0, set = 1) uniform texture2D gbuffer[4];
 
 layout(binding = 0, set = 2) uniform texture2D occlusionMapBlurred;
 
@@ -34,14 +35,14 @@ void main() {
     float attenuation = inversesqrt(length(nlightDir.xyz)) / 1.25;
     vec3 dlightColor = diffuseLightColor.rgb * diffuseLightColor.a;
 
-    vec3 normal = texelFetch(gbuffer[1], ivec2(gl_FragCoord.xy), 0).xyz * 2.0 - 1.0;
+    vec3 normal = texelFetch(gbuffer[2], ivec2(gl_FragCoord.xy), 0).xyz * 2.0 - 1.0;
 
     light += max(dot(normal, normalize(nlightDir.xyz)), 0.0) * dlightColor;
 
     // ambient light
     light += ambientLightColor.rgb * ambientLightColor.a * texelFetch(occlusionMapBlurred, ivec2(uv * (textureSize(occlusionMapBlurred, 0) - 1)), 0).r;
 
-    vec4 color = texelFetch(gbuffer[2], ivec2(gl_FragCoord.xy), 0);
+    vec4 color = texelFetch(gbuffer[3], ivec2(gl_FragCoord.xy), 0);
     color.rgb *= color.a > 0.0 ? light : vec3(1.0);
 
     outColor = color;

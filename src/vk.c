@@ -317,6 +317,7 @@ void vkInit() {
     vkglobals.loopActive = 1;
     vkglobals.deltaTime = 0;
     vkglobals.time = 0;
+    vkglobals.fps = 0.0f;
 }
 
 void vkQuit() {

@@ -16,6 +16,7 @@ typedef struct {
     struct {
         vec3 position;
         f32 pitch, yaw;
+        f32 targetPitch, targetYaw;
     } cam;
 
     vec2 inputX;
@@ -51,7 +52,7 @@ typedef struct {
 
     VkImage depthTexture;
     VkImage skyboxCubemap;
-    VkImage gbufferPosition;
+    VkImage gbufferPositionVelocity;
     VkImage gbufferNormalAlbedo;
     VkImage ssaoNoiseTexture;
     VkImage ssaoAttachment;
@@ -60,6 +61,7 @@ typedef struct {
     VkImageView depthTextureView;
     VkImageView skyboxCubemapView;
     VkImageView gbufferPositionView;
+    VkImageView gbufferVelocityView;
     VkImageView gbufferNormalView;
     VkImageView gbufferAlbedoView;
     VkImageView ssaoNoiseTextureView;

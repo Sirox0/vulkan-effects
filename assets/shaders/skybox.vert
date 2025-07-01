@@ -8,13 +8,21 @@ layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
 
 layout(binding = 1, set = 0) uniform UniformBufferViewMatrix {
     mat4 view;
+    mat4 oldView;
 };
 
-layout(location = 0) out vec3 uvw;
+layout(location = 0) out vec3 fraguvw;
+layout(location = 1) out vec4 fragpos;
+layout(location = 2) out vec4 fragoldpos;
 
 void main() {
-    gl_Position = projection * view * vec4(pos, 1.0);
+    vec4 Mpos = vec4(pos, 1.0);
+    vec4 MVPpos = projection * view * Mpos;
+    gl_Position =  MVPpos;
 
-    uvw = pos;
-    uvw.xy *= -1.0;
+    fragpos = MVPpos;
+    fragoldpos = projection * oldView * Mpos;
+
+    fraguvw = pos;
+    fraguvw.xy *= -1.0;
 }

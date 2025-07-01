@@ -39,6 +39,10 @@ void configLoad(char* path) {
     config.modelScale = iniparser_getdouble(conf, "general:model-scale", 1.0f);
     config.playerSpeed = iniparser_getdouble(conf, "general:player-speed", 1.0f);
     config.shiftMultiplier = iniparser_getdouble(conf, "general:shift-multiplier", 3.0f);
+    config.targetFps = iniparser_getdouble(conf, "general:target-fps", 60.0f);
+
+    config.mouseSmoothingEnable = iniparser_getboolean(conf, "mouse-smoothing:enable", 0);
+    config.mouseSmoothingSpeed = iniparser_getdouble(conf, "mouse-smoothing:speed", 100.0f);
 
     config.fov = iniparser_getdouble(conf, "projection:fov", 80.0f);
     config.nearPlane = iniparser_getdouble(conf, "projection:near-plane", 0.01f);
@@ -58,6 +62,10 @@ void configLoad(char* path) {
 
     config.ditheringEnable = iniparser_getboolean(conf, "dithering:enable", 1);
     config.ditheringToneCount = iniparser_getdouble(conf, "dithering:tone-count", 32.0f);
+
+    config.motionBlurEnable = iniparser_getboolean(conf, "motion-blur:enable", 1);
+    config.motionBlurMaxSamples = iniparser_getint(conf, "motion-blur:max-samples", 8);
+    config.motionBlurVelocityReductionFactor = iniparser_getdouble(conf, "motion-blur:velocity-reduction-factor", 4.0f);
 
     iniparser_freedict(conf);
 }

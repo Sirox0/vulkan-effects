@@ -50,11 +50,12 @@ int main(int argc, char** argv) {
             } else curscene.event(&event);
         }
 
-        vkglobals.time = SDL_GetTicks();
+        vkglobals.time = SDL_GetTicksNS();
 
         curscene.render();
 
-        vkglobals.deltaTime = SDL_GetTicks() - vkglobals.time;
+        vkglobals.deltaTime = SDL_GetTicksNS() - vkglobals.time;
+        vkglobals.fps = 1e9f / vkglobals.deltaTime;
     }
 
     vkDeviceWaitIdle(vkglobals.device);

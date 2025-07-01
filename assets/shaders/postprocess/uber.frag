@@ -2,20 +2,29 @@
 
 #extension GL_EXT_samplerless_texture_functions : require
 
-layout(constant_id = 0) const bool GRAIN_ENABLE = true;
-layout(constant_id = 1) const float GRAIN_INTESITY = 0.25;
-layout(constant_id = 2) const float GRAIN_SIGNAL_TO_NOISE = 4.0;
-layout(constant_id = 3) const float GRAIN_NOISE_SHIFT = 0.0;
+layout(constant_id = 0) const float TARGET_FPS = 60.0;
 
-layout(constant_id = 4) const bool DITHERING_ENABLE = true;
-layout(constant_id = 5) const float DITHERING_TONE_COUNT = 32.0;
+layout(constant_id = 1) const bool GRAIN_ENABLE = true;
+layout(constant_id = 2) const float GRAIN_INTESITY = 0.25;
+layout(constant_id = 3) const float GRAIN_SIGNAL_TO_NOISE = 4.0;
+layout(constant_id = 4) const float GRAIN_NOISE_SHIFT = 0.0;
+
+layout(constant_id = 5) const bool DITHERING_ENABLE = true;
+layout(constant_id = 6) const float DITHERING_TONE_COUNT = 32.0;
+
+layout(constant_id = 7) const bool MOTION_BLUR_ENABLE = true;
+layout(constant_id = 8) const uint MOTION_BLUR_MAX_SAMPLES = 8;
+layout(constant_id = 9) const float MOTION_BLUR_VELOCITY_REDUCTION_FACTOR = 4.0;
 
 layout(location = 0) in vec2 uv;
 
-layout(binding = 0) uniform texture2D frame;
+layout(binding = 0, set = 0) uniform texture2D frame;
+
+layout(binding = 0, set = 1) uniform texture2D gbuffer[4];
 
 layout(push_constant) uniform PC {
     float time;
+    float fps;
 };
 
 layout(location = 0) out vec4 outColor;
@@ -59,8 +68,31 @@ vec3 dither(vec3 color) {
     return floor(color * (DITHERING_TONE_COUNT - 1) + bayerDitherMatrix16x16[idx.y][idx.x] - 0.5) / (DITHERING_TONE_COUNT - 1);
 }
 
+vec3 motionBlur(vec3 color) {
+    vec2 velocityTexelSize = 1.0 / vec2(textureSize(gbuffer[1], 0));
+
+    vec2 vel = texelFetch(gbuffer[1], ivec2(gl_FragCoord.xy), 0).xy * (fps / TARGET_FPS);
+
+    float speed = length(vel / velocityTexelSize) / MOTION_BLUR_VELOCITY_REDUCTION_FACTOR;
+    uint samples = abs(int(speed));
+    samples = clamp(samples, 1, MOTION_BLUR_MAX_SAMPLES);
+
+    vec3 res = color;
+    ivec2 dim = textureSize(frame, 0) - 1;
+    for (uint i = 1; i < samples; i++) {
+        ivec2 offset = ivec2(vel * (float(i) / float(samples - 1) - 0.5) * dim);
+        offset = clamp(ivec2(gl_FragCoord.xy) + offset, ivec2(0), dim);
+        res += texelFetch(frame, offset, 0).rgb;
+    }
+    res /= float(samples);
+
+    return res;
+}
+
 void main() {
     vec4 color = texelFetch(frame, ivec2(gl_FragCoord.xy), 0);
+
+    if (MOTION_BLUR_ENABLE) color.rgb = motionBlur(color.rgb);
 
     if (DITHERING_ENABLE) color.rgb = dither(color.rgb);
 

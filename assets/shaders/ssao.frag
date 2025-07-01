@@ -14,6 +14,7 @@ layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
 
 layout(binding = 1, set = 0) uniform UniformBufferViewMatrix {
     mat4 view;
+    mat4 oldView;
 };
 
 layout(binding = 0, set = 1) uniform SSAOKernel {
@@ -22,7 +23,7 @@ layout(binding = 0, set = 1) uniform SSAOKernel {
 
 layout(binding = 1, set = 1) uniform texture2D ssaoNoise;
 
-layout(binding = 0, set = 2) uniform texture2D gbuffer[3];
+layout(binding = 0, set = 2) uniform texture2D gbuffer[4];
 
 layout(location = 0) out float outOcclusion;
 
@@ -30,7 +31,7 @@ void main() {
     ivec2 textureDim = textureSize(gbuffer[0], 0);
 
     vec3 pos = texelFetch(gbuffer[0], ivec2(uv * (textureDim - 1)), 0).xyz;
-    vec3 normal = texelFetch(gbuffer[1], ivec2(uv * (textureDim - 1)), 0).xyz * 2.0 - 1.0;
+    vec3 normal = texelFetch(gbuffer[2], ivec2(uv * (textureDim - 1)), 0).xyz * 2.0 - 1.0;
 
     ivec2 noiseDim = textureSize(ssaoNoise, 0);
     vec2 noiseUV = fract(uv * (textureDim / noiseDim));
