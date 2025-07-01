@@ -941,7 +941,7 @@ void modelViewSceneInit() {
         specializationMapEntrys[12].offset = sizeof(u32) * 3 + sizeof(f32) * 5;
         specializationMapEntrys[12].size = sizeof(f32);
         specializationMapEntrys[13].constantID = 9;
-        specializationMapEntrys[13].offset = sizeof(u32) * 3 + sizeof(f32) * 6;
+        specializationMapEntrys[13].offset = sizeof(u32) * 4 + sizeof(f32) * 5;
         specializationMapEntrys[13].size = sizeof(f32);
 
         struct {
