@@ -8,6 +8,7 @@ layout(location = 2) in vec3 normal;
 layout(location = 3) in vec3 tangent;
 layout(location = 4) in vec2 uv;
 layout(location = 5) in flat int textureIndex;
+layout(location = 6) in flat int normalMapIndex;
 
 layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
     mat4 projection;
@@ -29,7 +30,18 @@ void main() {
     gbufferPosition = vec4(pos.xyz, 0.0);
     vec4 MVPpos = projection * pos;
     gbufferVelocity = vec4(((MVPpos.xy / MVPpos.w) - (oldpos.xy / oldpos.w)), 0.0, 0.0);
-    gbufferNormal = vec4(normalize(normal) * 0.5 + 0.5, 1.0);
+
+    if (normalMapIndex >= 0) {
+        vec3 N = normalize(normal);
+        vec3 T = normalize(tangent);
+        vec3 B = cross(T, N);
+        mat3 TBN = mat3(T, B, N);
+
+        vec3 normalMap = TBN * normalize(texture(textures[normalMapIndex], uv).rgb * 2.0 - 1.0);
+        gbufferNormal = vec4(normalMap * 0.5 + 0.5, 0.0);
+    } else {
+        gbufferNormal = vec4(normalize(normal) * 0.5 + 0.5, 0.0);
+    }
 
     if (textureIndex >= 0) {
         gbufferAlbedo = texture(textures[textureIndex], uv);
