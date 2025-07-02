@@ -56,6 +56,7 @@ int main(int argc, char** argv) {
 
         vkglobals.deltaTime = SDL_GetTicksNS() - vkglobals.time;
         vkglobals.fps = 1e9f / vkglobals.deltaTime;
+        printf("%f\n", vkglobals.fps);
     }
 
     vkDeviceWaitIdle(vkglobals.device);

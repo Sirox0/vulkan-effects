@@ -15,6 +15,7 @@ typedef struct {
 typedef struct {
     i32 diffuseIndex;
     i32 normalMapIndex;
+    i32 metallicRoughnessIndex;
 } VkModelMaterial_t;
 
 typedef struct {

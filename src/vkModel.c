@@ -106,6 +106,24 @@ void vkModelGetTexturesInfo(const struct aiScene* scene, const char* modelDirPat
                 curImageCount++;
             }
         }
+
+        if (aiGetMaterialTextureCount(mat, aiTextureType_GLTF_METALLIC_ROUGHNESS) > 0) {
+            struct aiString path;
+
+            if (aiGetMaterialTexture(mat, aiTextureType_GLTF_METALLIC_ROUGHNESS, 0, &path, NULL, NULL, NULL, NULL, NULL, NULL) == AI_SUCCESS) {
+                i32 w, h;
+                char p[512] = {};
+                strcat(p, modelDirPath);
+                strcat(p, path.data);
+                stbi_info(p, &w, &h, NULL);
+                if (pImageWidths != NULL && pImageHeights != NULL) {
+                    pImageWidths[curImageCount] = w;
+                    pImageHeights[curImageCount] = h;
+                }
+                curImagesSize += w * h * 4;
+                curImageCount++;
+            }
+        }
     }
 
     *pImagesSize = curImagesSize;
@@ -252,6 +270,14 @@ void vkModelCreate(const struct aiScene* scene, const char* modelDirPath, VkComm
                 modelMat.normalMapIndex = -1;
         } else {
             modelMat.normalMapIndex = -1;
+        }
+
+        if (aiGetMaterialTextureCount(mat, aiTextureType_GLTF_METALLIC_ROUGHNESS) > 0) {
+            modelMat.metallicRoughnessIndex = curImageCount;
+            if (vkModelLoadTexture(mat, aiTextureType_GLTF_METALLIC_ROUGHNESS, modelDirPath, tempCmdBuf, tempBuffer, tempBufferTexturesOffset, pTempBufferRaw, &curImageOffset, &curImageCount, pModel) != 0)
+                modelMat.metallicRoughnessIndex = -1;
+        } else {
+            modelMat.metallicRoughnessIndex = -1;
         }
 
         memcpy(pTempBufferRaw + tempBufferStorageOffset + curStorageOffset, &modelMat, sizeof(VkModelMaterial_t));

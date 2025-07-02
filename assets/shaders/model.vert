@@ -25,6 +25,7 @@ layout(binding = 0, set = 1, std430) readonly buffer StorageBufferModelMatrix {
 struct material {
     int textureIndex;
     int normalMapIndex;
+    int metallicRoughnessIndex;
 };
 
 layout(binding = 1, set = 1, std430) readonly buffer StorageBufferMaterials {
