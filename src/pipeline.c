@@ -93,8 +93,8 @@ void pipelineFillDefaultGraphicsPipeline(VkGraphicsPipelineInfo_t* pInfo) {
     pInfo->colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
     pInfo->colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
     pInfo->colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-    pInfo->colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_CONSTANT_ALPHA;
-    pInfo->colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_CONSTANT_ALPHA;
+    pInfo->colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    pInfo->colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
     pInfo->colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
     pInfo->colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -107,7 +107,7 @@ void pipelineFillDefaultGraphicsPipeline(VkGraphicsPipelineInfo_t* pInfo) {
     pInfo->colorBlendState.blendConstants[0] = 0.0f;
     pInfo->colorBlendState.blendConstants[1] = 0.0f;
     pInfo->colorBlendState.blendConstants[2] = 0.0f;
-    pInfo->colorBlendState.blendConstants[3] = 0.5f;
+    pInfo->colorBlendState.blendConstants[3] = 0.0f;
 
     pInfo->dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     pInfo->dynamicState.pNext = VK_NULL_HANDLE;
