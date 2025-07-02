@@ -9,6 +9,8 @@ layout(location = 3) in vec2 uv;
 
 layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
     mat4 projection;
+    float nearPlane;
+    float farPlane;
 };
 
 layout(binding = 1, set = 0) uniform UniformBufferViewMatrix {
@@ -43,11 +45,10 @@ layout(location = 6) out flat int normalMapIndex;
 
 void main() {
     vec4 Mpos = model * vec4(pos, 1.0);
-    vec4 MVpos = view * Mpos;
-    vec4 MVPpos = projection * MVpos;
+    vec4 MVPpos = projection * view * Mpos;
     gl_Position = MVPpos;
 
-    fragpos = MVpos;
+    fragpos = MVPpos;
     fragoldpos = projection * oldView * Mpos;
 
     mat3 normalMatrix = transpose(inverse(mat3(view * model)));

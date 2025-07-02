@@ -13,6 +13,8 @@ typedef struct {
     VkImage* swapchainImages;
     VkImageView* swapchainImageViews;
 
+    VkCommandBuffer cmdBuffer;
+
     struct {
         vec3 position;
         f32 pitch, yaw;
@@ -46,27 +48,25 @@ typedef struct {
 
 
     // device local resources
-    VkBuffer projectionMatrixBuffer;
+    VkBuffer projectionBuffer;
     VkBuffer ssaoKernelBuffer;
     VkBuffer skyboxVertexBuffer;
 
     VkImage depthTexture;
     VkImage skyboxCubemap;
-    VkImage gbufferPositionVelocity;
-    VkImage gbufferNormalAlbedo;
+    VkImage gbuffer;
+    VkImage velocityTexture;
     VkImage ssaoNoiseTexture;
     VkImage ssaoAttachment;
     VkImage postProcessAttachment;
 
     VkImageView depthTextureView;
     VkImageView skyboxCubemapView;
-    VkImageView gbufferPositionView;
-    VkImageView gbufferVelocityView;
     VkImageView gbufferNormalView;
     VkImageView gbufferAlbedoView;
+    VkImageView velocityTextureView;
     VkImageView ssaoNoiseTextureView;
     VkImageView ssaoAttachmentView;
-    VkImageView ssaoBlurAttachmentView;
     VkImageView postProcessAttachmentView;
 
     // host visible resources
@@ -89,7 +89,6 @@ typedef struct {
     VkDescriptorSet ssaoDataDescriptorSet;
     VkDescriptorSet gbufferDescriptorSet;
     VkDescriptorSet ssaoAttachmentDescriptorSet;
-    VkDescriptorSet ssaoBlurAttachmentDescriptorSet;
     VkDescriptorSet postProcessAttachmentDescriptorSet;
 
 
@@ -103,7 +102,6 @@ typedef struct {
     VkPipeline modelPipeline;
     VkPipeline skyboxPipeline;
     VkPipeline ssaoPipeline;
-    VkPipeline ssaoBlurPipeline;
     VkPipeline compositionPipeline;
     VkPipeline uberPipeline;
 

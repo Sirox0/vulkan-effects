@@ -265,6 +265,19 @@ void vkInit() {
 
     vkGetDeviceQueue(vkglobals.device, vkglobals.queueFamilyIndex, 0, &vkglobals.queue);
 
+    {
+        VkCommandPoolCreateInfo commandPoolInfo = {};
+        commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        commandPoolInfo.queueFamilyIndex = vkglobals.queueFamilyIndex;
+
+        VK_ASSERT(vkCreateCommandPool(vkglobals.device, &commandPoolInfo, VK_NULL_HANDLE, &vkglobals.commandPool), "failed to create command pool\n");
+
+        commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+
+        VK_ASSERT(vkCreateCommandPool(vkglobals.device, &commandPoolInfo, VK_NULL_HANDLE, &vkglobals.shortCommandPool), "failed to create command pool\n");
+    }
+
     // 0xFFFFFFFF means that the extent is defined by the swapchain
     if (vkglobals.surfaceCapabilities.currentExtent.width != 0xFFFFFFFF) {
         vkglobals.swapchainExtent = vkglobals.surfaceCapabilities.currentExtent;
@@ -316,6 +329,8 @@ void vkInit() {
 
 void vkQuit() {
     vkDestroySwapchainKHR(vkglobals.device, vkglobals.swapchain, VK_NULL_HANDLE);
+    vkDestroyCommandPool(vkglobals.device, vkglobals.shortCommandPool, VK_NULL_HANDLE);
+    vkDestroyCommandPool(vkglobals.device, vkglobals.commandPool, VK_NULL_HANDLE);
     vkDestroyDevice(vkglobals.device, VK_NULL_HANDLE);
     SDL_Vulkan_DestroySurface(vkglobals.instance, vkglobals.surface, VK_NULL_HANDLE);
     vkDestroyInstance(vkglobals.instance, VK_NULL_HANDLE);

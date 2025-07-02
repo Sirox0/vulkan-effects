@@ -74,9 +74,10 @@ vec3 dither(vec3 color) {
 }
 
 vec3 motionBlur(vec3 color) {
-    vec2 velocityTexelSize = 1.0 / vec2(textureSize(gbuffer[1], 0));
+    vec2 velocityTexelSize = 1.0 / vec2(textureSize(gbuffer[2], 0));
 
-    vec2 vel = texelFetch(gbuffer[1], ivec2(gl_FragCoord.xy), 0).xy * (fps / TARGET_FPS);
+    vec2 vel = texelFetch(gbuffer[2], ivec2(gl_FragCoord.xy), 0).xy;
+    vel *= fps / TARGET_FPS;
 
     float speed = length(vel / velocityTexelSize) / MOTION_BLUR_VELOCITY_REDUCTION_FACTOR;
     uint samples = abs(int(speed));

@@ -10,6 +10,8 @@ layout(location = 0) in vec2 uv;
 
 layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
     mat4 projection;
+    float nearPlane;
+    float farPlane;
 };
 
 layout(binding = 1, set = 0) uniform UniformBufferViewMatrix {
@@ -27,11 +29,18 @@ layout(binding = 0, set = 2) uniform texture2D gbuffer[4];
 
 layout(location = 0) out float outOcclusion;
 
-void main() {
-    ivec2 textureDim = textureSize(gbuffer[0], 0);
+float linearDepth(float depth) {
+    float z = depth * 2.0 - 1.0;
+    return (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - z * (nearPlane - farPlane));
+}
 
-    vec3 pos = texelFetch(gbuffer[0], ivec2(uv * (textureDim - 1)), 0).xyz;
-    vec3 normal = texelFetch(gbuffer[2], ivec2(uv * (textureDim - 1)), 0).xyz * 2.0 - 1.0;
+void main() {
+    ivec2 textureDim = textureSize(gbuffer[3], 0);
+
+    vec3 viewRay = vec3(inverse(projection) * vec4(uv * 2.0 - 1.0, 1.0, 1.0));
+    vec3 pos = viewRay * linearDepth(texelFetch(gbuffer[3], ivec2(uv * (textureDim - 1)), 0).r);
+
+    vec3 normal = texelFetch(gbuffer[0], ivec2(uv * (textureDim - 1)), 0).xyz * 2.0 - 1.0;
 
     ivec2 noiseDim = textureSize(ssaoNoise, 0);
     vec2 noiseUV = fract(uv * (textureDim / noiseDim));
@@ -54,7 +63,7 @@ void main() {
         offset.xyz = offset.xyz * 0.5 + 0.5;
         offset.xy = clamp(offset.xy, 0.0, 1.0);
 
-        float depth = texelFetch(gbuffer[0], ivec2(offset.xy * (textureDim - 1)), 0).z;
+        float depth = linearDepth(texelFetch(gbuffer[3], ivec2(offset.xy * (textureDim - 1)), 0).r);
 
         float rangeCheck = smoothstep(0.0, 1.0, SSAO_RADIUS / abs(pos.z - depth));
         occlusion += (depth <= samplePos.z - 0.025 ? 1.0 : 0.0) * rangeCheck;

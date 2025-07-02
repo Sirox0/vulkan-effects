@@ -34,6 +34,7 @@ typedef struct {
     VkDevice device;
     u32 queueFamilyIndex;
     VkQueue queue;
+
     VkCommandPool commandPool;
     VkCommandPool shortCommandPool;
 
@@ -43,7 +44,6 @@ typedef struct {
     VkSurfaceFormatKHR surfaceFormat;
     VkSwapchainKHR swapchain;
     VkExtent2D swapchainExtent;
-    VkCommandBuffer cmdBuffer;
 } VulkanGlobals_t;
 
 u32 getMemoryTypeIndex(u32 filter, VkMemoryPropertyFlags props);
