@@ -37,8 +37,8 @@ void main() {
         vec3 B = cross(T, N);
         mat3 TBN = mat3(T, B, N);
 
-        vec3 normalMap = TBN * normalize(texture(textures[normalMapIndex], uv).rgb * 2.0 - 1.0);
-        gbufferNormal = vec4(normalMap * 0.5 + 0.5, 0.0);
+        vec3 normalMap = TBN * (texture(textures[normalMapIndex], uv).rgb * 2.0 - 1.0);
+        gbufferNormal = vec4(normalize(normalMap) * 0.5 + 0.5, 0.0);
     } else {
         gbufferNormal = vec4(normalize(normal) * 0.5 + 0.5, 0.0);
     }
