@@ -27,13 +27,7 @@ void vkInit() {
     #define INSTANCE_EXTENSION_COUNT 1
     const char* instanceExtensions[INSTANCE_EXTENSION_COUNT] = {"VK_KHR_get_physical_device_properties2"};
 
-    #ifdef VALIDATION
-        #define vkLayerCount 1
-        const char* vkLayers[] = {"VK_LAYER_KHRONOS_validation"};
-    #else
-        #define vkLayerCount 0
-        const char* vkLayers[] = {};
-    #endif
+    const char* vkLayers[] = {"VK_LAYER_KHRONOS_validation"};
 
     {
         u32 sdlInstanceExtensionCount = 0;
@@ -45,7 +39,7 @@ void vkInit() {
 
         VkInstanceCreateInfo instanceInfo = {};
         instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        instanceInfo.enabledLayerCount = vkLayerCount;
+        instanceInfo.enabledLayerCount = config.validation;
         instanceInfo.ppEnabledLayerNames = vkLayers;
         instanceInfo.enabledExtensionCount = sdlInstanceExtensionCount + INSTANCE_EXTENSION_COUNT;
         instanceInfo.ppEnabledExtensionNames = (const char**)finalInstanceExtensions;
@@ -256,7 +250,7 @@ void vkInit() {
 
         VkDeviceCreateInfo deviceInfo = {};
         deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        deviceInfo.enabledLayerCount = vkLayerCount;
+        deviceInfo.enabledLayerCount = config.validation;
         deviceInfo.ppEnabledLayerNames = vkLayers;
         deviceInfo.enabledExtensionCount = deviceExtensionIdx;
         deviceInfo.ppEnabledExtensionNames = finalDeviceExtensions;

@@ -5,12 +5,6 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
 
-option(VALIDATION "enable validation layer" OFF)
-
-if(VALIDATION)
-    add_compile_definitions(VALIDATION)
-endif()
-
 add_compile_definitions(VK_NO_PROTOTYPES)
 add_compile_definitions(CGLM_FORCE_LEFT_HANDED CGLM_FORCE_DEPTH_ZERO_TO_ONE)
 

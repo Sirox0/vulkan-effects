@@ -18,6 +18,7 @@ void configLoad(char* path) {
     config.vsyncRelaxed = iniparser_getboolean(conf, "window:vsync-relaxed", 1);
     config.fullscreen = iniparser_getboolean(conf, "window:fullscreen", 0);
 
+    config.validation = iniparser_getboolean(conf, "general:validation", 0);
     config.wireframe = iniparser_getboolean(conf, "general:wireframe", 0);
     config.preferredTextureFilter = iniparser_getint(conf, "general:preferred-texture-filter", 2);
     config.maxAnisotropy = iniparser_getdouble(conf, "general:max-anisotropy", 0.0f);
