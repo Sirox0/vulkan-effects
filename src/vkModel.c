@@ -242,12 +242,16 @@ void vkModelCreate(const struct aiScene* scene, const char* modelDirPath, VkComm
             modelMat.diffuseIndex = curImageCount;
             if (vkModelLoadTexture(mat, aiTextureType_DIFFUSE, modelDirPath, tempCmdBuf, tempBuffer, tempBufferTexturesOffset, pTempBufferRaw, &curImageOffset, &curImageCount, pModel) != 0)
                 modelMat.diffuseIndex = -1;
+        } else {
+            modelMat.diffuseIndex = -1;
         }
         
         if (aiGetMaterialTextureCount(mat, aiTextureType_NORMALS) > 0) {
             modelMat.normalMapIndex = curImageCount;
             if (vkModelLoadTexture(mat, aiTextureType_NORMALS, modelDirPath, tempCmdBuf, tempBuffer, tempBufferTexturesOffset, pTempBufferRaw, &curImageOffset, &curImageCount, pModel) != 0)
                 modelMat.normalMapIndex = -1;
+        } else {
+            modelMat.normalMapIndex = -1;
         }
 
         memcpy(pTempBufferRaw + tempBufferStorageOffset + curStorageOffset, &modelMat, sizeof(VkModelMaterial_t));
