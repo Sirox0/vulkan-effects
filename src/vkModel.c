@@ -64,7 +64,7 @@ void vkModelGetNodeSizes(const struct aiScene* scene, const struct aiNode* node,
     }
 }
 
-void vkModelGetTexturesInfo(const struct aiScene* scene, const char* modelDirPath, u32* pImagesSize, u32* pImageCount, u32* pImageWidths, u32* pImageHeights) {
+void vkModelGetTexturesInfo(const struct aiScene* scene, const char* modelDirPath, u32* pImagesSize, u32* pImageCount, u32* pImageMipLevels, u32* pImageWidths, u32* pImageHeights) {
     u32 curImagesSize = 0;
     u32 curImageCount = 0;
 
@@ -82,13 +82,19 @@ void vkModelGetTexturesInfo(const struct aiScene* scene, const char* modelDirPat
                 ktxTexture2* tex;
                 ktxTexture2_CreateFromNamedFile(p, 0, &tex);
                 ktxTexture2_TranscodeBasis(tex, vkglobals.textureFormatKtx, 0);
-                if (pImageWidths != NULL && pImageHeights != NULL) {
+                if (pImageWidths != NULL && pImageHeights != NULL && pImageMipLevels != NULL) {
+                    pImageMipLevels[curImageCount] = tex->numLevels;
                     pImageWidths[curImageCount] = tex->baseWidth;
                     pImageHeights[curImageCount] = tex->baseHeight;
                 }
 
                 u32 size = ktxTexture_GetImageSize((ktxTexture*)tex, 0);
-                curImagesSize += size + getAlignCooficient(size, 16);
+                size += getAlignCooficient(size, 16);
+                for (u32 i = 1; i < tex->numLevels; i++) {
+                    size += ktxTexture_GetImageSize((ktxTexture*)tex, i);
+                    size += getAlignCooficient(size, 16);
+                }
+                curImagesSize += size;
                 curImageCount++;
                 ktxTexture2_Destroy(tex);
             }
@@ -105,13 +111,19 @@ void vkModelGetTexturesInfo(const struct aiScene* scene, const char* modelDirPat
                 ktxTexture2* tex;
                 ktxTexture2_CreateFromNamedFile(p, 0, &tex);
                 ktxTexture2_TranscodeBasis(tex, vkglobals.textureFormatKtx, 0);
-                if (pImageWidths != NULL && pImageHeights != NULL) {
+                if (pImageWidths != NULL && pImageHeights != NULL && pImageMipLevels != NULL) {
+                    pImageMipLevels[curImageCount] = tex->numLevels;
                     pImageWidths[curImageCount] = tex->baseWidth;
                     pImageHeights[curImageCount] = tex->baseHeight;
                 }
 
                 u32 size = ktxTexture_GetImageSize((ktxTexture*)tex, 0);
-                curImagesSize += size + getAlignCooficient(size, 16);
+                size += getAlignCooficient(size, 16);
+                for (u32 i = 1; i < tex->numLevels; i++) {
+                    size += ktxTexture_GetImageSize((ktxTexture*)tex, i);
+                    size += getAlignCooficient(size, 16);
+                }
+                curImagesSize += size;
                 curImageCount++;
                 ktxTexture2_Destroy(tex);
             }
@@ -128,13 +140,19 @@ void vkModelGetTexturesInfo(const struct aiScene* scene, const char* modelDirPat
                 ktxTexture2* tex;
                 ktxTexture2_CreateFromNamedFile(p, 0, &tex);
                 ktxTexture2_TranscodeBasis(tex, vkglobals.textureFormatKtx, 0);
-                if (pImageWidths != NULL && pImageHeights != NULL) {
+                if (pImageWidths != NULL && pImageHeights != NULL && pImageMipLevels != NULL) {
+                    pImageMipLevels[curImageCount] = tex->numLevels;
                     pImageWidths[curImageCount] = tex->baseWidth;
                     pImageHeights[curImageCount] = tex->baseHeight;
                 }
 
                 u32 size = ktxTexture_GetImageSize((ktxTexture*)tex, 0);
-                curImagesSize += size + getAlignCooficient(size, 16);
+                size += getAlignCooficient(size, 16);
+                for (u32 i = 1; i < tex->numLevels; i++) {
+                    size += ktxTexture_GetImageSize((ktxTexture*)tex, i);
+                    size += getAlignCooficient(size, 16);
+                }
+                curImagesSize += size;
                 curImageCount++;
                 ktxTexture2_Destroy(tex);
             }
@@ -246,16 +264,23 @@ u32 vkModelLoadTexture(const struct aiMaterial* mat, enum aiTextureType type, co
         ktxTexture2_CreateFromNamedFile(p, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &tex);
         ktxTexture2_TranscodeBasis(tex, vkglobals.textureFormatKtx, 0);
 
-        u32 size = ktxTexture_GetImageSize((ktxTexture*)tex, 0);
-        u64 offset = 0;
-        ktxTexture_GetImageOffset((ktxTexture*)tex, 0, 0, 0, &offset);
-        memcpy(pTempBufferRaw + tempBufferTexturesOffset + *pCurImageOffset, ktxTexture_GetData((ktxTexture*)tex) + offset, size);
+        u32 curImageOffset = 0;
+        VkDeviceSize mipOffsets[tex->numLevels];
 
-        copyTempBufferToImage(tempCmdBuf, tempBuffer, tempBufferTexturesOffset + *pCurImageOffset, pModel->textures[*pCurImageCount], tex->baseWidth, tex->baseHeight, 1, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        for (u32 i = 0; i < tex->numLevels; i++) {
+            u32 size = ktxTexture_GetImageSize((ktxTexture*)tex, i);
+            u64 offset = 0;
+            ktxTexture_GetImageOffset((ktxTexture*)tex, i, 0, 0, &offset);
+            memcpy(pTempBufferRaw + tempBufferTexturesOffset + *pCurImageOffset + curImageOffset, ktxTexture_GetData((ktxTexture*)tex) + offset, size);
+
+            mipOffsets[i] = tempBufferTexturesOffset + *pCurImageOffset + curImageOffset;
+            curImageOffset += size + getAlignCooficient(size, 16);
+        }
+
+        copyTempBufferToImage(tempCmdBuf, tempBuffer, mipOffsets, pModel->textures[*pCurImageCount], tex->baseWidth, tex->baseHeight, 1, 0, tex->numLevels, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
         ktxTexture2_Destroy(tex);
-
-        *pCurImageOffset += size + getAlignCooficient(size, 16); // BC and ASTC require offset alignment to their block size (we're using only 16 block size)
+        *pCurImageOffset += curImageOffset; // BC and ASTC require offset alignment to their block size (we're using only 16 block size)
         (*pCurImageCount)++;
     }
 

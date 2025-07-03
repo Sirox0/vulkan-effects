@@ -51,7 +51,7 @@ void modelViewSceneInit() {
         vkGetSwapchainImagesKHR(vkglobals.device, vkglobals.swapchain, &globals->swapchainImageCount, globals->swapchainImages);
 
         for (u32 i = 0; i < globals->swapchainImageCount; i++) {
-            createImageView(&globals->swapchainImageViews[i], globals->swapchainImages[i], VK_IMAGE_VIEW_TYPE_2D, vkglobals.surfaceFormat.format, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+            createImageView(&globals->swapchainImageViews[i], globals->swapchainImages[i], VK_IMAGE_VIEW_TYPE_2D, vkglobals.surfaceFormat.format, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
         }
     }
 
@@ -138,9 +138,9 @@ void modelViewSceneInit() {
         const struct aiScene* scene = vkModelLoadScene(modelPath);
 
         u32 imagesSize, imageCount;
-        vkModelGetTexturesInfo(scene, config.modelDirectoryPath, &imagesSize, &imageCount, NULL, NULL);
-        u32 imageWidths[imageCount], imageHeights[imageCount];
-        vkModelGetTexturesInfo(scene, config.modelDirectoryPath, &imagesSize, &imageCount, imageWidths, imageHeights);
+        vkModelGetTexturesInfo(scene, config.modelDirectoryPath, &imagesSize, &imageCount, NULL, NULL, NULL);
+        u32 imageMipLevels[imageCount], imageWidths[imageCount], imageHeights[imageCount];
+        vkModelGetTexturesInfo(scene, config.modelDirectoryPath, &imagesSize, &imageCount, imageMipLevels, imageWidths, imageHeights);
 
         globals->model.textures = (VkImage*)malloc((sizeof(VkImage) + sizeof(VkImageView)) * imageCount);
         globals->model.views = (VkImageView*)(((void*)globals->model.textures) + sizeof(VkImage) * imageCount);
@@ -153,12 +153,11 @@ void modelViewSceneInit() {
 
         {
             // device-local resources
-            createImage(&globals->depthTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, globals->depthTextureFormat, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&globals->depthTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, globals->depthTextureFormat, 1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
 
-            createImage(&globals->ssaoNoiseTexture, config.ssaoNoiseDim, config.ssaoNoiseDim, VK_FORMAT_R32G32B32A32_SFLOAT, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
-            createImage(&globals->skyboxCubemap, skyboxTexture->baseWidth, skyboxTexture->baseHeight, VK_FORMAT_R8G8B8A8_UNORM, 6, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
-            for (u32 i = 0; i < imageCount; i++)
-                createImage(&globals->model.textures[i], imageWidths[i], imageHeights[i], vkglobals.textureFormat, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
+            createImage(&globals->ssaoNoiseTexture, config.ssaoNoiseDim, config.ssaoNoiseDim, VK_FORMAT_R32G32B32A32_SFLOAT, 1, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
+            createImage(&globals->skyboxCubemap, skyboxTexture->baseWidth, skyboxTexture->baseHeight, VK_FORMAT_R8G8B8A8_UNORM, 6, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+            for (u32 i = 0; i < imageCount; i++) createImage(&globals->model.textures[i], imageWidths[i], imageHeights[i], vkglobals.textureFormat, 1, imageMipLevels[i], VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
             
             createBuffer(&globals->projectionBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(mat4) + 2 * sizeof(f32));
             createBuffer(&globals->ssaoKernelBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, config.ssaoKernelSize * sizeof(vec4));
@@ -172,10 +171,10 @@ void modelViewSceneInit() {
 
             createBuffer(&globals->model.indirectBuffer, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, indirectSize);
             
-            createImage(&globals->gbuffer, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 2, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
-            createImage(&globals->velocityTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
-            createImage(&globals->ssaoAttachment, vkglobals.swapchainExtent.width / config.ssaoResolutionFactor, vkglobals.swapchainExtent.height / config.ssaoResolutionFactor, VK_FORMAT_R8_UNORM, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
-            createImage(&globals->postProcessAttachment, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&globals->gbuffer, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 2, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&globals->velocityTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&globals->ssaoAttachment, vkglobals.swapchainExtent.width / config.ssaoResolutionFactor, vkglobals.swapchainExtent.height / config.ssaoResolutionFactor, VK_FORMAT_R8_UNORM, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&globals->postProcessAttachment, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
 
             {
                 VkMemoryAllocClusterInfo_t allocInfo = {};
@@ -310,6 +309,8 @@ void modelViewSceneInit() {
             }
         }
 
+        for (u32 i = 0; i < imageCount; i++) createImageView(&globals->model.views[i], globals->model.textures[i], VK_IMAGE_VIEW_TYPE_2D, vkglobals.textureFormat, 1, 0, imageMipLevels[i], 0, VK_IMAGE_ASPECT_COLOR_BIT);
+
         {
             #define tempBufferMemRawSSAOoffset (sizeof(skyboxVertexbuf))
             #define tempBufferMemRawProjectionMatrixoffset (tempBufferMemRawSSAOoffset + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4))
@@ -383,12 +384,13 @@ void modelViewSceneInit() {
                 vkCmdCopyBuffer(tempCmdBuffer, tempBuffer, globals->ssaoKernelBuffer, 1, &copyInfo[1]);
                 vkCmdCopyBuffer(tempCmdBuffer, tempBuffer, globals->projectionBuffer, 1, &copyInfo[2]);
 
-                copyTempBufferToImage(tempCmdBuffer, tempBuffer, tempBufferMemRawSSAOoffset,
-                    globals->ssaoNoiseTexture, config.ssaoNoiseDim, config.ssaoNoiseDim, 1, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                VkDeviceSize offsets[2] = {tempBufferMemRawSSAOoffset, tempBufferMemRawSkyboxCubemapoffset};
+
+                copyTempBufferToImage(tempCmdBuffer, tempBuffer, offsets,
+                    globals->ssaoNoiseTexture, config.ssaoNoiseDim, config.ssaoNoiseDim, 1, 0, 1, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                 );
-                copyTempBufferToImage(tempCmdBuffer, tempBuffer,
-                    tempBufferMemRawSkyboxCubemapoffset,
-                    globals->skyboxCubemap, skyboxTexture->baseWidth, skyboxTexture->baseHeight, 6, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                copyTempBufferToImage(tempCmdBuffer, tempBuffer, offsets + 1,
+                    globals->skyboxCubemap, skyboxTexture->baseWidth, skyboxTexture->baseHeight, 6, 0, 1, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                 );
             }
         }
@@ -427,16 +429,14 @@ void modelViewSceneInit() {
         VK_ASSERT(vkQueueSubmit(vkglobals.queue, 1, &submitInfo, tempFence), "failed to submit command buffer\n");
     }
 
-    createImageView(&globals->depthTextureView, globals->depthTexture, VK_IMAGE_VIEW_TYPE_2D, globals->depthTextureFormat, 1, 0, VK_IMAGE_ASPECT_DEPTH_BIT);
-    createImageView(&globals->skyboxCubemapView, globals->skyboxCubemap, VK_IMAGE_VIEW_TYPE_CUBE, VK_FORMAT_R8G8B8A8_UNORM, 6, 0, VK_IMAGE_ASPECT_COLOR_BIT);
-    createImageView(&globals->gbufferNormalView, globals->gbuffer, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
-    createImageView(&globals->gbufferAlbedoView, globals->gbuffer, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT);
-    createImageView(&globals->velocityTextureView, globals->velocityTexture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
-    createImageView(&globals->ssaoNoiseTextureView, globals->ssaoNoiseTexture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R32G32B32A32_SFLOAT, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
-    createImageView(&globals->ssaoAttachmentView, globals->ssaoAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
-    createImageView(&globals->postProcessAttachmentView, globals->postProcessAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
-
-    for (u32 i = 0; i < globals->model.textureCount; i++) createImageView(&globals->model.views[i], globals->model.textures[i], VK_IMAGE_VIEW_TYPE_2D, vkglobals.textureFormat, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+    createImageView(&globals->depthTextureView, globals->depthTexture, VK_IMAGE_VIEW_TYPE_2D, globals->depthTextureFormat, 1, 0, 1, 0, VK_IMAGE_ASPECT_DEPTH_BIT);
+    createImageView(&globals->skyboxCubemapView, globals->skyboxCubemap, VK_IMAGE_VIEW_TYPE_CUBE, VK_FORMAT_R8G8B8A8_UNORM, 6, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+    createImageView(&globals->gbufferNormalView, globals->gbuffer, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+    createImageView(&globals->gbufferAlbedoView, globals->gbuffer, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+    createImageView(&globals->velocityTextureView, globals->velocityTexture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+    createImageView(&globals->ssaoNoiseTextureView, globals->ssaoNoiseTexture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R32G32B32A32_SFLOAT, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+    createImageView(&globals->ssaoAttachmentView, globals->ssaoAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+    createImageView(&globals->postProcessAttachmentView, globals->postProcessAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     
     {
         VkSamplerCreateInfo samplerInfo = {};

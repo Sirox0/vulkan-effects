@@ -206,7 +206,7 @@ void vkInit() {
 
         vkglobals.textureFormat = VK_FORMAT_UNDEFINED;
 
-        /*if (vkglobals.deviceFeatures.features.textureCompressionASTC_LDR) {
+        if (vkglobals.deviceFeatures.features.textureCompressionASTC_LDR) {
             vkGetPhysicalDeviceFormatProperties2KHR(vkglobals.physicalDevice, VK_FORMAT_ASTC_4x4_UNORM_BLOCK, &properties);
 
             if (properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT && properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_TRANSFER_DST_BIT_KHR) {
@@ -224,7 +224,7 @@ void vkInit() {
                 vkglobals.textureFormatKtx = KTX_TTF_BC7_RGBA;
                 goto foundFormat;
             }
-        }*/
+        }
 
         if (vkglobals.textureFormat == VK_FORMAT_UNDEFINED) {
             vkGetPhysicalDeviceFormatProperties2KHR(vkglobals.physicalDevice, VK_FORMAT_R8G8B8A8_UNORM, &properties);

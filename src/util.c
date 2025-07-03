@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "numtypes.h"
 #include "mathext.h"
@@ -9,15 +10,15 @@
 #include "vk.h"
 #include "util.h"
 
-void copyTempBufferToImage(VkCommandBuffer cmdBuffer, VkBuffer buffer, VkDeviceSize bufferOffset, VkImage image, u32 w, u32 h, u32 arrayLayers, u32 baseArrayLayer, VkImageLayout newLayout) {
+void copyTempBufferToImage(VkCommandBuffer cmdBuffer, VkBuffer buffer, VkDeviceSize* bufferOffsets, VkImage image, u32 w, u32 h, u32 arrayLayers, u32 baseArrayLayer, u32 mipLevels, u32 baseMipLevel, VkImageLayout newLayout) {
     VkImageMemoryBarrier imageBarriers[2] = {};
     imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     imageBarriers[0].image = image;
     imageBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     imageBarriers[0].subresourceRange.baseArrayLayer = baseArrayLayer;
     imageBarriers[0].subresourceRange.layerCount = arrayLayers;
-    imageBarriers[0].subresourceRange.baseMipLevel = 0;
-    imageBarriers[0].subresourceRange.levelCount = 1;
+    imageBarriers[0].subresourceRange.baseMipLevel = baseMipLevel;
+    imageBarriers[0].subresourceRange.levelCount = mipLevels;
     imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     imageBarriers[0].srcAccessMask = 0;
@@ -30,8 +31,8 @@ void copyTempBufferToImage(VkCommandBuffer cmdBuffer, VkBuffer buffer, VkDeviceS
     imageBarriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     imageBarriers[1].subresourceRange.baseArrayLayer = baseArrayLayer;
     imageBarriers[1].subresourceRange.layerCount = arrayLayers;
-    imageBarriers[1].subresourceRange.baseMipLevel = 0;
-    imageBarriers[1].subresourceRange.levelCount = 1;
+    imageBarriers[1].subresourceRange.baseMipLevel = baseMipLevel;
+    imageBarriers[1].subresourceRange.levelCount = mipLevels;
     imageBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     imageBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     imageBarriers[1].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -41,15 +42,20 @@ void copyTempBufferToImage(VkCommandBuffer cmdBuffer, VkBuffer buffer, VkDeviceS
 
     vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &imageBarriers[0]);
 
-    VkBufferImageCopy copyInfo = {};
-    copyInfo.bufferOffset = bufferOffset;
-    copyInfo.imageExtent = (VkExtent3D){w, h, 1};
-    copyInfo.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copyInfo.imageSubresource.baseArrayLayer = baseArrayLayer;
-    copyInfo.imageSubresource.layerCount = arrayLayers;
-    copyInfo.imageSubresource.mipLevel = 0;
+    VkBufferImageCopy copyInfos[mipLevels];
+    for (u32 i = 0; i < mipLevels; i++) {
+        copyInfos[i].bufferOffset = bufferOffsets[i];
+        copyInfos[i].bufferRowLength = 0;
+        copyInfos[i].bufferImageHeight = 0;
+        copyInfos[i].imageExtent = (VkExtent3D){w / pow(2, i), h / pow(2, i), 1};
+        copyInfos[i].imageOffset = (VkOffset3D){0, 0, 0};
+        copyInfos[i].imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        copyInfos[i].imageSubresource.baseArrayLayer = baseArrayLayer;
+        copyInfos[i].imageSubresource.layerCount = arrayLayers;
+        copyInfos[i].imageSubresource.mipLevel = i;
+    }
 
-    vkCmdCopyBufferToImage(cmdBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyInfo);
+    vkCmdCopyBufferToImage(cmdBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels, copyInfos);
 
     vkCmdPipelineBarrier(cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &imageBarriers[1]);
 }
@@ -107,7 +113,7 @@ void vkAllocateMemoryCluster(VkMemoryAllocClusterInfo_t* info, VkDeviceMemory* p
     }
 }
 
-void createImage(VkImage* pImage, i32 w, i32 h, VkFormat textureFormat, u32 arrayLayers, VkImageUsageFlags usage, VkImageCreateFlags flags) {
+void createImage(VkImage* pImage, i32 w, i32 h, VkFormat textureFormat, u32 arrayLayers, u32 mipLevels, VkImageUsageFlags usage, VkImageCreateFlags flags) {
     VkImageCreateInfo imageInfo = {};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.flags = flags;
@@ -118,14 +124,14 @@ void createImage(VkImage* pImage, i32 w, i32 h, VkFormat textureFormat, u32 arra
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     imageInfo.extent = (VkExtent3D){w, h, 1};
     imageInfo.format = textureFormat;
-    imageInfo.mipLevels = 1;
+    imageInfo.mipLevels = mipLevels;
     imageInfo.arrayLayers = arrayLayers;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     VK_ASSERT(vkCreateImage(vkglobals.device, &imageInfo, VK_NULL_HANDLE, pImage), "failed to create image\n");
 }
 
-void createImageView(VkImageView* pView, VkImage image, VkImageViewType type, VkFormat textureFormat, u32 arrayLayers, u32 baseArrayLayer, VkImageAspectFlags aspect) {
+void createImageView(VkImageView* pView, VkImage image, VkImageViewType type, VkFormat textureFormat, u32 arrayLayers, u32 baseArrayLayer, u32 mipLevels, u32 baseMipLevel, VkImageAspectFlags aspect) {
     VkImageViewCreateInfo viewInfo = {};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.viewType = type;
@@ -135,8 +141,8 @@ void createImageView(VkImageView* pView, VkImage image, VkImageViewType type, Vk
     viewInfo.subresourceRange.aspectMask = aspect;
     viewInfo.subresourceRange.baseArrayLayer = baseArrayLayer;
     viewInfo.subresourceRange.layerCount = arrayLayers;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseMipLevel = baseMipLevel;
+    viewInfo.subresourceRange.levelCount = mipLevels;
 
     VK_ASSERT(vkCreateImageView(vkglobals.device, &viewInfo, VK_NULL_HANDLE, pView), "failed to create image view\n");
 }

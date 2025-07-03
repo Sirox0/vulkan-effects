@@ -17,11 +17,11 @@ typedef struct {
     const void* pHandles;
 } VkMemoryAllocClusterInfo_t;
 
-void copyTempBufferToImage(VkCommandBuffer cmdBuffer, VkBuffer buffer, VkDeviceSize bufferOffset, VkImage image, u32 w, u32 h, u32 arrayLayers, u32 baseArrayLayer, VkImageLayout newLayout);
+void copyTempBufferToImage(VkCommandBuffer cmdBuffer, VkBuffer buffer, VkDeviceSize* bufferOffsets, VkImage image, u32 w, u32 h, u32 arrayLayers, u32 baseArrayLayer, u32 mipLevels, u32 baseMipLevel, VkImageLayout newLayout);
 void vkAllocateMemoryCluster(VkMemoryAllocClusterInfo_t* info, VkDeviceMemory* pMem);
 void createBuffer(VkBuffer* pBuffer, VkBufferUsageFlags usage, VkDeviceSize size);
-void createImage(VkImage* pImage, i32 w, i32 h, VkFormat textureFormat, u32 arrayLayers, VkImageUsageFlags usage, VkImageCreateFlags flags);
-void createImageView(VkImageView* pView, VkImage image, VkImageViewType type, VkFormat textureFormat, u32 arrayLayers, u32 baseArrayLayer, VkImageAspectFlags aspect);
+void createImage(VkImage* pImage, i32 w, i32 h, VkFormat textureFormat, u32 arrayLayers, u32 mipLevels, VkImageUsageFlags usage, VkImageCreateFlags flags);
+void createImageView(VkImageView* pView, VkImage image, VkImageViewType type, VkFormat textureFormat, u32 arrayLayers, u32 baseArrayLayer, u32 mipLevels, u32 baseMipLevel, VkImageAspectFlags aspect);
 u32 getMemoryTypeIndex(u32 filter, VkMemoryPropertyFlags props);
 VkShaderModule createShaderModuleFromAsset(char* path);
 VkPipelineCache loadPipelineCache(char* path);
