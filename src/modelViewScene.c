@@ -441,7 +441,7 @@ void modelViewSceneInit() {
         samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         samplerInfo.mipLodBias = 0.0f;
         samplerInfo.minLod = 0.0f;
-        samplerInfo.maxLod = 0.25f;
+        samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
         samplerInfo.minFilter = vkglobals.textureFilter;
         samplerInfo.magFilter = vkglobals.textureFilter;
         if (config.maxAnisotropy) samplerInfo.anisotropyEnable = VK_TRUE;
