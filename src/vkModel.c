@@ -3,7 +3,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <cglm/cglm.h>
-#include <stb_image.h>
+#include <ktx.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -75,17 +75,22 @@ void vkModelGetTexturesInfo(const struct aiScene* scene, const char* modelDirPat
             struct aiString path;
 
             if (aiGetMaterialTexture(mat, aiTextureType_DIFFUSE, 0, &path, NULL, NULL, NULL, NULL, NULL, NULL) == AI_SUCCESS) {
-                i32 w, h;
                 char p[512] = {};
                 strcat(p, modelDirPath);
                 strcat(p, path.data);
-                stbi_info(p, &w, &h, NULL);
+
+                ktxTexture2* tex;
+                ktxTexture2_CreateFromNamedFile(p, 0, &tex);
+                ktxTexture2_TranscodeBasis(tex, vkglobals.textureFormatKtx, 0);
                 if (pImageWidths != NULL && pImageHeights != NULL) {
-                    pImageWidths[curImageCount] = w;
-                    pImageHeights[curImageCount] = h;
+                    pImageWidths[curImageCount] = tex->baseWidth;
+                    pImageHeights[curImageCount] = tex->baseHeight;
                 }
-                curImagesSize += w * h * 4;
+
+                u32 size = ktxTexture_GetImageSize((ktxTexture*)tex, 0);
+                curImagesSize += size + getAlignCooficient(size, 16);
                 curImageCount++;
+                ktxTexture2_Destroy(tex);
             }
         }
         
@@ -93,17 +98,22 @@ void vkModelGetTexturesInfo(const struct aiScene* scene, const char* modelDirPat
             struct aiString path;
 
             if (aiGetMaterialTexture(mat, aiTextureType_NORMALS, 0, &path, NULL, NULL, NULL, NULL, NULL, NULL) == AI_SUCCESS) {
-                i32 w, h;
                 char p[512] = {};
                 strcat(p, modelDirPath);
                 strcat(p, path.data);
-                stbi_info(p, &w, &h, NULL);
+
+                ktxTexture2* tex;
+                ktxTexture2_CreateFromNamedFile(p, 0, &tex);
+                ktxTexture2_TranscodeBasis(tex, vkglobals.textureFormatKtx, 0);
                 if (pImageWidths != NULL && pImageHeights != NULL) {
-                    pImageWidths[curImageCount] = w;
-                    pImageHeights[curImageCount] = h;
+                    pImageWidths[curImageCount] = tex->baseWidth;
+                    pImageHeights[curImageCount] = tex->baseHeight;
                 }
-                curImagesSize += w * h * 4;
+
+                u32 size = ktxTexture_GetImageSize((ktxTexture*)tex, 0);
+                curImagesSize += size + getAlignCooficient(size, 16);
                 curImageCount++;
+                ktxTexture2_Destroy(tex);
             }
         }
 
@@ -111,17 +121,22 @@ void vkModelGetTexturesInfo(const struct aiScene* scene, const char* modelDirPat
             struct aiString path;
 
             if (aiGetMaterialTexture(mat, aiTextureType_GLTF_METALLIC_ROUGHNESS, 0, &path, NULL, NULL, NULL, NULL, NULL, NULL) == AI_SUCCESS) {
-                i32 w, h;
                 char p[512] = {};
                 strcat(p, modelDirPath);
                 strcat(p, path.data);
-                stbi_info(p, &w, &h, NULL);
+
+                ktxTexture2* tex;
+                ktxTexture2_CreateFromNamedFile(p, 0, &tex);
+                ktxTexture2_TranscodeBasis(tex, vkglobals.textureFormatKtx, 0);
                 if (pImageWidths != NULL && pImageHeights != NULL) {
-                    pImageWidths[curImageCount] = w;
-                    pImageHeights[curImageCount] = h;
+                    pImageWidths[curImageCount] = tex->baseWidth;
+                    pImageHeights[curImageCount] = tex->baseHeight;
                 }
-                curImagesSize += w * h * 4;
+
+                u32 size = ktxTexture_GetImageSize((ktxTexture*)tex, 0);
+                curImagesSize += size + getAlignCooficient(size, 16);
                 curImageCount++;
+                ktxTexture2_Destroy(tex);
             }
         }
     }
@@ -223,20 +238,24 @@ u32 vkModelLoadTexture(const struct aiMaterial* mat, enum aiTextureType type, co
         const struct aiTexture* tex = scene->mTextures[id];
         */
     } else {
-        i32 w, h;
         char p[512] = {};
         strcat(p, modelDirPath);
         strcat(p, path.data);
-        stbi_uc* tex = stbi_load(p, &w, &h, NULL, STBI_rgb_alpha);
 
-        u32 size = w * h * 4;
-        memcpy(pTempBufferRaw + tempBufferTexturesOffset + *pCurImageOffset, tex, size);
+        ktxTexture2* tex;
+        ktxTexture2_CreateFromNamedFile(p, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &tex);
+        ktxTexture2_TranscodeBasis(tex, vkglobals.textureFormatKtx, 0);
 
-        stbi_image_free(tex);
+        u32 size = ktxTexture_GetImageSize((ktxTexture*)tex, 0);
+        u64 offset = 0;
+        ktxTexture_GetImageOffset((ktxTexture*)tex, 0, 0, 0, &offset);
+        memcpy(pTempBufferRaw + tempBufferTexturesOffset + *pCurImageOffset, ktxTexture_GetData((ktxTexture*)tex) + offset, size);
 
-        copyTempBufferToImage(tempCmdBuf, tempBuffer, tempBufferTexturesOffset + *pCurImageOffset, pModel->textures[*pCurImageCount], w, h, 1, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        copyTempBufferToImage(tempCmdBuf, tempBuffer, tempBufferTexturesOffset + *pCurImageOffset, pModel->textures[*pCurImageCount], tex->baseWidth, tex->baseHeight, 1, 0, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-        *pCurImageOffset += size;
+        ktxTexture2_Destroy(tex);
+
+        *pCurImageOffset += size + getAlignCooficient(size, 16); // BC and ASTC require offset alignment to their block size (we're using only 16 block size)
         (*pCurImageCount)++;
     }
 
@@ -255,10 +274,11 @@ void vkModelCreate(const struct aiScene* scene, const char* modelDirPath, VkComm
         const struct aiMaterial* mat = scene->mMaterials[i];
 
         VkModelMaterial_t modelMat = {};
+        u32 alignCooficient = getAlignCooficient(tempBufferTexturesOffset, 16);
 
         if (aiGetMaterialTextureCount(mat, aiTextureType_DIFFUSE) > 0) {
             modelMat.diffuseIndex = curImageCount;
-            if (vkModelLoadTexture(mat, aiTextureType_DIFFUSE, modelDirPath, tempCmdBuf, tempBuffer, tempBufferTexturesOffset, pTempBufferRaw, &curImageOffset, &curImageCount, pModel) != 0)
+            if (vkModelLoadTexture(mat, aiTextureType_DIFFUSE, modelDirPath, tempCmdBuf, tempBuffer, tempBufferTexturesOffset + alignCooficient, pTempBufferRaw, &curImageOffset, &curImageCount, pModel) != 0)
                 modelMat.diffuseIndex = -1;
         } else {
             modelMat.diffuseIndex = -1;
@@ -266,7 +286,7 @@ void vkModelCreate(const struct aiScene* scene, const char* modelDirPath, VkComm
         
         if (aiGetMaterialTextureCount(mat, aiTextureType_NORMALS) > 0) {
             modelMat.normalMapIndex = curImageCount;
-            if (vkModelLoadTexture(mat, aiTextureType_NORMALS, modelDirPath, tempCmdBuf, tempBuffer, tempBufferTexturesOffset, pTempBufferRaw, &curImageOffset, &curImageCount, pModel) != 0)
+            if (vkModelLoadTexture(mat, aiTextureType_NORMALS, modelDirPath, tempCmdBuf, tempBuffer, tempBufferTexturesOffset + alignCooficient, pTempBufferRaw, &curImageOffset, &curImageCount, pModel) != 0)
                 modelMat.normalMapIndex = -1;
         } else {
             modelMat.normalMapIndex = -1;
@@ -274,7 +294,7 @@ void vkModelCreate(const struct aiScene* scene, const char* modelDirPath, VkComm
 
         if (aiGetMaterialTextureCount(mat, aiTextureType_GLTF_METALLIC_ROUGHNESS) > 0) {
             modelMat.metallicRoughnessIndex = curImageCount;
-            if (vkModelLoadTexture(mat, aiTextureType_GLTF_METALLIC_ROUGHNESS, modelDirPath, tempCmdBuf, tempBuffer, tempBufferTexturesOffset, pTempBufferRaw, &curImageOffset, &curImageCount, pModel) != 0)
+            if (vkModelLoadTexture(mat, aiTextureType_GLTF_METALLIC_ROUGHNESS, modelDirPath, tempCmdBuf, tempBuffer, tempBufferTexturesOffset + alignCooficient, pTempBufferRaw, &curImageOffset, &curImageCount, pModel) != 0)
                 modelMat.metallicRoughnessIndex = -1;
         } else {
             modelMat.metallicRoughnessIndex = -1;

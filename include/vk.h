@@ -3,6 +3,7 @@
 
 #include <vulkan/vulkan.h>
 #include <SDL3/SDL.h>
+#include <ktx.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,11 +27,14 @@ typedef struct {
     f32 fps;
 
     VkFilter textureFilter;
+    VkFormat textureFormat;
+    ktx_transcode_fmt_e textureFormatKtx;
 
     VkInstance instance;
     VkPhysicalDevice physicalDevice;
-    VkPhysicalDeviceProperties deviceProperties;
-    VkPhysicalDeviceMemoryProperties deviceMemoryProperties;
+    VkPhysicalDeviceProperties2KHR deviceProperties;
+    VkPhysicalDeviceFeatures2KHR deviceFeatures;
+    VkPhysicalDeviceMemoryProperties2KHR deviceMemoryProperties;
     VkDevice device;
     u32 queueFamilyIndex;
     VkQueue queue;

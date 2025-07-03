@@ -19,8 +19,8 @@ VulkanGlobals_t vkglobals = {};
 void vkInit() {
     loadVulkanLoaderFunctions();
 
-    #define DEVICE_EXTENSION_COUNT 9
-    const char* deviceExtensions[DEVICE_EXTENSION_COUNT] = {"VK_KHR_swapchain", "VK_KHR_dynamic_rendering", "VK_KHR_depth_stencil_resolve", "VK_KHR_create_renderpass2", "VK_KHR_multiview", "VK_KHR_maintenance2", "VK_KHR_shader_draw_parameters", "VK_EXT_descriptor_indexing", "VK_KHR_maintenance3"};
+    #define DEVICE_EXTENSION_COUNT 10
+    const char* deviceExtensions[DEVICE_EXTENSION_COUNT] = {"VK_KHR_swapchain", "VK_KHR_maintenance1", "VK_KHR_dynamic_rendering", "VK_KHR_depth_stencil_resolve", "VK_KHR_create_renderpass2", "VK_KHR_multiview", "VK_KHR_maintenance2", "VK_KHR_shader_draw_parameters", "VK_EXT_descriptor_indexing", "VK_KHR_maintenance3"};
     #define DEVICE_OPTIONAL_EXTENSION_COUNT 2
     const char* deviceOptionalExtensions[DEVICE_OPTIONAL_EXTENSION_COUNT] = {"VK_IMG_filter_cubic", "VK_EXT_filter_cubic"};
     u8 optionalExts[DEVICE_OPTIONAL_EXTENSION_COUNT] = {0};
@@ -91,13 +91,19 @@ void vkInit() {
             if (foundExtsSum < DEVICE_EXTENSION_COUNT) continue;
 
             u32 queueFamilyPropertyCount;
-            vkGetPhysicalDeviceQueueFamilyProperties(physicalDevices[i], &queueFamilyPropertyCount, VK_NULL_HANDLE);
-            VkQueueFamilyProperties queueFamilyProperties[queueFamilyPropertyCount];
-            vkGetPhysicalDeviceQueueFamilyProperties(physicalDevices[i], &queueFamilyPropertyCount, queueFamilyProperties);
+            vkGetPhysicalDeviceQueueFamilyProperties2KHR(physicalDevices[i], &queueFamilyPropertyCount, VK_NULL_HANDLE);
+
+            VkQueueFamilyProperties2KHR queueFamilyProperties[queueFamilyPropertyCount];
+            for (u32 i = 0; i < queueFamilyPropertyCount; i++) {
+                queueFamilyProperties[i].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2_KHR;
+                queueFamilyProperties[i].pNext = VK_NULL_HANDLE;
+            }
+
+            vkGetPhysicalDeviceQueueFamilyProperties2KHR(physicalDevices[i], &queueFamilyPropertyCount, queueFamilyProperties);
 
             u8 foundQueueFamily = 0;
             for (u32 queueFamilyIndex = 0; queueFamilyIndex < queueFamilyPropertyCount; queueFamilyIndex++) {
-                if (queueFamilyProperties[queueFamilyIndex].queueFlags & VK_QUEUE_GRAPHICS_BIT && queueFamilyProperties[queueFamilyIndex].queueFlags & VK_QUEUE_TRANSFER_BIT) {
+                if (queueFamilyProperties[queueFamilyIndex].queueFamilyProperties.queueFlags & VK_QUEUE_GRAPHICS_BIT && queueFamilyProperties[queueFamilyIndex].queueFamilyProperties.queueFlags & VK_QUEUE_TRANSFER_BIT) {
                     VkBool32 canPresent;
                     vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevices[i], queueFamilyIndex, vkglobals.surface, &canPresent);
 
@@ -169,9 +175,17 @@ void vkInit() {
             }
             if (!foundUNORMformat) vkglobals.surfaceFormat = surfaceFormats[0];
 
+            vkglobals.deviceMemoryProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2_KHR;
+            vkglobals.deviceMemoryProperties.pNext = VK_NULL_HANDLE;
+            vkglobals.deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+            vkglobals.deviceProperties.pNext = VK_NULL_HANDLE;
+            vkglobals.deviceFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+            vkglobals.deviceFeatures.pNext = VK_NULL_HANDLE;
+
             vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevices[i], vkglobals.surface, &vkglobals.surfaceCapabilities);
-            vkGetPhysicalDeviceMemoryProperties(physicalDevices[i], &vkglobals.deviceMemoryProperties);
-            vkGetPhysicalDeviceProperties(physicalDevices[i], &vkglobals.deviceProperties);
+            vkGetPhysicalDeviceMemoryProperties2KHR(physicalDevices[i], &vkglobals.deviceMemoryProperties);
+            vkGetPhysicalDeviceProperties2KHR(physicalDevices[i], &vkglobals.deviceProperties);
+            vkGetPhysicalDeviceFeatures2KHR(physicalDevices[i], &vkglobals.deviceFeatures);
 
             vkglobals.physicalDevice = physicalDevices[i];
             foundDevice = 1;
@@ -186,21 +200,53 @@ void vkInit() {
     }
 
     {
-        VkFormatProperties properties;
-        vkGetPhysicalDeviceFormatProperties(vkglobals.physicalDevice, VK_FORMAT_R8G8B8A8_UNORM, &properties);
+        VkFormatProperties2KHR properties;
+        properties.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
+        properties.pNext = VK_NULL_HANDLE;
+
+        vkglobals.textureFormat = VK_FORMAT_UNDEFINED;
+
+        /*if (vkglobals.deviceFeatures.features.textureCompressionASTC_LDR) {
+            vkGetPhysicalDeviceFormatProperties2KHR(vkglobals.physicalDevice, VK_FORMAT_ASTC_4x4_UNORM_BLOCK, &properties);
+
+            if (properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT && properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_TRANSFER_DST_BIT_KHR) {
+                vkglobals.textureFormat = VK_FORMAT_ASTC_4x4_UNORM_BLOCK;
+                vkglobals.textureFormatKtx = KTX_TTF_ASTC_4x4_RGBA;
+                goto foundFormat;
+            }
+        }
+
+        if (vkglobals.deviceFeatures.features.textureCompressionBC) {
+            vkGetPhysicalDeviceFormatProperties2KHR(vkglobals.physicalDevice, VK_FORMAT_BC7_UNORM_BLOCK, &properties);
+
+            if (properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT && properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_TRANSFER_DST_BIT_KHR) {
+                vkglobals.textureFormat = VK_FORMAT_BC7_UNORM_BLOCK;
+                vkglobals.textureFormatKtx = KTX_TTF_BC7_RGBA;
+                goto foundFormat;
+            }
+        }*/
+
+        if (vkglobals.textureFormat == VK_FORMAT_UNDEFINED) {
+            vkGetPhysicalDeviceFormatProperties2KHR(vkglobals.physicalDevice, VK_FORMAT_R8G8B8A8_UNORM, &properties);
+
+            vkglobals.textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
+            vkglobals.textureFormatKtx = KTX_TTF_RGBA32;
+        }
+
+        foundFormat:
 
         // if cubic filtering is available check its support for texture format
         if (optionalExts[0] || optionalExts[1]) {
             // IMG and EXT alias each other here
-            if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_EXT && config.preferredTextureFilter == 2) {
+            if (properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_EXT && config.preferredTextureFilter == 2) {
                 vkglobals.textureFilter = VK_FILTER_CUBIC_EXT;
-            } else if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT && config.preferredTextureFilter >= 1) {
+            } else if (properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT && config.preferredTextureFilter >= 1) {
                 vkglobals.textureFilter = VK_FILTER_LINEAR;
             } else {
                 vkglobals.textureFilter = VK_FILTER_NEAREST;
             }
         } else {
-            if (properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT && config.preferredTextureFilter >= 1) {
+            if (properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT && config.preferredTextureFilter >= 1) {
                 vkglobals.textureFilter = VK_FILTER_LINEAR;
             } else {
                 vkglobals.textureFilter = VK_FILTER_NEAREST;

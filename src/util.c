@@ -142,8 +142,8 @@ void createImageView(VkImageView* pView, VkImage image, VkImageViewType type, Vk
 }
 
 u32 getMemoryTypeIndex(u32 filter, VkMemoryPropertyFlags props) {
-    for (u32 i = 0; i < vkglobals.deviceMemoryProperties.memoryTypeCount; i++) {
-        if (filter & (1 << i) && ((vkglobals.deviceMemoryProperties.memoryTypes[i].propertyFlags & props) == props)) {
+    for (u32 i = 0; i < vkglobals.deviceMemoryProperties.memoryProperties.memoryTypeCount; i++) {
+        if (filter & (1 << i) && ((vkglobals.deviceMemoryProperties.memoryProperties.memoryTypes[i].propertyFlags & props) == props)) {
             return i;
         }
     }

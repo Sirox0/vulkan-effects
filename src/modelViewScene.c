@@ -61,9 +61,12 @@ void modelViewSceneInit() {
         
         globals->depthTextureFormat = VK_FORMAT_UNDEFINED;
         for (u32 i = 0; i < DEPTH_FORMAT_COUNT; i++) {
-            VkFormatProperties props;
-            vkGetPhysicalDeviceFormatProperties(vkglobals.physicalDevice, formats[i], &props);
-            if (props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+            VkFormatProperties2KHR props;
+            props.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
+            props.pNext = VK_NULL_HANDLE;
+
+            vkGetPhysicalDeviceFormatProperties2KHR(vkglobals.physicalDevice, formats[i], &props);
+            if (props.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
                 globals->depthTextureFormat = formats[i];
             }
         }
@@ -146,7 +149,7 @@ void modelViewSceneInit() {
         vkModelGetSizes(scene, &vertexSize, &indexSize, &indirectSize, &storageMaterialsSize, &storageMaterialIndicesSize);
 
         globals->model.materialsSize = storageMaterialsSize;
-        globals->model.materialIndicesOffset = storageMaterialsSize + getAlignCooficient(storageMaterialsSize, vkglobals.deviceProperties.limits.minStorageBufferOffsetAlignment);
+        globals->model.materialIndicesOffset = storageMaterialsSize + getAlignCooficient(storageMaterialsSize, vkglobals.deviceProperties.properties.limits.minStorageBufferOffsetAlignment);
 
         {
             // device-local resources
@@ -155,7 +158,7 @@ void modelViewSceneInit() {
             createImage(&globals->ssaoNoiseTexture, config.ssaoNoiseDim, config.ssaoNoiseDim, VK_FORMAT_R32G32B32A32_SFLOAT, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
             createImage(&globals->skyboxCubemap, skyboxTexture->baseWidth, skyboxTexture->baseHeight, VK_FORMAT_R8G8B8A8_UNORM, 6, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
             for (u32 i = 0; i < imageCount; i++)
-                createImage(&globals->model.textures[i], imageWidths[i], imageHeights[i], VK_FORMAT_R8G8B8A8_UNORM, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
+                createImage(&globals->model.textures[i], imageWidths[i], imageHeights[i], vkglobals.textureFormat, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
             
             createBuffer(&globals->projectionBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(mat4) + 2 * sizeof(f32));
             createBuffer(&globals->ssaoKernelBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, config.ssaoKernelSize * sizeof(vec4));
@@ -433,7 +436,7 @@ void modelViewSceneInit() {
     createImageView(&globals->ssaoAttachmentView, globals->ssaoAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&globals->postProcessAttachmentView, globals->postProcessAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
 
-    for (u32 i = 0; i < globals->model.textureCount; i++) createImageView(&globals->model.views[i], globals->model.textures[i], VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+    for (u32 i = 0; i < globals->model.textureCount; i++) createImageView(&globals->model.views[i], globals->model.textures[i], VK_IMAGE_VIEW_TYPE_2D, vkglobals.textureFormat, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     
     {
         VkSamplerCreateInfo samplerInfo = {};
