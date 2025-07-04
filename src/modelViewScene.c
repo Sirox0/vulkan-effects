@@ -172,7 +172,7 @@ void modelViewSceneInit() {
             createBuffer(&globals->model.indirectBuffer, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, indirectSize);
             
             createImage(&globals->gbuffer, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 2, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
-            createImage(&globals->velocityTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&globals->metallicRoughnessVelocityTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
             createImage(&globals->ssaoAttachment, vkglobals.swapchainExtent.width / config.ssaoResolutionFactor, vkglobals.swapchainExtent.height / config.ssaoResolutionFactor, VK_FORMAT_R8_UNORM, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
             createImage(&globals->postProcessAttachment, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
 
@@ -256,7 +256,7 @@ void modelViewSceneInit() {
                 allocInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_IMAGE;
                 allocInfo.handleCount = 4;
-                allocInfo.pHandles = (VkImage[]){globals->gbuffer, globals->velocityTexture, globals->ssaoAttachment, globals->postProcessAttachment};
+                allocInfo.pHandles = (VkImage[]){globals->gbuffer, globals->metallicRoughnessVelocityTexture, globals->ssaoAttachment, globals->postProcessAttachment};
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalColorAttachmentSampledMemory);
             }
@@ -434,7 +434,7 @@ void modelViewSceneInit() {
     createImageView(&globals->skyboxCubemapView, globals->skyboxCubemap, VK_IMAGE_VIEW_TYPE_CUBE, VK_FORMAT_R8G8B8A8_UNORM, 6, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&globals->gbufferNormalView, globals->gbuffer, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&globals->gbufferAlbedoView, globals->gbuffer, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
-    createImageView(&globals->velocityTextureView, globals->velocityTexture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+    createImageView(&globals->metallicRoughnessVelocityTextureView, globals->metallicRoughnessVelocityTexture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&globals->ssaoNoiseTextureView, globals->ssaoNoiseTexture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R32G32B32A32_SFLOAT, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&globals->ssaoAttachmentView, globals->ssaoAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&globals->postProcessAttachmentView, globals->postProcessAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -682,7 +682,7 @@ void modelViewSceneInit() {
         descriptorImageInfos[1].sampler = VK_NULL_HANDLE;
 
         descriptorImageInfos[2].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        descriptorImageInfos[2].imageView = globals->velocityTextureView;
+        descriptorImageInfos[2].imageView = globals->metallicRoughnessVelocityTextureView;
         descriptorImageInfos[2].sampler = VK_NULL_HANDLE;
 
         descriptorImageInfos[3].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1284,7 +1284,7 @@ void modelViewSceneRender() {
             imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
             imageBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            imageBarriers[1].image = globals->velocityTexture;
+            imageBarriers[1].image = globals->metallicRoughnessVelocityTexture;
             imageBarriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             imageBarriers[1].subresourceRange.baseArrayLayer = 0;
             imageBarriers[1].subresourceRange.layerCount = 1;
@@ -1334,7 +1334,7 @@ void modelViewSceneRender() {
             attachments[1].clearValue = (VkClearValue){{{0.0f, 0.0f, 0.0f, 0.0f}}};
 
             attachments[2].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-            attachments[2].imageView = globals->velocityTextureView;
+            attachments[2].imageView = globals->metallicRoughnessVelocityTextureView;
             attachments[2].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             attachments[2].resolveMode = VK_RESOLVE_MODE_NONE_KHR;
             attachments[2].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -1408,7 +1408,7 @@ void modelViewSceneRender() {
             imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
             imageBarriers[2].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            imageBarriers[2].image = globals->velocityTexture;
+            imageBarriers[2].image = globals->metallicRoughnessVelocityTexture;
             imageBarriers[2].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             imageBarriers[2].subresourceRange.baseArrayLayer = 0;
             imageBarriers[2].subresourceRange.layerCount = 1;
@@ -1682,7 +1682,7 @@ void modelViewSceneQuit() {
     vkDestroyImageView(vkglobals.device, globals->postProcessAttachmentView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, globals->ssaoAttachmentView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, globals->ssaoNoiseTextureView, VK_NULL_HANDLE);
-    vkDestroyImageView(vkglobals.device, globals->velocityTextureView, VK_NULL_HANDLE);
+    vkDestroyImageView(vkglobals.device, globals->metallicRoughnessVelocityTextureView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, globals->gbufferAlbedoView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, globals->gbufferNormalView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, globals->skyboxCubemapView, VK_NULL_HANDLE);
@@ -1691,7 +1691,7 @@ void modelViewSceneQuit() {
     vkDestroyImage(vkglobals.device, globals->postProcessAttachment, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, globals->ssaoAttachment, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, globals->ssaoNoiseTexture, VK_NULL_HANDLE);
-    vkDestroyImage(vkglobals.device, globals->velocityTexture, VK_NULL_HANDLE);
+    vkDestroyImage(vkglobals.device, globals->metallicRoughnessVelocityTexture, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, globals->gbuffer, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, globals->skyboxCubemap, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, globals->depthTexture, VK_NULL_HANDLE);

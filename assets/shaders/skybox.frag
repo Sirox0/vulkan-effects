@@ -8,10 +8,10 @@ layout(binding = 0, set = 1) uniform samplerCube skyboxCubemap;
 
 layout(location = 0) out vec4 gbufferNormal;
 layout(location = 1) out vec4 gbufferAlbedo;
-layout(location = 2) out vec4 gbufferVelocity;
+layout(location = 2) out vec4 gbufferMetallicRoughnessVelocity;
 
 void main() {
     gbufferAlbedo.rgb = texture(skyboxCubemap, uvw).rgb;
     gbufferAlbedo.a = 0.0;
-    gbufferVelocity = vec4((pos.xy / pos.w) - (oldpos.xy / oldpos.w), 0.0, 1.0);
+    gbufferMetallicRoughnessVelocity = vec4(0.0, 0.0, (pos.xy / pos.w) - (oldpos.xy / oldpos.w));
 }

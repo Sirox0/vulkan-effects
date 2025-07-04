@@ -44,6 +44,7 @@ layout(location = 3) out vec3 fragtangent;
 layout(location = 4) out vec2 fraguv;
 layout(location = 5) out flat int textureIndex;
 layout(location = 6) out flat int normalMapIndex;
+layout(location = 7) out flat int metallicRoughnessIndex;
 
 void main() {
     vec4 Mpos = model * vec4(pos, 1.0);
@@ -61,4 +62,5 @@ void main() {
 
     textureIndex = mats[matIndices[gl_DrawIDARB]].textureIndex;
     normalMapIndex = mats[matIndices[gl_DrawIDARB]].normalMapIndex;
+    metallicRoughnessIndex = mats[matIndices[gl_DrawIDARB]].metallicRoughnessIndex;
 }

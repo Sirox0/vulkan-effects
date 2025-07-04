@@ -55,7 +55,7 @@ typedef struct {
     VkImage depthTexture;
     VkImage skyboxCubemap;
     VkImage gbuffer;
-    VkImage velocityTexture;
+    VkImage metallicRoughnessVelocityTexture;
     VkImage ssaoNoiseTexture;
     VkImage ssaoAttachment;
     VkImage postProcessAttachment;
@@ -64,7 +64,7 @@ typedef struct {
     VkImageView skyboxCubemapView;
     VkImageView gbufferNormalView;
     VkImageView gbufferAlbedoView;
-    VkImageView velocityTextureView;
+    VkImageView metallicRoughnessVelocityTextureView;
     VkImageView ssaoNoiseTextureView;
     VkImageView ssaoAttachmentView;
     VkImageView postProcessAttachmentView;

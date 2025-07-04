@@ -9,15 +9,21 @@ layout(location = 3) in vec3 tangent;
 layout(location = 4) in vec2 uv;
 layout(location = 5) in flat int textureIndex;
 layout(location = 6) in flat int normalMapIndex;
+layout(location = 7) in flat int metallicRoughnessIndex;
 
 layout(binding = 3, set = 1) uniform sampler2D textures[];
 
 layout(location = 0) out vec4 gbufferNormal;
 layout(location = 1) out vec4 gbufferAlbedo;
-layout(location = 2) out vec4 gbufferVelocity;
+layout(location = 2) out vec4 gbufferMetallicRoughnessVelocity;
 
 void main() {
-    gbufferVelocity = vec4((pos.xy / pos.w) - (oldpos.xy / oldpos.w), 0.0, 0.0);
+    vec2 metallicRoughness = vec2(0.0, 1.0);
+    if (metallicRoughnessIndex >= 0) {
+        metallicRoughness = texture(textures[metallicRoughnessIndex], uv).bg;
+    }
+
+    gbufferMetallicRoughnessVelocity = vec4(metallicRoughness, (pos.xy / pos.w) - (oldpos.xy / oldpos.w));
 
     if (normalMapIndex >= 0) {
         vec3 N = normalize(normal);
