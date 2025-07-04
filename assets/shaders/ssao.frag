@@ -1,5 +1,6 @@
 #version 450
 
+#extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_samplerless_texture_functions : require
 
 layout(constant_id = 0) const uint SSAO_KERNEL_SIZE = 12;
@@ -10,6 +11,7 @@ layout(location = 0) in vec2 uv;
 
 layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
     mat4 projection;
+    mat4 invProjection;
     float nearPlane;
     float farPlane;
 };
@@ -29,16 +31,13 @@ layout(binding = 0, set = 2) uniform texture2D gbuffer[4];
 
 layout(location = 0) out float outOcclusion;
 
-float linearDepth(float depth) {
-    float z = depth * 2.0 - 1.0;
-    return (2.0 * nearPlane * farPlane) / (farPlane + nearPlane - z * (nearPlane - farPlane));
-}
+#include "common.glsl"
 
 void main() {
     ivec2 textureDim = textureSize(gbuffer[3], 0);
 
-    vec3 viewRay = vec3(inverse(projection) * vec4(uv * 2.0 - 1.0, 1.0, 1.0));
-    vec3 pos = viewRay * linearDepth(texelFetch(gbuffer[3], ivec2(uv * (textureDim - 1)), 0).r);
+    vec3 viewRay = vec3(invProjection * vec4(uv * 2.0 - 1.0, 1.0, 1.0));
+    vec3 pos = viewRay * linearDepth(texelFetch(gbuffer[3], ivec2(uv * (textureDim - 1)), 0).r, nearPlane, farPlane);
 
     vec3 normal = texelFetch(gbuffer[0], ivec2(uv * (textureDim - 1)), 0).xyz * 2.0 - 1.0;
 
@@ -63,7 +62,7 @@ void main() {
         offset.xyz = offset.xyz * 0.5 + 0.5;
         offset.xy = clamp(offset.xy, 0.0, 1.0);
 
-        float depth = linearDepth(texelFetch(gbuffer[3], ivec2(offset.xy * (textureDim - 1)), 0).r);
+        float depth = linearDepth(texelFetch(gbuffer[3], ivec2(offset.xy * (textureDim - 1)), 0).r, nearPlane, farPlane);
 
         float rangeCheck = smoothstep(0.0, 1.0, SSAO_RADIUS / abs(pos.z - depth));
         occlusion += (depth <= samplePos.z - 0.025 ? 1.0 : 0.0) * rangeCheck;

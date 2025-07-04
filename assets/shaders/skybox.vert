@@ -4,6 +4,7 @@ layout(location = 0) in vec3 pos;
 
 layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
     mat4 projection;
+    mat4 invProjection;
     float nearPlane;
     float farPlane;
 };

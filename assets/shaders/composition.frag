@@ -6,12 +6,6 @@ layout(constant_id = 0) const int SSAO_BLUR_SIZE = 4;
 
 layout(location = 0) in vec2 uv;
 
-layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
-    mat4 projection;
-    float nearPlane;
-    float farPlane;
-};
-
 layout(binding = 1, set = 0) uniform UniformBufferViewMatrix {
     mat4 view;
     mat4 oldView;

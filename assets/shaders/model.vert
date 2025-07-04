@@ -9,6 +9,7 @@ layout(location = 3) in vec2 uv;
 
 layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
     mat4 projection;
+    mat4 invProjection;
     float nearPlane;
     float farPlane;
 };

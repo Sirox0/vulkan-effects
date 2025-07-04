@@ -159,7 +159,7 @@ void modelViewSceneInit() {
             createImage(&globals->skyboxCubemap, skyboxTexture->baseWidth, skyboxTexture->baseHeight, VK_FORMAT_R8G8B8A8_UNORM, 6, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
             for (u32 i = 0; i < imageCount; i++) createImage(&globals->model.textures[i], imageWidths[i], imageHeights[i], vkglobals.textureFormat, 1, imageMipLevels[i], VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
             
-            createBuffer(&globals->projectionBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(mat4) + 2 * sizeof(f32));
+            createBuffer(&globals->projectionBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(mat4) * 2 + sizeof(f32) * 2);
             createBuffer(&globals->ssaoKernelBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, config.ssaoKernelSize * sizeof(vec4));
 
             createBuffer(&globals->model.storageBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, globals->model.materialIndicesOffset + storageMaterialIndicesSize);
@@ -296,7 +296,7 @@ void modelViewSceneInit() {
 
             // temporary resources
             createBuffer(&tempBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, sizeof(skyboxVertexbuf) +
-                config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) + 2 * sizeof(f32) + vertexSize + indexSize + indirectSize + globals->model.materialsSize + storageMaterialIndicesSize + imagesSize + skyboxTextureSize);
+                config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) * 2 + sizeof(f32) * 2 + vertexSize + indexSize + indirectSize + globals->model.materialsSize + storageMaterialIndicesSize + imagesSize + skyboxTextureSize);
             
             {
                 VkMemoryAllocClusterInfo_t allocInfo = {};
@@ -314,7 +314,7 @@ void modelViewSceneInit() {
         {
             #define tempBufferMemRawSSAOoffset (sizeof(skyboxVertexbuf))
             #define tempBufferMemRawProjectionMatrixoffset (tempBufferMemRawSSAOoffset + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4))
-            #define tempBufferMemRawModeloffset (tempBufferMemRawProjectionMatrixoffset + sizeof(mat4) + 2 * sizeof(f32))
+            #define tempBufferMemRawModeloffset (tempBufferMemRawProjectionMatrixoffset + sizeof(mat4) * 2 + sizeof(f32) * 2)
             #define tempBufferMemRawSkyboxCubemapoffset (tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize + globals->model.materialsSize + storageMaterialIndicesSize + imagesSize)
 
             {
@@ -340,8 +340,9 @@ void modelViewSceneInit() {
 
                 // use reverse depth
                 glm_perspective(glm_rad(config.fov), (f32)vkglobals.swapchainExtent.width / vkglobals.swapchainExtent.height, config.farPlane, config.nearPlane, tempBufferMemRaw + tempBufferMemRawProjectionMatrixoffset);
-                memcpy(tempBufferMemRaw + tempBufferMemRawProjectionMatrixoffset + sizeof(mat4), &config.nearPlane, sizeof(f32));
-                memcpy(tempBufferMemRaw + tempBufferMemRawProjectionMatrixoffset + sizeof(mat4) + sizeof(f32), &config.farPlane, sizeof(f32));
+                glm_mat4_inv(tempBufferMemRaw + tempBufferMemRawProjectionMatrixoffset, tempBufferMemRaw + tempBufferMemRawProjectionMatrixoffset + sizeof(mat4));
+                memcpy(tempBufferMemRaw + tempBufferMemRawProjectionMatrixoffset + sizeof(mat4) * 2, &config.nearPlane, sizeof(f32));
+                memcpy(tempBufferMemRaw + tempBufferMemRawProjectionMatrixoffset + sizeof(mat4) * 2 + sizeof(f32), &config.farPlane, sizeof(f32));
 
                 vkModelCreate(scene, config.modelDirectoryPath, tempCmdBuffer, tempBuffer, 
                     tempBufferMemRawModeloffset,
@@ -378,7 +379,7 @@ void modelViewSceneInit() {
 
                 copyInfo[2].srcOffset = tempBufferMemRawProjectionMatrixoffset;
                 copyInfo[2].dstOffset = 0;
-                copyInfo[2].size = sizeof(mat4) + 2 * sizeof(f32);
+                copyInfo[2].size = sizeof(mat4) * 2 + sizeof(f32) * 2;
 
                 vkCmdCopyBuffer(tempCmdBuffer, tempBuffer, globals->skyboxVertexBuffer, 1, &copyInfo[0]);
                 vkCmdCopyBuffer(tempCmdBuffer, tempBuffer, globals->ssaoKernelBuffer, 1, &copyInfo[1]);
