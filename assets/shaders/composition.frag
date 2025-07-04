@@ -24,8 +24,8 @@ layout(binding = 0, set = 2) uniform texture2D occlusionMap;
 
 layout(location = 0) out vec4 outColor;
 
-const vec4 ambientLightColor = vec4(1.0, 1.0, 1.0, 0.01);
-const vec4 specularLightColor = vec4(1.0, 1.0, 1.0, 1.0);
+const vec4 ambientLightColor = vec4(1.0, 1.0, 1.0, 0.1);
+const vec4 lightColor = vec4(1.0, 1.0, 1.0, 1.0);
 
 const vec3 lightDir = normalize(vec3(-0.5, 0.5, 0.5));
 
@@ -60,9 +60,9 @@ float G_SchlicksmithGGX(float dotNL, float dotNV, float roughness) {
     return GL * max(GV, 0.00001);
 }
 
-vec3 F_Schlick(float cosT, float metallic, vec3 color) {
+vec3 F_Schlick(float dotNV, float metallic, float roughness, vec3 color) {
     vec3 F0 = mix(vec3(0.04), color, metallic);
-    return F0 + (1.0 - F0) * pow(1.0 - cosT, 5.0);
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - dotNV, 5.0);
 }
 
 vec3 BRDF(vec3 L, vec3 V, vec3 N, vec2 metallicRoughness, vec3 color) {
@@ -74,14 +74,14 @@ vec3 BRDF(vec3 L, vec3 V, vec3 N, vec2 metallicRoughness, vec3 color) {
 
     float D = D_GGX(dotNH, metallicRoughness.g);
     float G = G_SchlicksmithGGX(dotNL, dotNV, metallicRoughness.g);
-    vec3 F = F_Schlick(dotNV, metallicRoughness.r, color);
+    vec3 F = F_Schlick(dotNV, metallicRoughness.r, metallicRoughness.g, color);
     float denom = 4.0 * dotNL * dotNV + 0.00001;
     vec3 spec = D * F * G / denom;
 
     vec3 Kd = 1.0 - F;
     Kd *= 1.0 - metallicRoughness.r;
 
-    vec3 res = (Kd * color / PI + spec) * dotNL * specularLightColor.rgb * specularLightColor.a;
+    vec3 res = (Kd * color + spec) * dotNL * lightColor.rgb * lightColor.a;
 
     return dotNL > 0.0 ? res : vec3(0.0);
 }
@@ -92,15 +92,14 @@ void main() {
 
     vec2 metallicRoughness = texelFetch(gbuffer[2], ivec2(gl_FragCoord.xy), 0).rg;
     vec4 origColor = texelFetch(gbuffer[1], ivec2(gl_FragCoord.xy), 0);
-    origColor.rgb = pow(origColor.rgb, vec3(2.2));
+    vec3 linearOrigColor = pow(origColor.rgb, vec3(2.2));
 
     vec3 L = -(mat3(view) * lightDir);
-    vec3 Lo = BRDF(L, V, N, metallicRoughness, origColor.rgb);
+    vec3 Lo = BRDF(L, V, N, metallicRoughness, linearOrigColor);
 
-    vec3 color = Lo + ambientLightColor.rgb * ambientLightColor.a * origColor.rgb * ssaoBlur();
+    vec3 color = Lo + ambientLightColor.rgb * ambientLightColor.a * linearOrigColor * ssaoBlur();
 
     color = pow(color, vec3(1.0 / 2.2));
-    origColor.rgb = pow(origColor.rgb, vec3(1.0 / 2.2));
 
     outColor = origColor.a == 0.0 ? origColor : vec4(color, origColor.a);
 }
