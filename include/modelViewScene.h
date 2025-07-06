@@ -21,6 +21,8 @@ typedef struct {
         f32 targetPitch, targetYaw;
     } cam;
 
+    mat4 projection;
+
     vec2 inputX;
     vec2 inputY;
     vec2 inputZ;
@@ -99,6 +101,7 @@ typedef struct {
     VkPipelineLayout compositionPipelineLayout;
     VkPipelineLayout uberPipelineLayout;
 
+    VkPipeline cullPipeline;
     VkPipeline modelPipeline;
     VkPipeline skyboxPipeline;
     VkPipeline ssaoPipeline;

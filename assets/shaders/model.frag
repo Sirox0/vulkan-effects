@@ -11,7 +11,7 @@ layout(location = 5) in flat int textureIndex;
 layout(location = 6) in flat int normalMapIndex;
 layout(location = 7) in flat int metallicRoughnessIndex;
 
-layout(binding = 3, set = 1) uniform sampler2D textures[];
+layout(binding = 6, set = 1) uniform sampler2D textures[];
 
 layout(location = 0) out vec4 gbufferNormal;
 layout(location = 1) out vec4 gbufferAlbedo;

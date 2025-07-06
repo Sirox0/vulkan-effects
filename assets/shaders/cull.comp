@@ -1,0 +1,56 @@
+#version 450
+
+layout(binding = 1, set = 0) uniform UniformBufferViewMatrix {
+    mat4 view;
+    mat4 oldView;
+    vec4 frustumPlanes[6];
+};
+
+layout(binding = 0, set = 1, std430) readonly buffer StorageBufferModelMatrix {
+    mat4 model;
+};
+
+layout(binding = 3, set = 1, std430) readonly buffer StorageBufferBoundingBoxes {
+    vec4 boundingBoxes[];
+};
+
+struct VkDrawIndexedIndirectCommand {
+    uint indexCount;
+    uint instanceCount;
+    uint firstIndex;
+    int vertexOffset;
+    uint firstInstance;
+};
+
+layout(binding = 4, set = 1, std430) readonly buffer StorageBufferInputIndirect {
+    VkDrawIndexedIndirectCommand incmds[];
+};
+
+layout(binding = 5, set = 1, std430) buffer StorageBufferOutputIndirect {
+    uint drawCount;
+    VkDrawIndexedIndirectCommand outcmds[];
+};
+
+layout(local_size_x = 1) in;
+
+bool inRange(vec3 p, vec3 mi, vec3 ma) {
+    return p.x > mi.x && p.y > mi.y && p.z > mi.z &&
+        p.x < ma.x && p.y < ma.y && p.z < ma.z;
+}
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+
+    vec3 bbMin = mat3(model) * boundingBoxes[idx * 2].xyz;
+    vec3 bbMax = mat3(model) * boundingBoxes[idx * 2 + 1].xyz;
+
+    /*if (
+        inRange(bbMin, frustumPlanes[0].xyz, frustumPlanes[1].xyz) && inRange(bbMin, frustumPlanes[2].xyz, frustumPlanes[3].xyz) ||
+        inRange(bbMax, frustumPlanes[0].xyz, frustumPlanes[1].xyz) && inRange(bbMax, frustumPlanes[2].xyz, frustumPlanes[3].xyz)
+    ) {*/
+        VkDrawIndexedIndirectCommand cmd = incmds[idx];
+
+        outcmds[drawCount] = cmd;
+        atomicAdd(drawCount, 1);
+    //}
+}

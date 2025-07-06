@@ -145,11 +145,13 @@ void modelViewSceneInit() {
         globals->model.textures = (VkImage*)malloc((sizeof(VkImage) + sizeof(VkImageView)) * imageCount);
         globals->model.views = (VkImageView*)(((void*)globals->model.textures) + sizeof(VkImage) * imageCount);
 
-        u32 vertexSize, indexSize, indirectSize, storageMaterialsSize, storageMaterialIndicesSize;
-        vkModelGetSizes(scene, &vertexSize, &indexSize, &indirectSize, &storageMaterialsSize, &storageMaterialIndicesSize);
+        u32 vertexSize, indexSize, indirectSize, storageMaterialsSize, storageMaterialIndicesSize, storageBoundingBoxesSize;
+        vkModelGetSizes(scene, &vertexSize, &indexSize, &indirectSize, &storageMaterialsSize, &storageMaterialIndicesSize, &storageBoundingBoxesSize);
 
         globals->model.materialsSize = storageMaterialsSize;
+        globals->model.materialIndicesSize = storageMaterialIndicesSize;
         globals->model.materialIndicesOffset = storageMaterialsSize + getAlignCooficient(storageMaterialsSize, vkglobals.deviceProperties.properties.limits.minStorageBufferOffsetAlignment);
+        globals->model.boundingBoxesOffset = globals->model.materialIndicesOffset + storageMaterialIndicesSize + getAlignCooficient(globals->model.materialIndicesOffset + storageMaterialIndicesSize, vkglobals.deviceProperties.properties.limits.minStorageBufferOffsetAlignment);
 
         {
             // device-local resources
@@ -162,14 +164,15 @@ void modelViewSceneInit() {
             createBuffer(&globals->projectionBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(mat4) * 2 + sizeof(f32) * 2);
             createBuffer(&globals->ssaoKernelBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, config.ssaoKernelSize * sizeof(vec4));
 
-            createBuffer(&globals->model.storageBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, globals->model.materialIndicesOffset + storageMaterialIndicesSize);
+            createBuffer(&globals->model.storageBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, globals->model.boundingBoxesOffset + storageBoundingBoxesSize);
+            createBuffer(&globals->model.indirectBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, indirectSize);
 
             createBuffer(&globals->skyboxVertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(skyboxVertexbuf));
             createBuffer(&globals->model.vertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, vertexSize);
 
             createBuffer(&globals->model.indexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, indexSize);
 
-            createBuffer(&globals->model.indirectBuffer, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, indirectSize);
+            createBuffer(&globals->model.realIndirectBuffer, VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(u32) + indirectSize);
             
             createImage(&globals->gbuffer, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 2, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
             createImage(&globals->metallicRoughnessVelocityTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
@@ -215,8 +218,8 @@ void modelViewSceneInit() {
                 VkMemoryAllocClusterInfo_t allocInfo = {};
                 allocInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
-                allocInfo.handleCount = 1;
-                allocInfo.pHandles = &globals->model.storageBuffer;
+                allocInfo.handleCount = 2;
+                allocInfo.pHandles = (VkBuffer[]){globals->model.storageBuffer, globals->model.indirectBuffer};
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalStorageTransferDstMemory);
             }
@@ -246,7 +249,7 @@ void modelViewSceneInit() {
                 allocInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
                 allocInfo.handleCount = 1;
-                allocInfo.pHandles = &globals->model.indirectBuffer;
+                allocInfo.pHandles = &globals->model.realIndirectBuffer;
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalIndirectTransferDstMemory);
             }
@@ -264,7 +267,7 @@ void modelViewSceneInit() {
 
 
             // host-visible resources
-            createBuffer(&globals->viewMatrixBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(mat4) * 2);
+            createBuffer(&globals->viewMatrixBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(mat4) * 2 + sizeof(vec4) * 6);
 
             {
                 VkMemoryAllocClusterInfo_t allocInfo = {};
@@ -296,7 +299,7 @@ void modelViewSceneInit() {
 
             // temporary resources
             createBuffer(&tempBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, sizeof(skyboxVertexbuf) +
-                config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) * 2 + sizeof(f32) * 2 + vertexSize + indexSize + indirectSize + globals->model.materialsSize + storageMaterialIndicesSize + imagesSize + skyboxTextureSize);
+                config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4) + sizeof(mat4) * 2 + sizeof(f32) * 2 + vertexSize + indexSize + indirectSize + globals->model.materialsSize + storageMaterialIndicesSize + storageBoundingBoxesSize + imagesSize + skyboxTextureSize);
             
             {
                 VkMemoryAllocClusterInfo_t allocInfo = {};
@@ -315,7 +318,7 @@ void modelViewSceneInit() {
             #define tempBufferMemRawSSAOoffset (sizeof(skyboxVertexbuf))
             #define tempBufferMemRawProjectionMatrixoffset (tempBufferMemRawSSAOoffset + config.ssaoNoiseDim * config.ssaoNoiseDim * sizeof(vec4) + config.ssaoKernelSize * sizeof(vec4))
             #define tempBufferMemRawModeloffset (tempBufferMemRawProjectionMatrixoffset + sizeof(mat4) * 2 + sizeof(f32) * 2)
-            #define tempBufferMemRawSkyboxCubemapoffset (tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize + globals->model.materialsSize + storageMaterialIndicesSize + imagesSize)
+            #define tempBufferMemRawSkyboxCubemapoffset (tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize + storageMaterialsSize + storageMaterialIndicesSize + imagesSize)
 
             {
                 void* tempBufferMemRaw;
@@ -339,7 +342,8 @@ void modelViewSceneInit() {
                 }
 
                 // use reverse depth
-                glm_perspective(glm_rad(config.fov), (f32)vkglobals.swapchainExtent.width / vkglobals.swapchainExtent.height, config.farPlane, config.nearPlane, tempBufferMemRaw + tempBufferMemRawProjectionMatrixoffset);
+                glm_perspective(glm_rad(config.fov), (f32)vkglobals.swapchainExtent.width / vkglobals.swapchainExtent.height, config.farPlane, config.nearPlane, globals->projection);
+                memcpy(tempBufferMemRaw + tempBufferMemRawProjectionMatrixoffset, globals->projection, sizeof(mat4));
                 glm_mat4_inv(tempBufferMemRaw + tempBufferMemRawProjectionMatrixoffset, tempBufferMemRaw + tempBufferMemRawProjectionMatrixoffset + sizeof(mat4));
                 memcpy(tempBufferMemRaw + tempBufferMemRawProjectionMatrixoffset + sizeof(mat4) * 2, &config.nearPlane, sizeof(f32));
                 memcpy(tempBufferMemRaw + tempBufferMemRawProjectionMatrixoffset + sizeof(mat4) * 2 + sizeof(f32), &config.farPlane, sizeof(f32));
@@ -350,7 +354,8 @@ void modelViewSceneInit() {
                     tempBufferMemRawModeloffset + vertexSize + indexSize,
                     tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize,
                     tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize + globals->model.materialsSize + storageMaterialIndicesSize,
-                    globals->model.materialIndicesOffset,
+                    tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize + globals->model.materialsSize + storageMaterialIndicesSize + storageBoundingBoxesSize,
+                    globals->model.materialIndicesOffset, globals->model.boundingBoxesOffset,
                     tempBufferMemRaw, &globals->model
                 );
 
@@ -465,7 +470,7 @@ void modelViewSceneInit() {
         poolSizes[0].descriptorCount = 3;
 
         poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        poolSizes[1].descriptorCount = 3;
+        poolSizes[1].descriptorCount = 6;
 
         poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         poolSizes[2].descriptorCount = 1 + globals->model.textureCount;
@@ -484,8 +489,8 @@ void modelViewSceneInit() {
 
     {
         {
-            VkDescriptorSetLayoutBinding bindings[4] = {};
-            bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+            VkDescriptorSetLayoutBinding bindings[7] = {};
+            bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
             bindings[0].binding = 0;
             bindings[0].descriptorCount = 1;
             bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -499,24 +504,39 @@ void modelViewSceneInit() {
             bindings[2].binding = 2;
             bindings[2].descriptorCount = 1;
             bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            
-            bindings[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-            bindings[3].binding = 3;
-            bindings[3].descriptorCount = globals->model.textureCount;
-            bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-            VkDescriptorBindingFlags bindingFlagsValues[4] = {};
-            bindingFlagsValues[3] = VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+            bindings[3].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+            bindings[3].binding = 3;
+            bindings[3].descriptorCount = 1;
+            bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+            bindings[4].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+            bindings[4].binding = 4;
+            bindings[4].descriptorCount = 1;
+            bindings[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+            bindings[5].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+            bindings[5].binding = 5;
+            bindings[5].descriptorCount = 1;
+            bindings[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            
+            bindings[6].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+            bindings[6].binding = 6;
+            bindings[6].descriptorCount = globals->model.textureCount;
+            bindings[6].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+
+            VkDescriptorBindingFlags bindingFlagsValues[7] = {};
+            bindingFlagsValues[6] = VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
 
             VkDescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlags = {};
             bindingFlags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
-            bindingFlags.bindingCount = 4;
+            bindingFlags.bindingCount = 7;
             bindingFlags.pBindingFlags = bindingFlagsValues;
 
             VkDescriptorSetLayoutCreateInfo layoutInfo = {};
             layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
             layoutInfo.pNext = &bindingFlags;
-            layoutInfo.bindingCount = 4;
+            layoutInfo.bindingCount = 7;
             layoutInfo.pBindings = bindings;
 
             VK_ASSERT(vkCreateDescriptorSetLayout(vkglobals.device, &layoutInfo, VK_NULL_HANDLE, &globals->modelDescriptorSetLayout), "failed to create descriptor set layout\n");
@@ -579,7 +599,7 @@ void modelViewSceneInit() {
             bindings[0].descriptorCount = 1;
             bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
-            bindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+            bindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
             bindings[1].binding = 1;
             bindings[1].descriptorCount = 1;
             bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1112,6 +1132,12 @@ void modelViewSceneInit() {
         pipelineInfos[4].renderingInfo.depthAttachmentFormat = globals->depthTextureFormat;
         pipelineInfos[4].layout = globals->skyboxPipelineLayout;
 
+        VkComputePipelineInfo_t cullPipelineInfo;
+        pipelineFillDefaultComputePipeline(&cullPipelineInfo);
+
+        cullPipelineInfo.stage.module = createShaderModuleFromAsset("assets/shaders/cull.comp.spv");
+        cullPipelineInfo.layout = globals->modelPipelineLayout;
+
         VkPipelineCache pipelineCache = loadPipelineCache("pipelinecache.dat");
 
         VkPipeline pipelines[5];
@@ -1124,9 +1150,14 @@ void modelViewSceneInit() {
         globals->uberPipeline = pipelines[3];
         globals->skyboxPipeline = pipelines[4];
 
+        pipelineCreateComputePipelines(pipelineCache, 1, &cullPipelineInfo, pipelines);
+
+        globals->cullPipeline = pipelines[0];
+
         storePipelineCache(pipelineCache, "pipelinecache.dat");
         vkDestroyPipelineCache(vkglobals.device, pipelineCache, VK_NULL_HANDLE);
 
+        vkDestroyShaderModule(vkglobals.device, cullPipelineInfo.stage.module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[4].stages[0].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[4].stages[1].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[3].stages[1].module, VK_NULL_HANDLE);
@@ -1230,7 +1261,12 @@ void updateCubeUbo() {
 
     {
         glm_quat_mul(y, p, y);
+        glm_mat4_copy(viewMatrix, viewMatrix + sizeof(mat4));
         glm_quat_look(globals->cam.position, y, viewMatrix);
+
+        mat4 viewProj;
+        glm_mat4_mul(globals->projection, viewMatrix, viewProj);
+        glm_frustum_planes(viewProj, viewMatrix + sizeof(mat4) * 2);
     }
 
     glm_mat4_identity(modelMatrix);
@@ -1257,7 +1293,6 @@ void modelViewSceneRender() {
     u32 imageIndex;
     VK_ASSERT(vkAcquireNextImageKHR(vkglobals.device, vkglobals.swapchain, 0xFFFFFFFFFFFFFFFF, globals->swapchainReadySemaphore, VK_NULL_HANDLE, &imageIndex), "failed to acquire swapchain image\n");
 
-    glm_mat4_copy(globals->hostVisibleUniformMemoryRaw, globals->hostVisibleUniformMemoryRaw + sizeof(mat4));
     updateCubeUbo();
 
     {
@@ -1266,6 +1301,27 @@ void modelViewSceneRender() {
         cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
         VK_ASSERT(vkBeginCommandBuffer(globals->cmdBuffer, &cmdBeginInfo), "failed to begin command buffer\n");
+
+        vkCmdFillBuffer(globals->cmdBuffer, globals->model.realIndirectBuffer, 0, sizeof(u32), 0);
+
+        vkCmdBindPipeline(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, globals->cullPipeline);
+        vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, globals->modelPipelineLayout, 0, 2, (VkDescriptorSet[]){globals->PVmatrixdescriptorSet, globals->model.descriptorSet}, 0, VK_NULL_HANDLE);
+
+        vkCmdDispatch(globals->cmdBuffer, globals->model.drawCount, 1, 1);
+
+        {
+            VkBufferMemoryBarrier bufferBarrier = {};
+            bufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+            bufferBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            bufferBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            bufferBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+            bufferBarrier.dstAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+            bufferBarrier.buffer = globals->model.realIndirectBuffer;
+            bufferBarrier.offset = 0;
+            bufferBarrier.size = VK_WHOLE_SIZE;
+
+            vkCmdPipelineBarrier(globals->cmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 0, VK_NULL_HANDLE, 1, &bufferBarrier, 0, VK_NULL_HANDLE);
+        }
 
         {
             VkImageMemoryBarrier imageBarriers[3] = {};
@@ -1367,7 +1423,7 @@ void modelViewSceneRender() {
         vkCmdBindIndexBuffer(globals->cmdBuffer, globals->model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
         vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->modelPipelineLayout, 0, 2, (VkDescriptorSet[]){globals->PVmatrixdescriptorSet, globals->model.descriptorSet}, 0, VK_NULL_HANDLE);
 
-        vkCmdDrawIndexedIndirect(globals->cmdBuffer, globals->model.indirectBuffer, 0, globals->model.drawCount, sizeof(VkDrawIndexedIndirectCommand));
+        vkCmdDrawIndexedIndirect(globals->cmdBuffer, globals->model.realIndirectBuffer, sizeof(u32), globals->model.drawCount, sizeof(VkDrawIndexedIndirectCommand));
 
         vkCmdBindPipeline(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->skyboxPipeline);
         vkCmdBindVertexBuffers(globals->cmdBuffer, 0, 1, &globals->skyboxVertexBuffer, vertexBufferOffsets);
@@ -1666,6 +1722,7 @@ void modelViewSceneQuit() {
     vkDestroyPipeline(vkglobals.device, globals->ssaoPipeline, VK_NULL_HANDLE);
     vkDestroyPipeline(vkglobals.device, globals->skyboxPipeline, VK_NULL_HANDLE);
     vkDestroyPipeline(vkglobals.device, globals->modelPipeline, VK_NULL_HANDLE);
+    vkDestroyPipeline(vkglobals.device, globals->cullPipeline, VK_NULL_HANDLE);
 
     vkDestroyDescriptorSetLayout(vkglobals.device, globals->modelDescriptorSetLayout, VK_NULL_HANDLE);
     vkDestroyDescriptorSetLayout(vkglobals.device, globals->combinedImageSamplerDescriptorSetLayout, VK_NULL_HANDLE);
