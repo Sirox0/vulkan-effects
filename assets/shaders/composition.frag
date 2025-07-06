@@ -24,6 +24,8 @@ layout(binding = 0, set = 2) uniform texture2D occlusionMap;
 
 layout(location = 0) out vec4 outColor;
 
+#define MIN_DENOMINATOR 0.00001
+
 const vec4 ambientLightColor = vec4(1.0, 1.0, 1.0, 0.1);
 const vec4 lightColor = vec4(1.0, 1.0, 1.0, 1.0);
 
@@ -48,7 +50,7 @@ float ssaoBlur() {
 float D_GGX(float dotNH, float roughness) {
     float alpha = roughness * roughness;
     float alphaSqr = alpha * alpha;
-    float denom = dotNH * dotNH * (alphaSqr - 1.0) + 1.0;
+    float denom = max(dotNH * dotNH * (alphaSqr - 1.0) + 1.0, MIN_DENOMINATOR);
     return alphaSqr / (PI * denom * denom);
 }
 
@@ -57,12 +59,17 @@ float G_SchlicksmithGGX(float dotNL, float dotNV, float roughness) {
     float k = (r * r) / 8.0;
     float GL = dotNL / (dotNL * (1.0 - k) + k);
     float GV = dotNV / (dotNV * (1.0 - k) + k);
-    return GL * max(GV, 0.00001);
+    return GL * max(GV, MIN_DENOMINATOR);
 }
 
-vec3 F_Schlick(float dotNV, float metallic, float roughness, vec3 color) {
+vec3 FRoughness_Schlick(float c, float metallic, float roughness, vec3 color) {
     vec3 F0 = mix(vec3(0.04), color, metallic);
-    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - dotNV, 5.0);
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - c, 5.0);
+}
+
+vec3 F_Schlick(float c, float metallic, vec3 color) {
+    vec3 F0 = mix(vec3(0.04), color, metallic);
+    return F0 + (1.0 - F0) * pow(1.0 - c, 5.0);
 }
 
 vec3 BRDF(vec3 L, vec3 V, vec3 N, vec2 metallicRoughness, vec3 color) {
@@ -73,8 +80,8 @@ vec3 BRDF(vec3 L, vec3 V, vec3 N, vec2 metallicRoughness, vec3 color) {
 
     float D = D_GGX(dotNH, metallicRoughness.g);
     float G = G_SchlicksmithGGX(dotNL, dotNV, metallicRoughness.g);
-    vec3 F = F_Schlick(dotNV, metallicRoughness.r, metallicRoughness.g, color);
-    float denom = 4.0 * dotNL * dotNV + 0.00001;
+    vec3 F = F_Schlick(dotNV, metallicRoughness.r, color);
+    float denom = 4.0 * dotNL * dotNV + MIN_DENOMINATOR;
     vec3 spec = D * F * G / denom;
 
     vec3 Kd = 1.0 - F;
