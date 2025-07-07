@@ -26,6 +26,18 @@ set(SOURCES
     ${CMAKE_CURRENT_LIST_DIR}/src/stb_image.c
 )
 
+set(SHADERS
+    ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/composition.frag
+    ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/fullscreen.vert
+    ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/fullscreenNoUV.vert
+    ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/model.frag
+    ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/model.vert
+    ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/skybox.frag
+    ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/skybox.vert
+    ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/ssao.frag
+    ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/postprocess/uber.frag
+)
+
 find_package(SDL3 REQUIRED)
 find_package(Vulkan REQUIRED)
 
@@ -51,7 +63,15 @@ set(KTX_FEATURE_GL_UPLOAD OFF)
 set(KTX_FEATURE_TOOLS OFF)
 add_subdirectory(external/ktx)
 
+foreach(SHADER IN LISTS SHADERS)
+    add_custom_command(OUTPUT ${SHADER}.spv COMMAND glslang -V --lto ${SHADER} -o ${SHADER}.spv DEPENDS ${SHADER} COMMENT "compiling ${SHADER}")
+    list(APPEND SPV_SHADERS ${SHADER}.spv)
+endForeach()
+
+add_custom_target(shaders DEPENDS ${SPV_SHADERS})
+
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
+add_dependencies(${CMAKE_PROJECT_NAME} shaders)
 target_link_libraries(${CMAKE_PROJECT_NAME} SDL3::SDL3-static Vulkan::Headers iniparser-static assimp::assimp ktx)
 if(UNIX)
     target_link_libraries(${CMAKE_PROJECT_NAME} m)
