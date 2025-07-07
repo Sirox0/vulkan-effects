@@ -68,10 +68,17 @@ foreach(SHADER IN LISTS SHADERS)
     list(APPEND SPV_SHADERS ${SHADER}.spv)
 endForeach()
 
+file(GLOB_RECURSE ASSETS_LIST ${CMAKE_CURRENT_LIST_DIR}/assets/**)
+
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/assets COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/assets ${CMAKE_CURRENT_BINARY_DIR}/assets DEPENDS ${ASSETS_LIST} COMMENT "copying ${CMAKE_CURRENT_LIST_DIR}/assets")
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/config.ini COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/config.ini ${CMAKE_CURRENT_BINARY_DIR}/config.ini DEPENDS ${CMAKE_CURRENT_LIST_DIR}/config.ini COMMENT "copying ${CMAKE_CURRENT_LIST_DIR}/config.ini")
+
 add_custom_target(shaders DEPENDS ${SPV_SHADERS})
+add_custom_target(assetscopy DEPENDS shaders ${CMAKE_CURRENT_BINARY_DIR}/assets)
+add_custom_target(configcopy DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/config.ini)
 
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
-add_dependencies(${CMAKE_PROJECT_NAME} shaders)
+add_dependencies(${CMAKE_PROJECT_NAME} shaders assetscopy configcopy)
 target_link_libraries(${CMAKE_PROJECT_NAME} SDL3::SDL3-static Vulkan::Headers iniparser-static assimp::assimp ktx)
 if(UNIX)
     target_link_libraries(${CMAKE_PROJECT_NAME} m)
@@ -79,6 +86,3 @@ endif()
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include ${CMAKE_CURRENT_LIST_DIR}/external/cglm/include ${CMAKE_CURRENT_LIST_DIR}/external/stb)
 
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE CMAKE_EXPORT_COMPILE_COMMANDS=ON)
-
-add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/assets ${CMAKE_CURRENT_BINARY_DIR}/assets)
-add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/config.ini ${CMAKE_CURRENT_BINARY_DIR}/config.ini)
