@@ -28,12 +28,18 @@ typedef struct {
     f32 nearPlane;
     f32 farPlane;
 
-    f32 ssaoResolutionFactor;
-    u32 ssaoKernelSize;
-    u32 ssaoNoiseDim;
+    u32 ssaoResolutionWidth;
+    u32 ssaoResolutionHeight;
+    u32 ssaoSamples;
     f32 ssaoRadius;
-    u32 ssaoBlurSize;
-    f32 ssaoPower;
+    f32 ssaoMultiplier;
+    f32 ssaoScale;
+    f32 ssaoBias;
+    f32 ssaoMaxDistance;
+    f32 ssaoGoldenAngle;
+    u32 ssaoDenoiseSize;
+    f32 ssaoDenoiseExponent;
+    f32 ssaoDenoiseFactor;
 
     u32 grainEnable;
     f32 grainIntensity;

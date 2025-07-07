@@ -1,8 +1,13 @@
 #version 450
 
+#extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_samplerless_texture_functions : require
 
-layout(constant_id = 0) const int SSAO_BLUR_SIZE = 4;
+#include "common.glsl"
+
+layout(constant_id = 0) const int SSAO_DENOISE_SIZE = 4;
+layout(constant_id = 1) const float SSAO_DENOISE_EXPONENT = 5.0;
+layout(constant_id = 2) const float SSAO_DENOISE_FACTOR = 0.75;
 
 layout(location = 0) in vec2 uv;
 
@@ -24,7 +29,7 @@ layout(binding = 0, set = 2) uniform texture2D occlusionMap;
 
 layout(location = 0) out vec4 outColor;
 
-#define MIN_DENOMINATOR 0.00001
+#define MIN 0.00001
 
 const vec4 ambientLightColor = vec4(1.0, 1.0, 1.0, 0.1);
 const vec4 lightColor = vec4(1.0, 1.0, 1.0, 1.0);
@@ -33,24 +38,10 @@ const vec3 lightDir = normalize(vec3(-0.5, 0.5, 0.5));
 
 const float PI = acos(-1.0);
 
-float ssaoBlur() {
-    ivec2 coord = ivec2(uv * (textureSize(occlusionMap, 0) - 1));
-
-    float res = 0.0;
-    for (int y = -SSAO_BLUR_SIZE; y <= SSAO_BLUR_SIZE; y++) {
-        for (int x = -SSAO_BLUR_SIZE; x <= SSAO_BLUR_SIZE; x++) {
-            res += texelFetch(occlusionMap, coord + ivec2(x, y), 0).r;
-        }
-    }
-
-    float dim = SSAO_BLUR_SIZE * 2 + 1;
-    return res / (dim * dim);
-}
-
 float D_GGX(float dotNH, float roughness) {
     float alpha = roughness * roughness;
     float alphaSqr = alpha * alpha;
-    float denom = max(dotNH * dotNH * (alphaSqr - 1.0) + 1.0, MIN_DENOMINATOR);
+    float denom = max(dotNH * dotNH * (alphaSqr - 1.0) + 1.0, MIN);
     return alphaSqr / (PI * denom * denom);
 }
 
@@ -59,7 +50,7 @@ float G_SchlicksmithGGX(float dotNL, float dotNV, float roughness) {
     float k = (r * r) / 8.0;
     float GL = dotNL / (dotNL * (1.0 - k) + k);
     float GV = dotNV / (dotNV * (1.0 - k) + k);
-    return GL * max(GV, MIN_DENOMINATOR);
+    return GL * max(GV, MIN);
 }
 
 vec3 FRoughness_Schlick(float c, float metallic, float roughness, vec3 color) {
@@ -81,7 +72,7 @@ vec3 BRDF(vec3 L, vec3 V, vec3 N, vec2 metallicRoughness, vec3 color) {
     float D = D_GGX(dotNH, metallicRoughness.g);
     float G = G_SchlicksmithGGX(dotNL, dotNV, metallicRoughness.g);
     vec3 F = F_Schlick(dotNV, metallicRoughness.r, color);
-    float denom = 4.0 * dotNL * dotNV + MIN_DENOMINATOR;
+    float denom = 4.0 * dotNL * dotNV + MIN;
     vec3 spec = D * F * G / denom;
 
     vec3 Kd = 1.0 - F;
@@ -103,7 +94,7 @@ void main() {
     vec3 L = -(mat3(view) * lightDir);
     vec3 Lo = BRDF(L, V, N, metallicRoughness, linearOrigColor);
 
-    vec3 color = Lo + ambientLightColor.rgb * ambientLightColor.a * linearOrigColor * ssaoBlur();
+    vec3 color = Lo + ambientLightColor.rgb * ambientLightColor.a * linearOrigColor * bilateral(occlusionMap, uv, SSAO_DENOISE_SIZE, SSAO_DENOISE_EXPONENT, SSAO_DENOISE_FACTOR);
 
     color = pow(color, vec3(1.0 / 2.2));
 

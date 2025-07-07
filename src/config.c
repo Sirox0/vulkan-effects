@@ -49,12 +49,18 @@ void configLoad(char* path) {
     config.nearPlane = iniparser_getdouble(conf, "projection:near-plane", 0.01f);
     config.farPlane = iniparser_getdouble(conf, "projection:far-plane", 6.0f);
 
-    config.ssaoResolutionFactor = iniparser_getdouble(conf, "ssao:resolution-factor", 4.0f);
-    config.ssaoKernelSize = iniparser_getint(conf, "ssao:kernel-size", 12);
-    config.ssaoNoiseDim = iniparser_getint(conf, "ssao:noise-dimension", 4);
+    config.ssaoResolutionWidth = iniparser_getint(conf, "ssao:resolution-width", 1024);
+    config.ssaoResolutionHeight = iniparser_getint(conf, "ssao:resolution-height", 1024);
+    config.ssaoSamples = iniparser_getint(conf, "ssao:samples", 20);
     config.ssaoRadius = iniparser_getdouble(conf, "ssao:radius", 0.3f);
-    config.ssaoBlurSize = iniparser_getint(conf, "ssao:blur-size", 2);
-    config.ssaoPower = iniparser_getdouble(conf, "ssao:power", 8.0f);
+    config.ssaoMultiplier = iniparser_getdouble(conf, "ssao:multiplier", 5.0f);
+    config.ssaoScale = iniparser_getdouble(conf, "ssao:scale", 1.0f);
+    config.ssaoBias = iniparser_getdouble(conf, "ssao:bias", 0.05f);
+    config.ssaoMaxDistance = iniparser_getdouble(conf, "ssao:max-distance", 0.5f);
+    config.ssaoGoldenAngle = iniparser_getdouble(conf, "ssao:golden-angle", 2.4f);
+    config.ssaoDenoiseSize = iniparser_getint(conf, "ssao:denoise-size", 4);
+    config.ssaoDenoiseExponent = iniparser_getdouble(conf, "ssao:denoise-exponent", 5.0f);
+    config.ssaoDenoiseFactor = iniparser_getdouble(conf, "ssao:denoise-factor", 0.75f);
     
     config.grainEnable = iniparser_getboolean(conf, "grain:enable", 1);
     config.grainIntensity = iniparser_getdouble(conf, "grain:intensity", 18.0f);

@@ -49,14 +49,12 @@ typedef struct {
 
     // device local resources
     VkBuffer projectionBuffer;
-    VkBuffer ssaoKernelBuffer;
     VkBuffer skyboxVertexBuffer;
 
     VkImage depthTexture;
     VkImage skyboxCubemap;
     VkImage gbuffer;
     VkImage metallicRoughnessVelocityTexture;
-    VkImage ssaoNoiseTexture;
     VkImage ssaoAttachment;
     VkImage postProcessAttachment;
 
@@ -65,7 +63,6 @@ typedef struct {
     VkImageView gbufferNormalView;
     VkImageView gbufferAlbedoView;
     VkImageView metallicRoughnessVelocityTextureView;
-    VkImageView ssaoNoiseTextureView;
     VkImageView ssaoAttachmentView;
     VkImageView postProcessAttachmentView;
 
@@ -75,7 +72,6 @@ typedef struct {
 
     VkDescriptorPool descriptorPool;
 
-    VkDescriptorSetLayout ssaoDataDescriptorSetLayout;
     VkDescriptorSetLayout gbufferDescriptorSetLayout;
     VkDescriptorSetLayout modelDescriptorSetLayout;
 
@@ -86,7 +82,6 @@ typedef struct {
     
     VkDescriptorSet PVmatrixdescriptorSet;
     VkDescriptorSet skyboxCubemapDescriptorSet;
-    VkDescriptorSet ssaoDataDescriptorSet;
     VkDescriptorSet gbufferDescriptorSet;
     VkDescriptorSet ssaoAttachmentDescriptorSet;
     VkDescriptorSet postProcessAttachmentDescriptorSet;
@@ -95,7 +90,7 @@ typedef struct {
     VkPipelineLayout sampledImagePipelineLayout;
     VkPipelineLayout modelPipelineLayout;
     VkPipelineLayout skyboxPipelineLayout;
-    VkPipelineLayout ssaoPipelineLayout;
+    VkPipelineLayout PVgbufferPipelineLayout;
     VkPipelineLayout compositionPipelineLayout;
     VkPipelineLayout uberPipelineLayout;
 
