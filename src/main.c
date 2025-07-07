@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
 
     SDL_Init(SDL_INIT_EVENTS);
     {
-        vkglobals.window = SDL_CreateWindow("walker", config.windowWidth, config.windowHeight, SDL_WINDOW_VULKAN | (config.fullscreen ? SDL_WINDOW_FULLSCREEN : 0));
+        vkglobals.window = SDL_CreateWindow("vulkan-effects", config.windowWidth, config.windowHeight, SDL_WINDOW_VULKAN | (config.fullscreen ? SDL_WINDOW_FULLSCREEN : 0));
     }
     if (vkglobals.window == VK_NULL_HANDLE) {
         printf("failed to create window\n");
