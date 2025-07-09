@@ -1326,8 +1326,8 @@ void updateCubeUbo() {
 
     mat4 proj, view;
 
-    //glm_perspective(glm_rad(90.0f), (f32)vkglobals.swapchainExtent.width / (f32)vkglobals.swapchainExtent.height, 100.0f, 0.01f, proj);
-    glm_ortho(-20.0f, 20.0f, 20.0f, -20.0f, 100.0f, 0.01f, proj);
+    glm_perspective(glm_rad(90.0f), (f32)vkglobals.swapchainExtent.width / (f32)vkglobals.swapchainExtent.height, 100.0f, 0.01f, proj);
+    //glm_ortho(-20.0f, 20.0f, 20.0f, -20.0f, 100.0f, 0.01f, proj);
     glm_lookat(globals->lightPos, (vec3){0.0f, 0.0f, 0.0f}, (vec3){0.0f, 1.0f, 0.0f}, view);
     glm_mat4_mul(proj, view, proj);
 
