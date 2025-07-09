@@ -42,4 +42,6 @@ void main() {
     } else {
         gbufferAlbedo = vec4(1.0);
     }
+
+    if (gbufferAlbedo.a < 0.1) discard;
 }
