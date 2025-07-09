@@ -32,6 +32,7 @@ set(SHADERS
     ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/fullscreenNoUV.vert
     ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/model.frag
     ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/model.vert
+    ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/shadowmap.vert
     ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/skybox.frag
     ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/skybox.vert
     ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/ssao.frag

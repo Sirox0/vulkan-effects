@@ -59,7 +59,7 @@ void modelViewSceneInit() {
         #define DEPTH_FORMAT_COUNT 3
         VkFormat formats[DEPTH_FORMAT_COUNT] = {VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D16_UNORM_S8_UINT};
         
-        globals->depthTextureFormat = VK_FORMAT_UNDEFINED;
+        globals->depthFormat = VK_FORMAT_UNDEFINED;
         for (u32 i = 0; i < DEPTH_FORMAT_COUNT; i++) {
             VkFormatProperties2KHR props;
             props.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
@@ -67,10 +67,10 @@ void modelViewSceneInit() {
 
             vkGetPhysicalDeviceFormatProperties2KHR(vkglobals.physicalDevice, formats[i], &props);
             if (props.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-                globals->depthTextureFormat = formats[i];
+                globals->depthFormat = formats[i];
             }
         }
-        if (globals->depthTextureFormat == VK_FORMAT_UNDEFINED) {
+        if (globals->depthFormat == VK_FORMAT_UNDEFINED) {
             printf("failed to find suitable depth texture format\n");
             exit(1);
         }
@@ -153,7 +153,8 @@ void modelViewSceneInit() {
 
         {
             // device-local resources
-            createImage(&globals->depthTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, globals->depthTextureFormat, 1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&globals->depthTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, globals->depthFormat, 1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&globals->shadowmap, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, globals->depthFormat, 1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
 
             createImage(&globals->skyboxCubemap, skyboxTexture->baseWidth, skyboxTexture->baseHeight, VK_FORMAT_R8G8B8A8_UNORM, 6, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
             for (u32 i = 0; i < imageCount; i++) createImage(&globals->model.textures[i], imageWidths[i], imageHeights[i], vkglobals.textureFormat, 1, imageMipLevels[i], VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
@@ -178,8 +179,9 @@ void modelViewSceneInit() {
                 VkMemoryAllocClusterInfo_t allocInfo = {};
                 allocInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_IMAGE;
-                allocInfo.handleCount = 1;
-                allocInfo.pHandles = &globals->depthTexture;
+                allocInfo.handleCount = 2;
+                allocInfo.pHandles = (VkImage[]){globals->depthTexture, globals->shadowmap};
+                allocInfo.pDstOffsets = VK_NULL_HANDLE;
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalDepthStencilAttachmentMemory);
             }
@@ -194,6 +196,7 @@ void modelViewSceneInit() {
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_IMAGE;
                 allocInfo.handleCount = 1 + imageCount;
                 allocInfo.pHandles = images;
+                allocInfo.pDstOffsets = VK_NULL_HANDLE;
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalSampledTransferDstMemory);
             }
@@ -204,6 +207,7 @@ void modelViewSceneInit() {
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
                 allocInfo.handleCount = 1;
                 allocInfo.pHandles = (VkBuffer[]){globals->projectionBuffer};
+                allocInfo.pDstOffsets = VK_NULL_HANDLE;
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalUniformTransferDstMemory);
             }
@@ -214,6 +218,7 @@ void modelViewSceneInit() {
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
                 allocInfo.handleCount = 1;
                 allocInfo.pHandles = &globals->model.storageBuffer;
+                allocInfo.pDstOffsets = VK_NULL_HANDLE;
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalStorageTransferDstMemory);
             }
@@ -224,6 +229,7 @@ void modelViewSceneInit() {
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
                 allocInfo.handleCount = 2;
                 allocInfo.pHandles = (VkBuffer[]){globals->skyboxVertexBuffer, globals->model.vertexBuffer};
+                allocInfo.pDstOffsets = VK_NULL_HANDLE;
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalVertexTransferDstMemory);
             }
@@ -234,6 +240,7 @@ void modelViewSceneInit() {
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
                 allocInfo.handleCount = 1;
                 allocInfo.pHandles = &globals->model.indexBuffer;
+                allocInfo.pDstOffsets = VK_NULL_HANDLE;
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalIndexTransferDstMemory);
             }
@@ -244,6 +251,7 @@ void modelViewSceneInit() {
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
                 allocInfo.handleCount = 1;
                 allocInfo.pHandles = &globals->model.indirectBuffer;
+                allocInfo.pDstOffsets = VK_NULL_HANDLE;
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalIndirectTransferDstMemory);
             }
@@ -254,6 +262,7 @@ void modelViewSceneInit() {
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_IMAGE;
                 allocInfo.handleCount = 4;
                 allocInfo.pHandles = (VkImage[]){globals->gbuffer, globals->metallicRoughnessVelocityTexture, globals->ssaoAttachment, globals->postProcessAttachment};
+                allocInfo.pDstOffsets = VK_NULL_HANDLE;
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalColorAttachmentSampledMemory);
             }
@@ -269,6 +278,7 @@ void modelViewSceneInit() {
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
                 allocInfo.handleCount = 1;
                 allocInfo.pHandles = (VkBuffer[]){globals->viewMatrixBuffer};
+                allocInfo.pDstOffsets = VK_NULL_HANDLE;
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->hostVisibleUniformMemory);
 
@@ -276,15 +286,21 @@ void modelViewSceneInit() {
             }
 
             createBuffer(&globals->model.hostVisibleStorageBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, sizeof(mat4));
+            createBuffer(&globals->lightBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, sizeof(mat4) + sizeof(vec4));
 
             {
+                VkDeviceSize offsets[2];
+
                 VkMemoryAllocClusterInfo_t allocInfo = {};
                 allocInfo.memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
-                allocInfo.handleCount = 1;
-                allocInfo.pHandles = (VkBuffer[]){globals->model.hostVisibleStorageBuffer};
+                allocInfo.handleCount = 2;
+                allocInfo.pHandles = (VkBuffer[]){globals->model.hostVisibleStorageBuffer, globals->lightBuffer};
+                allocInfo.pDstOffsets = offsets;
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->hostVisibleStorageMemory);
+
+                globals->lightBufferOffset = offsets[1];
 
                 VK_ASSERT(vkMapMemory(vkglobals.device, globals->hostVisibleStorageMemory, 0, VK_WHOLE_SIZE, 0, &globals->hostVisibleStorageMemoryRaw), "failed to map memory\n");
             }
@@ -303,6 +319,7 @@ void modelViewSceneInit() {
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_BUFFER;
                 allocInfo.handleCount = 1;
                 allocInfo.pHandles = &tempBuffer;
+                allocInfo.pDstOffsets = VK_NULL_HANDLE;
 
                 vkAllocateMemoryCluster(&allocInfo, &tempBufferMemory);
             }
@@ -405,7 +422,8 @@ void modelViewSceneInit() {
         VK_ASSERT(vkQueueSubmit(vkglobals.queue, 1, &submitInfo, tempFence), "failed to submit command buffer\n");
     }
 
-    createImageView(&globals->depthTextureView, globals->depthTexture, VK_IMAGE_VIEW_TYPE_2D, globals->depthTextureFormat, 1, 0, 1, 0, VK_IMAGE_ASPECT_DEPTH_BIT);
+    createImageView(&globals->depthTextureView, globals->depthTexture, VK_IMAGE_VIEW_TYPE_2D, globals->depthFormat, 1, 0, 1, 0, VK_IMAGE_ASPECT_DEPTH_BIT);
+    createImageView(&globals->shadowmapView, globals->shadowmap, VK_IMAGE_VIEW_TYPE_2D, globals->depthFormat, 1, 0, 1, 0, VK_IMAGE_ASPECT_DEPTH_BIT);
     createImageView(&globals->skyboxCubemapView, globals->skyboxCubemap, VK_IMAGE_VIEW_TYPE_CUBE, VK_FORMAT_R8G8B8A8_UNORM, 6, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&globals->gbufferNormalView, globals->gbuffer, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&globals->gbufferAlbedoView, globals->gbuffer, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -414,23 +432,45 @@ void modelViewSceneInit() {
     createImageView(&globals->postProcessAttachmentView, globals->postProcessAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     
     {
-        VkSamplerCreateInfo samplerInfo = {};
-        samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        samplerInfo.mipLodBias = 0.0f;
-        samplerInfo.minLod = 0.0f;
-        samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
-        samplerInfo.minFilter = vkglobals.textureFilter;
-        samplerInfo.magFilter = vkglobals.textureFilter;
-        if (config.maxAnisotropy) samplerInfo.anisotropyEnable = VK_TRUE;
-        samplerInfo.maxAnisotropy = config.maxAnisotropy;
-        samplerInfo.compareEnable = VK_FALSE;
-        samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
-        samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        {
+            VkSamplerCreateInfo samplerInfo = {};
+            samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+            samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            samplerInfo.mipLodBias = 0.0f;
+            samplerInfo.minLod = 0.0f;
+            samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
+            samplerInfo.minFilter = vkglobals.textureFilter;
+            samplerInfo.magFilter = vkglobals.textureFilter;
+            if (config.maxAnisotropy) samplerInfo.anisotropyEnable = VK_TRUE;
+            samplerInfo.maxAnisotropy = config.maxAnisotropy;
+            samplerInfo.compareEnable = VK_FALSE;
+            samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+            samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
-        VK_ASSERT(vkCreateSampler(vkglobals.device, &samplerInfo, VK_NULL_HANDLE, &globals->sampler), "failed to create sampler\n");
+            VK_ASSERT(vkCreateSampler(vkglobals.device, &samplerInfo, VK_NULL_HANDLE, &globals->sampler), "failed to create sampler\n");
+        }
+
+        {
+            VkSamplerCreateInfo samplerInfo = {};
+            samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+            samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            samplerInfo.mipLodBias = 0.0f;
+            samplerInfo.minLod = 0.0f;
+            samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
+            samplerInfo.minFilter = VK_FILTER_NEAREST;
+            samplerInfo.magFilter = VK_FILTER_NEAREST;
+            samplerInfo.anisotropyEnable = VK_FALSE;
+            samplerInfo.compareEnable = VK_TRUE;
+            samplerInfo.compareOp = VK_COMPARE_OP_GREATER;
+            samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+            samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+            samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+            samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+
+            VK_ASSERT(vkCreateSampler(vkglobals.device, &samplerInfo, VK_NULL_HANDLE, &globals->shadowmapSampler), "failed to create sampler\n");
+        }
     }
 
     {
@@ -439,10 +479,10 @@ void modelViewSceneInit() {
         poolSizes[0].descriptorCount = 3;
 
         poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        poolSizes[1].descriptorCount = 3;
+        poolSizes[1].descriptorCount = 4;
 
         poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSizes[2].descriptorCount = 1 + globals->model.textureCount;
+        poolSizes[2].descriptorCount = 2 + globals->model.textureCount;
 
         poolSizes[3].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         poolSizes[3].descriptorCount = 8;
@@ -457,6 +497,21 @@ void modelViewSceneInit() {
     }
 
     {
+        {
+            VkDescriptorSetLayoutBinding bindings[1] = {};
+            bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+            bindings[0].binding = 0;
+            bindings[0].descriptorCount = 1;
+            bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+            VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {};
+            descriptorSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+            descriptorSetLayoutInfo.bindingCount = 1;
+            descriptorSetLayoutInfo.pBindings = bindings;
+
+            VK_ASSERT(vkCreateDescriptorSetLayout(vkglobals.device, &descriptorSetLayoutInfo, VK_NULL_HANDLE, &globals->storageDescriptorSetLayout), "failed to create descriptor set layout\n");
+        }
+
         {
             VkDescriptorSetLayoutBinding bindings[4] = {};
             bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -579,25 +634,25 @@ void modelViewSceneInit() {
 
     {
         {
-            u32 variableDescriptorCounts[6] = {};
+            u32 variableDescriptorCounts[8] = {};
             variableDescriptorCounts[4] = globals->model.textureCount;
 
             VkDescriptorSetVariableDescriptorCountAllocateInfoEXT variableDescriptorCountAllocateInfo = {};
             variableDescriptorCountAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
-            variableDescriptorCountAllocateInfo.descriptorSetCount = 6;
+            variableDescriptorCountAllocateInfo.descriptorSetCount = 8;
             variableDescriptorCountAllocateInfo.pDescriptorCounts = variableDescriptorCounts;
 
             VkDescriptorSetAllocateInfo descriptorSetsInfo = {};
             descriptorSetsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
             descriptorSetsInfo.pNext = &variableDescriptorCountAllocateInfo;
             descriptorSetsInfo.descriptorPool = globals->descriptorPool;
-            descriptorSetsInfo.descriptorSetCount = 6;
+            descriptorSetsInfo.descriptorSetCount = 8;
             descriptorSetsInfo.pSetLayouts = (VkDescriptorSetLayout[]){globals->PVmatrixdescriptorSetLayout, globals->gbufferDescriptorSetLayout,
-                globals->sampledImageDescriptorSetLayout, globals->sampledImageDescriptorSetLayout,
-                globals->modelDescriptorSetLayout, globals->combinedImageSamplerDescriptorSetLayout
+                globals->sampledImageDescriptorSetLayout, globals->sampledImageDescriptorSetLayout, globals->modelDescriptorSetLayout,
+                globals->combinedImageSamplerDescriptorSetLayout, globals->storageDescriptorSetLayout, globals->combinedImageSamplerDescriptorSetLayout
             };
 
-            VkDescriptorSet sets[6];
+            VkDescriptorSet sets[8];
 
             VK_ASSERT(vkAllocateDescriptorSets(vkglobals.device, &descriptorSetsInfo, sets), "failed to allocate descriptor sets\n");
 
@@ -607,12 +662,14 @@ void modelViewSceneInit() {
             globals->postProcessAttachmentDescriptorSet = sets[3];
             globals->model.descriptorSet = sets[4];
             globals->skyboxCubemapDescriptorSet = sets[5];
+            globals->lightDescriptorSet = sets[6];
+            globals->shadowmapDescriptorSet = sets[7];
         }
 
         u32 modelDescriptorBufferCount, modelDescriptorImageCount, modelDescriptorWriteCount;
         vkModelGetDescriptorWrites(&globals->model, globals->sampler, &modelDescriptorBufferCount, NULL, &modelDescriptorImageCount, NULL, &modelDescriptorWriteCount, NULL);
 
-        VkDescriptorBufferInfo descriptorBufferInfos[2 + modelDescriptorBufferCount];
+        VkDescriptorBufferInfo descriptorBufferInfos[3 + modelDescriptorBufferCount];
         descriptorBufferInfos[0].buffer = globals->projectionBuffer;
         descriptorBufferInfos[0].offset = 0;
         descriptorBufferInfos[0].range = VK_WHOLE_SIZE;
@@ -621,7 +678,11 @@ void modelViewSceneInit() {
         descriptorBufferInfos[1].offset = 0;
         descriptorBufferInfos[1].range = VK_WHOLE_SIZE;
 
-        VkDescriptorImageInfo descriptorImageInfos[7 + modelDescriptorImageCount];
+        descriptorBufferInfos[2].buffer = globals->lightBuffer;
+        descriptorBufferInfos[2].offset = 0;
+        descriptorBufferInfos[2].range = VK_WHOLE_SIZE;
+
+        VkDescriptorImageInfo descriptorImageInfos[8 + modelDescriptorImageCount];
         descriptorImageInfos[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         descriptorImageInfos[0].imageView = globals->gbufferNormalView;
         descriptorImageInfos[0].sampler = VK_NULL_HANDLE;
@@ -650,7 +711,11 @@ void modelViewSceneInit() {
         descriptorImageInfos[6].imageView = globals->skyboxCubemapView;
         descriptorImageInfos[6].sampler = globals->sampler;
 
-        VkWriteDescriptorSet descriptorWrites[9 + modelDescriptorWriteCount];
+        descriptorImageInfos[7].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        descriptorImageInfos[7].imageView = globals->shadowmapView;
+        descriptorImageInfos[7].sampler = globals->shadowmapSampler;
+
+        VkWriteDescriptorSet descriptorWrites[11 + modelDescriptorWriteCount];
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].pNext = VK_NULL_HANDLE;
         descriptorWrites[0].descriptorCount = 1;
@@ -732,12 +797,48 @@ void modelViewSceneInit() {
         descriptorWrites[8].dstSet = globals->skyboxCubemapDescriptorSet;
         descriptorWrites[8].pImageInfo = &descriptorImageInfos[6];
 
-        vkModelGetDescriptorWrites(&globals->model, globals->sampler, &modelDescriptorBufferCount, descriptorBufferInfos + 2, &modelDescriptorImageCount, descriptorImageInfos + 7, &modelDescriptorWriteCount, descriptorWrites + 9);
+        descriptorWrites[9].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[9].pNext = VK_NULL_HANDLE;
+        descriptorWrites[9].descriptorCount = 1;
+        descriptorWrites[9].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[9].dstBinding = 0;
+        descriptorWrites[9].dstArrayElement = 0;
+        descriptorWrites[9].dstSet = globals->lightDescriptorSet;
+        descriptorWrites[9].pBufferInfo = &descriptorBufferInfos[2];
 
-        vkUpdateDescriptorSets(vkglobals.device, 9 + modelDescriptorWriteCount, descriptorWrites, 0, VK_NULL_HANDLE);
+        descriptorWrites[10].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[10].pNext = VK_NULL_HANDLE;
+        descriptorWrites[10].descriptorCount = 1;
+        descriptorWrites[10].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[10].dstBinding = 0;
+        descriptorWrites[10].dstArrayElement = 0;
+        descriptorWrites[10].dstSet = globals->shadowmapDescriptorSet;
+        descriptorWrites[10].pImageInfo = &descriptorImageInfos[7];
+
+        vkModelGetDescriptorWrites(&globals->model, globals->sampler, &modelDescriptorBufferCount, descriptorBufferInfos + 3, &modelDescriptorImageCount, descriptorImageInfos + 8, &modelDescriptorWriteCount, descriptorWrites + 11);
+
+        vkUpdateDescriptorSets(vkglobals.device, 11 + modelDescriptorWriteCount, descriptorWrites, 0, VK_NULL_HANDLE);
     }
 
     {
+        {
+            VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+            pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipelineLayoutInfo.setLayoutCount = 1;
+            pipelineLayoutInfo.pSetLayouts = &globals->sampledImageDescriptorSetLayout;
+
+            VK_ASSERT(vkCreatePipelineLayout(vkglobals.device, &pipelineLayoutInfo, VK_NULL_HANDLE, &globals->sampledImagePipelineLayout), "failed to create pipeline layout\n");
+        }
+
+        {
+            VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+            pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            pipelineLayoutInfo.setLayoutCount = 2;
+            pipelineLayoutInfo.pSetLayouts = (VkDescriptorSetLayout[]){globals->storageDescriptorSetLayout, globals->modelDescriptorSetLayout};
+
+            VK_ASSERT(vkCreatePipelineLayout(vkglobals.device, &pipelineLayoutInfo, VK_NULL_HANDLE, &globals->shadowmapPipelineLayout), "failed to create pipeline layout\n");
+        }
+
         {
             VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
             pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -768,17 +869,8 @@ void modelViewSceneInit() {
         {
             VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
             pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = 1;
-            pipelineLayoutInfo.pSetLayouts = &globals->sampledImageDescriptorSetLayout;
-
-            VK_ASSERT(vkCreatePipelineLayout(vkglobals.device, &pipelineLayoutInfo, VK_NULL_HANDLE, &globals->sampledImagePipelineLayout), "failed to create pipeline layout\n");
-        }
-
-        {
-            VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-            pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = 3;
-            pipelineLayoutInfo.pSetLayouts = (VkDescriptorSetLayout[]){globals->PVmatrixdescriptorSetLayout, globals->gbufferDescriptorSetLayout, globals->sampledImageDescriptorSetLayout};
+            pipelineLayoutInfo.setLayoutCount = 5;
+            pipelineLayoutInfo.pSetLayouts = (VkDescriptorSetLayout[]){globals->PVmatrixdescriptorSetLayout, globals->gbufferDescriptorSetLayout, globals->sampledImageDescriptorSetLayout, globals->storageDescriptorSetLayout, globals->combinedImageSamplerDescriptorSetLayout};
 
             VK_ASSERT(vkCreatePipelineLayout(vkglobals.device, &pipelineLayoutInfo, VK_NULL_HANDLE, &globals->compositionPipelineLayout), "failed to create pipeline layout\n");
         }
@@ -976,28 +1068,26 @@ void modelViewSceneInit() {
         VkShaderModule fullscreenVertexModule = createShaderModuleFromAsset("assets/shaders/fullscreen.vert.spv");
         VkShaderModule fullscreenNoUVVertexModule = createShaderModuleFromAsset("assets/shaders/fullscreenNoUV.vert.spv");
 
-        VkGraphicsPipelineInfo_t pipelineInfos[5] = {};
+        VkGraphicsPipelineInfo_t pipelineInfos[6] = {};
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[0]);
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[1]);
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[2]);
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[3]);
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[4]);
+        pipelineFillDefaultGraphicsPipeline(&pipelineInfos[5]);
 
-        pipelineInfos[0].stageCount = 2;
+
+        pipelineInfos[0].stageCount = 1;
         pipelineInfos[0].stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-        pipelineInfos[0].stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        pipelineInfos[0].stages[0].module = createShaderModuleFromAsset("assets/shaders/model.vert.spv");
-        pipelineInfos[0].stages[1].module = createShaderModuleFromAsset("assets/shaders/model.frag.spv");
+        pipelineInfos[0].stages[0].module = createShaderModuleFromAsset("assets/shaders/shadowmap.vert.spv");
 
-        pipelineInfos[0].vertexInputState.vertexAttributeDescriptionCount = 4;
+        pipelineInfos[0].vertexInputState.vertexAttributeDescriptionCount = 1;
         pipelineInfos[0].vertexInputState.pVertexAttributeDescriptions = attributeDescs;
         pipelineInfos[0].vertexInputState.vertexBindingDescriptionCount = 1;
         pipelineInfos[0].vertexInputState.pVertexBindingDescriptions = bindingDescs;
         pipelineInfos[0].depthStencilState.depthTestEnable = VK_TRUE;
         pipelineInfos[0].depthStencilState.depthWriteEnable = VK_TRUE;
-        pipelineInfos[0].rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        pipelineInfos[0].colorBlendState.attachmentCount = 3;
-        pipelineInfos[0].colorBlendState.pAttachments = (VkPipelineColorBlendAttachmentState[]){pipelineInfos[0].colorBlendAttachment, pipelineInfos[0].colorBlendAttachment, pipelineInfos[0].colorBlendAttachment};
+        pipelineInfos[0].rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
 
         if (config.wireframe) {
             pipelineInfos[0].rasterizationState.polygonMode = VK_POLYGON_MODE_LINE;
@@ -1005,91 +1095,121 @@ void modelViewSceneInit() {
             pipelineInfos[0].rasterizationState.cullMode = VK_CULL_MODE_NONE;
         }
 
-        pipelineInfos[0].renderingInfo.colorAttachmentCount = 3;
-        pipelineInfos[0].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R16G16B16A16_SFLOAT};
-        pipelineInfos[0].renderingInfo.depthAttachmentFormat = globals->depthTextureFormat;
-        pipelineInfos[0].layout = globals->modelPipelineLayout;
+        pipelineInfos[0].renderingInfo.depthAttachmentFormat = globals->depthFormat;
+        pipelineInfos[0].layout = globals->shadowmapPipelineLayout;
 
 
         pipelineInfos[1].stageCount = 2;
         pipelineInfos[1].stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
         pipelineInfos[1].stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        pipelineInfos[1].stages[0].module = fullscreenVertexModule;
-        pipelineInfos[1].stages[1].module = createShaderModuleFromAsset("assets/shaders/ssao.frag.spv");
-        pipelineInfos[1].stages[1].pSpecializationInfo = &specializationInfos[0];
+        pipelineInfos[1].stages[0].module = createShaderModuleFromAsset("assets/shaders/model.vert.spv");
+        pipelineInfos[1].stages[1].module = createShaderModuleFromAsset("assets/shaders/model.frag.spv");
 
-        pipelineInfos[1].viewport.width = config.ssaoResolutionWidth;
-        pipelineInfos[1].viewport.height = config.ssaoResolutionHeight;
-        pipelineInfos[1].scissor.extent = (VkExtent2D){config.ssaoResolutionWidth, config.ssaoResolutionHeight};
+        pipelineInfos[1].vertexInputState.vertexAttributeDescriptionCount = 4;
+        pipelineInfos[1].vertexInputState.pVertexAttributeDescriptions = attributeDescs;
+        pipelineInfos[1].vertexInputState.vertexBindingDescriptionCount = 1;
+        pipelineInfos[1].vertexInputState.pVertexBindingDescriptions = bindingDescs;
+        pipelineInfos[1].depthStencilState.depthTestEnable = VK_TRUE;
+        pipelineInfos[1].depthStencilState.depthWriteEnable = VK_TRUE;
+        pipelineInfos[1].rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        pipelineInfos[1].colorBlendState.attachmentCount = 3;
+        pipelineInfos[1].colorBlendState.pAttachments = (VkPipelineColorBlendAttachmentState[]){pipelineInfos[1].colorBlendAttachment, pipelineInfos[1].colorBlendAttachment, pipelineInfos[1].colorBlendAttachment};
 
-        pipelineInfos[1].renderingInfo.colorAttachmentCount = 1;
-        pipelineInfos[1].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R8_UNORM};
-        pipelineInfos[1].layout = globals->PVgbufferPipelineLayout;
+        if (config.wireframe) {
+            pipelineInfos[1].rasterizationState.polygonMode = VK_POLYGON_MODE_LINE;
+            // since triangles are transparent in wireframe mode, we disable culling
+            pipelineInfos[1].rasterizationState.cullMode = VK_CULL_MODE_NONE;
+        }
+
+        pipelineInfos[1].renderingInfo.colorAttachmentCount = 3;
+        pipelineInfos[1].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R16G16B16A16_SFLOAT};
+        pipelineInfos[1].renderingInfo.depthAttachmentFormat = globals->depthFormat;
+        pipelineInfos[1].layout = globals->modelPipelineLayout;
+
 
         pipelineInfos[2].stageCount = 2;
         pipelineInfos[2].stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
         pipelineInfos[2].stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        pipelineInfos[2].stages[0].module = fullscreenVertexModule;
-        pipelineInfos[2].stages[1].module = createShaderModuleFromAsset("assets/shaders/composition.frag.spv");
-        pipelineInfos[2].stages[1].pSpecializationInfo = &specializationInfos[1];
+        pipelineInfos[2].stages[0].module = createShaderModuleFromAsset("assets/shaders/skybox.vert.spv");
+        pipelineInfos[2].stages[1].module = createShaderModuleFromAsset("assets/shaders/skybox.frag.spv");
 
-        pipelineInfos[2].renderingInfo.colorAttachmentCount = 1;
-        pipelineInfos[2].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R8G8B8A8_UNORM};
-        pipelineInfos[2].layout = globals->compositionPipelineLayout;
+        pipelineInfos[2].vertexInputState.vertexAttributeDescriptionCount = 1;
+        pipelineInfos[2].vertexInputState.pVertexAttributeDescriptions = attributeDescs;
+        pipelineInfos[2].vertexInputState.vertexBindingDescriptionCount = 1;
+        pipelineInfos[2].vertexInputState.pVertexBindingDescriptions = bindingDescs + 1;
+        pipelineInfos[2].rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        pipelineInfos[2].depthStencilState.depthTestEnable = VK_TRUE;
+        pipelineInfos[2].colorBlendState.attachmentCount = 3;
+        pipelineInfos[2].colorBlendState.pAttachments = (VkPipelineColorBlendAttachmentState[]){pipelineInfos[0].colorBlendAttachment, pipelineInfos[0].colorBlendAttachment, pipelineInfos[0].colorBlendAttachment};
+
+        pipelineInfos[2].renderingInfo.colorAttachmentCount = 3;
+        pipelineInfos[2].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R16G16B16A16_SFLOAT};
+        pipelineInfos[2].renderingInfo.depthAttachmentFormat = globals->depthFormat;
+        pipelineInfos[2].layout = globals->skyboxPipelineLayout;
+
 
         pipelineInfos[3].stageCount = 2;
         pipelineInfos[3].stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
         pipelineInfos[3].stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
         pipelineInfos[3].stages[0].module = fullscreenVertexModule;
-        pipelineInfos[3].stages[1].module = createShaderModuleFromAsset("assets/shaders/postprocess/uber.frag.spv");
-        pipelineInfos[3].stages[1].pSpecializationInfo = &specializationInfos[2];
+        pipelineInfos[3].stages[1].module = createShaderModuleFromAsset("assets/shaders/ssao.frag.spv");
+        pipelineInfos[3].stages[1].pSpecializationInfo = &specializationInfos[0];
+
+        pipelineInfos[3].viewport.width = config.ssaoResolutionWidth;
+        pipelineInfos[3].viewport.height = config.ssaoResolutionHeight;
 
         pipelineInfos[3].renderingInfo.colorAttachmentCount = 1;
-        pipelineInfos[3].renderingInfo.pColorAttachmentFormats = &vkglobals.surfaceFormat.format;
-        pipelineInfos[3].layout = globals->uberPipelineLayout;
+        pipelineInfos[3].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R8_UNORM};
+        pipelineInfos[3].layout = globals->PVgbufferPipelineLayout;
+
 
         pipelineInfos[4].stageCount = 2;
         pipelineInfos[4].stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
         pipelineInfos[4].stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        pipelineInfos[4].stages[0].module = createShaderModuleFromAsset("assets/shaders/skybox.vert.spv");
-        pipelineInfos[4].stages[1].module = createShaderModuleFromAsset("assets/shaders/skybox.frag.spv");
+        pipelineInfos[4].stages[0].module = fullscreenVertexModule;
+        pipelineInfos[4].stages[1].module = createShaderModuleFromAsset("assets/shaders/composition.frag.spv");
+        pipelineInfos[4].stages[1].pSpecializationInfo = &specializationInfos[1];
 
-        pipelineInfos[4].vertexInputState.vertexAttributeDescriptionCount = 1;
-        pipelineInfos[4].vertexInputState.pVertexAttributeDescriptions = attributeDescs;
-        pipelineInfos[4].vertexInputState.vertexBindingDescriptionCount = 1;
-        pipelineInfos[4].vertexInputState.pVertexBindingDescriptions = bindingDescs + 1;
-        pipelineInfos[4].rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-        pipelineInfos[4].depthStencilState.depthTestEnable = VK_TRUE;
-        pipelineInfos[4].colorBlendState.attachmentCount = 3;
-        pipelineInfos[4].colorBlendState.pAttachments = (VkPipelineColorBlendAttachmentState[]){pipelineInfos[0].colorBlendAttachment, pipelineInfos[0].colorBlendAttachment, pipelineInfos[0].colorBlendAttachment};
+        pipelineInfos[4].renderingInfo.colorAttachmentCount = 1;
+        pipelineInfos[4].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R8G8B8A8_UNORM};
+        pipelineInfos[4].layout = globals->compositionPipelineLayout;
 
-        pipelineInfos[4].renderingInfo.colorAttachmentCount = 3;
-        pipelineInfos[4].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R16G16B16A16_SFLOAT};
-        pipelineInfos[4].renderingInfo.depthAttachmentFormat = globals->depthTextureFormat;
-        pipelineInfos[4].layout = globals->skyboxPipelineLayout;
+
+        pipelineInfos[5].stageCount = 2;
+        pipelineInfos[5].stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+        pipelineInfos[5].stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        pipelineInfos[5].stages[0].module = fullscreenVertexModule;
+        pipelineInfos[5].stages[1].module = createShaderModuleFromAsset("assets/shaders/postprocess/uber.frag.spv");
+        pipelineInfos[5].stages[1].pSpecializationInfo = &specializationInfos[2];
+
+        pipelineInfos[5].renderingInfo.colorAttachmentCount = 1;
+        pipelineInfos[5].renderingInfo.pColorAttachmentFormats = &vkglobals.surfaceFormat.format;
+        pipelineInfos[5].layout = globals->uberPipelineLayout;
 
         VkPipelineCache pipelineCache = loadPipelineCache("pipelinecache.dat");
 
-        VkPipeline pipelines[5];
+        VkPipeline pipelines[6];
 
-        pipelineCreateGraphicsPipelines(pipelineCache, 5, pipelineInfos, pipelines);
+        pipelineCreateGraphicsPipelines(pipelineCache, 6, pipelineInfos, pipelines);
 
-        globals->modelPipeline = pipelines[0];
-        globals->ssaoPipeline = pipelines[1];
-        globals->compositionPipeline = pipelines[2];
-        globals->uberPipeline = pipelines[3];
-        globals->skyboxPipeline = pipelines[4];
+        globals->shadowmapPipeline = pipelines[0];
+        globals->modelPipeline = pipelines[1];
+        globals->skyboxPipeline = pipelines[2];
+        globals->ssaoPipeline = pipelines[3];
+        globals->compositionPipeline = pipelines[4];
+        globals->uberPipeline = pipelines[5];
 
         storePipelineCache(pipelineCache, "pipelinecache.dat");
         vkDestroyPipelineCache(vkglobals.device, pipelineCache, VK_NULL_HANDLE);
 
-        vkDestroyShaderModule(vkglobals.device, pipelineInfos[4].stages[0].module, VK_NULL_HANDLE);
+        vkDestroyShaderModule(vkglobals.device, pipelineInfos[5].stages[1].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[4].stages[1].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[3].stages[1].module, VK_NULL_HANDLE);
+        vkDestroyShaderModule(vkglobals.device, pipelineInfos[2].stages[0].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[2].stages[1].module, VK_NULL_HANDLE);
+        vkDestroyShaderModule(vkglobals.device, pipelineInfos[1].stages[0].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[1].stages[1].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[0].stages[0].module, VK_NULL_HANDLE);
-        vkDestroyShaderModule(vkglobals.device, pipelineInfos[0].stages[1].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, fullscreenNoUVVertexModule, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, fullscreenVertexModule, VK_NULL_HANDLE);
     }
@@ -1130,6 +1250,12 @@ void modelViewSceneInit() {
 
     glm_mat4_identity(globals->hostVisibleUniformMemoryRaw);
 
+    globals->moveLight = 0;
+    globals->lightPos[0] = 2.175429f;
+    globals->lightPos[1] = -22.590681f;
+    globals->lightPos[2] = -2.495682f;
+    globals->lightPos[3] = 0.0f;
+
     tempResourcesWaitAndDestroy(1, &tempCmdBuffer, 1, &tempBuffer, 1, &tempBufferMemory, 1, &tempFence);
 }
 
@@ -1143,6 +1269,7 @@ void modelViewSceneEvent(SDL_Event* e) {
         else if (e->key.key == SDLK_LCTRL) globals->inputY[1] = config.playerSpeed / 1e9f;
         else if (e->key.key == SDLK_LSHIFT) globals->shift = config.shiftMultiplier;
         else if (e->key.key == SDLK_ESCAPE) vkglobals.loopActive = 0;
+        else if (e->key.key == SDLK_J) globals->moveLight = 1;
     } else if (e->type == SDL_EVENT_KEY_UP) {
         if (e->key.key == SDLK_W) globals->inputZ[0] = 0;
         else if (e->key.key == SDLK_S) globals->inputZ[1] = 0;
@@ -1151,6 +1278,7 @@ void modelViewSceneEvent(SDL_Event* e) {
         else if (e->key.key == SDLK_SPACE) globals->inputY[0] = 0;
         else if (e->key.key == SDLK_LCTRL) globals->inputY[1] = 0;
         else if (e->key.key == SDLK_LSHIFT) globals->shift = 1;
+        else if (e->key.key == SDLK_J) globals->moveLight = 0;
     } else if (e->type == SDL_EVENT_MOUSE_MOTION) {
         globals->cam.targetYaw += (f32)e->motion.xrel / 400.0f;
         globals->cam.targetPitch -= (f32)e->motion.yrel / 400.0f;
@@ -1181,7 +1309,8 @@ void updateCubeUbo() {
         vec3 vel;
         glm_mat4_mulv3(rot, (vec3){(globals->inputX[0] + globals->inputX[1]) * globals->shift * vkglobals.deltaTime, 0.0f, (globals->inputZ[0] + globals->inputZ[1]) * globals->shift * vkglobals.deltaTime}, 0.0f, vel);
         vel[1] += (globals->inputY[0] + globals->inputY[1]) * globals->shift * vkglobals.deltaTime;
-        glm_vec3_add(globals->cam.position, vel, globals->cam.position);
+        if (globals->moveLight) glm_vec3_add(globals->lightPos, vel, globals->lightPos);
+        else glm_vec3_add(globals->cam.position, vel, globals->cam.position);
     }
 
     {
@@ -1191,6 +1320,19 @@ void updateCubeUbo() {
 
     glm_mat4_identity(modelMatrix);
     glm_scale_uni(modelMatrix, config.modelScale);
+
+    vec4 viewLightPos;
+    glm_mat4_mulv3(viewMatrix, globals->lightPos, 1.0f, viewLightPos);
+
+    mat4 proj, view;
+
+    //glm_perspective(glm_rad(90.0f), (f32)vkglobals.swapchainExtent.width / (f32)vkglobals.swapchainExtent.height, 100.0f, 0.01f, proj);
+    glm_ortho(-20.0f, 20.0f, 20.0f, -20.0f, 100.0f, 0.01f, proj);
+    glm_lookat(globals->lightPos, (vec3){0.0f, 0.0f, 0.0f}, (vec3){0.0f, 1.0f, 0.0f}, view);
+    glm_mat4_mul(proj, view, proj);
+
+    memcpy(globals->hostVisibleStorageMemoryRaw + globals->lightBufferOffset, proj, sizeof(mat4));
+    memcpy(globals->hostVisibleStorageMemoryRaw + globals->lightBufferOffset + sizeof(mat4), &viewLightPos, sizeof(vec4));
 
     VkMappedMemoryRange memoryRanges[2] = {};
     memoryRanges[0].sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
@@ -1222,6 +1364,57 @@ void modelViewSceneRender() {
         cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
         VK_ASSERT(vkBeginCommandBuffer(globals->cmdBuffer, &cmdBeginInfo), "failed to begin command buffer\n");
+
+        {
+            VkImageMemoryBarrier imageBarriers[1] = {};
+            imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageBarriers[0].image = globals->shadowmap;
+            imageBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            imageBarriers[0].subresourceRange.baseArrayLayer = 0;
+            imageBarriers[0].subresourceRange.layerCount = 1;
+            imageBarriers[0].subresourceRange.baseMipLevel = 0;
+            imageBarriers[0].subresourceRange.levelCount = 1;
+            imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            imageBarriers[0].srcAccessMask = 0;
+            imageBarriers[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+            vkCmdPipelineBarrier(globals->cmdBuffer, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, imageBarriers);
+        }
+
+        {
+            VkRenderingAttachmentInfoKHR attachments[1] = {};
+            attachments[0].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+            attachments[0].imageView = globals->shadowmapView;
+            attachments[0].imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            attachments[0].resolveMode = VK_RESOLVE_MODE_NONE_KHR;
+            attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            attachments[0].clearValue = (VkClearValue){{{0.0f, 0}}};
+
+            VkRenderingInfoKHR renderingInfo = {};
+            renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+            renderingInfo.renderArea = (VkRect2D){(VkOffset2D){0, 0}, (VkExtent2D){vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height}};
+            renderingInfo.layerCount = 1;
+            renderingInfo.colorAttachmentCount = 0;
+            renderingInfo.pColorAttachments = VK_NULL_HANDLE;
+            renderingInfo.pDepthAttachment = attachments;
+            renderingInfo.pStencilAttachment = VK_NULL_HANDLE;
+
+            vkCmdBeginRenderingKHR(globals->cmdBuffer, &renderingInfo);
+
+            VkDeviceSize vertexBufferOffsets[1] = {};
+            vkCmdBindPipeline(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->shadowmapPipeline);
+            vkCmdBindVertexBuffers(globals->cmdBuffer, 0, 1, &globals->model.vertexBuffer, vertexBufferOffsets);
+            vkCmdBindIndexBuffer(globals->cmdBuffer, globals->model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->shadowmapPipelineLayout, 0, 2, (VkDescriptorSet[]){globals->lightDescriptorSet, globals->model.descriptorSet}, 0, VK_NULL_HANDLE);
+
+            vkCmdDrawIndexedIndirect(globals->cmdBuffer, globals->model.indirectBuffer, 0, globals->model.drawCount, sizeof(VkDrawIndexedIndirectCommand));
+
+            vkCmdEndRenderingKHR(globals->cmdBuffer);
+        }
 
         {
             VkImageMemoryBarrier imageBarriers[3] = {};
@@ -1268,7 +1461,7 @@ void modelViewSceneRender() {
             imageBarriers[2].newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
             vkCmdPipelineBarrier(globals->cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 2, imageBarriers);
-            vkCmdPipelineBarrier(globals->cmdBuffer, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, imageBarriers + 2);
+            vkCmdPipelineBarrier(globals->cmdBuffer, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, imageBarriers + 2);
         }
 
         {
@@ -1311,27 +1504,27 @@ void modelViewSceneRender() {
             renderingInfo.layerCount = 1;
             renderingInfo.colorAttachmentCount = 3;
             renderingInfo.pColorAttachments = attachments;
-            renderingInfo.pDepthAttachment = &attachments[3];
+            renderingInfo.pDepthAttachment = attachments + 3;
             renderingInfo.pStencilAttachment = VK_NULL_HANDLE;
 
             vkCmdBeginRenderingKHR(globals->cmdBuffer, &renderingInfo);
+
+            VkDeviceSize vertexBufferOffsets[1] = {};
+            vkCmdBindPipeline(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->modelPipeline);
+            vkCmdBindVertexBuffers(globals->cmdBuffer, 0, 1, &globals->model.vertexBuffer, vertexBufferOffsets);
+            vkCmdBindIndexBuffer(globals->cmdBuffer, globals->model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->modelPipelineLayout, 0, 2, (VkDescriptorSet[]){globals->PVmatrixdescriptorSet, globals->model.descriptorSet}, 0, VK_NULL_HANDLE);
+
+            vkCmdDrawIndexedIndirect(globals->cmdBuffer, globals->model.indirectBuffer, 0, globals->model.drawCount, sizeof(VkDrawIndexedIndirectCommand));
+
+            vkCmdBindPipeline(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->skyboxPipeline);
+            vkCmdBindVertexBuffers(globals->cmdBuffer, 0, 1, &globals->skyboxVertexBuffer, vertexBufferOffsets);
+            vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->skyboxPipelineLayout, 0, 2, (VkDescriptorSet[]){globals->PVmatrixdescriptorSet, globals->skyboxCubemapDescriptorSet}, 0, VK_NULL_HANDLE);
+
+            vkCmdDraw(globals->cmdBuffer, 36, 1, 0, 0);
+
+            vkCmdEndRenderingKHR(globals->cmdBuffer);
         }
-
-        VkDeviceSize vertexBufferOffsets[1] = {};
-        vkCmdBindPipeline(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->modelPipeline);
-        vkCmdBindVertexBuffers(globals->cmdBuffer, 0, 1, &globals->model.vertexBuffer, vertexBufferOffsets);
-        vkCmdBindIndexBuffer(globals->cmdBuffer, globals->model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-        vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->modelPipelineLayout, 0, 2, (VkDescriptorSet[]){globals->PVmatrixdescriptorSet, globals->model.descriptorSet}, 0, VK_NULL_HANDLE);
-
-        vkCmdDrawIndexedIndirect(globals->cmdBuffer, globals->model.indirectBuffer, 0, globals->model.drawCount, sizeof(VkDrawIndexedIndirectCommand));
-
-        vkCmdBindPipeline(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->skyboxPipeline);
-        vkCmdBindVertexBuffers(globals->cmdBuffer, 0, 1, &globals->skyboxVertexBuffer, vertexBufferOffsets);
-        vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->skyboxPipelineLayout, 0, 2, (VkDescriptorSet[]){globals->PVmatrixdescriptorSet, globals->skyboxCubemapDescriptorSet}, 0, VK_NULL_HANDLE);
-
-        vkCmdDraw(globals->cmdBuffer, 36, 1, 0, 0);
-
-        vkCmdEndRenderingKHR(globals->cmdBuffer);
 
         {
             VkImageMemoryBarrier imageBarriers[4] = {};
@@ -1416,17 +1609,17 @@ void modelViewSceneRender() {
             renderingInfo.pStencilAttachment = VK_NULL_HANDLE;
 
             vkCmdBeginRenderingKHR(globals->cmdBuffer, &renderingInfo);
+
+            vkCmdBindPipeline(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->ssaoPipeline);
+            vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->PVgbufferPipelineLayout, 0, 2, (VkDescriptorSet[]){globals->PVmatrixdescriptorSet, globals->gbufferDescriptorSet}, 0, VK_NULL_HANDLE);
+
+            vkCmdDraw(globals->cmdBuffer, 3, 1, 0, 0);
+
+            vkCmdEndRenderingKHR(globals->cmdBuffer);
         }
 
-        vkCmdBindPipeline(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->ssaoPipeline);
-        vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->PVgbufferPipelineLayout, 0, 2, (VkDescriptorSet[]){globals->PVmatrixdescriptorSet, globals->gbufferDescriptorSet}, 0, VK_NULL_HANDLE);
-
-        vkCmdDraw(globals->cmdBuffer, 3, 1, 0, 0);
-
-        vkCmdEndRenderingKHR(globals->cmdBuffer);
-
         {
-            VkImageMemoryBarrier imageBarriers[2] = {};
+            VkImageMemoryBarrier imageBarriers[3] = {};
             imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             imageBarriers[0].image = globals->postProcessAttachment;
             imageBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -1455,8 +1648,23 @@ void modelViewSceneRender() {
             imageBarriers[1].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+            imageBarriers[2].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageBarriers[2].image = globals->shadowmap;
+            imageBarriers[2].subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            imageBarriers[2].subresourceRange.baseArrayLayer = 0;
+            imageBarriers[2].subresourceRange.layerCount = 1;
+            imageBarriers[2].subresourceRange.baseMipLevel = 0;
+            imageBarriers[2].subresourceRange.levelCount = 1;
+            imageBarriers[2].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            imageBarriers[2].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            imageBarriers[2].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            imageBarriers[2].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            imageBarriers[2].oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            imageBarriers[2].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
             vkCmdPipelineBarrier(globals->cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, imageBarriers);
             vkCmdPipelineBarrier(globals->cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, imageBarriers + 1);
+            vkCmdPipelineBarrier(globals->cmdBuffer, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, imageBarriers + 2);
         }
 
         {
@@ -1479,14 +1687,14 @@ void modelViewSceneRender() {
             renderingInfo.pStencilAttachment = VK_NULL_HANDLE;
 
             vkCmdBeginRenderingKHR(globals->cmdBuffer, &renderingInfo);
+
+            vkCmdBindPipeline(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->compositionPipeline);
+            vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->compositionPipelineLayout, 0, 5, (VkDescriptorSet[]){globals->PVmatrixdescriptorSet, globals->gbufferDescriptorSet, globals->ssaoAttachmentDescriptorSet, globals->lightDescriptorSet, globals->shadowmapDescriptorSet}, 0, VK_NULL_HANDLE);
+
+            vkCmdDraw(globals->cmdBuffer, 3, 1, 0, 0);
+
+            vkCmdEndRenderingKHR(globals->cmdBuffer);
         }
-
-        vkCmdBindPipeline(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->compositionPipeline);
-        vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->compositionPipelineLayout, 0, 3, (VkDescriptorSet[]){globals->PVmatrixdescriptorSet, globals->gbufferDescriptorSet, globals->ssaoAttachmentDescriptorSet}, 0, VK_NULL_HANDLE);
-
-        vkCmdDraw(globals->cmdBuffer, 3, 1, 0, 0);
-
-        vkCmdEndRenderingKHR(globals->cmdBuffer);
 
         {
             VkImageMemoryBarrier imageBarriers[2] = {};
@@ -1542,17 +1750,17 @@ void modelViewSceneRender() {
             renderingInfo.pStencilAttachment = VK_NULL_HANDLE;
 
             vkCmdBeginRenderingKHR(globals->cmdBuffer, &renderingInfo);
+
+            vkCmdBindPipeline(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->uberPipeline);
+            vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->uberPipelineLayout, 0, 2, (VkDescriptorSet[]){globals->postProcessAttachmentDescriptorSet, globals->gbufferDescriptorSet}, 0, VK_NULL_HANDLE);
+
+            f32 pcs[2] = {(f32)vkglobals.time / 1e9f, vkglobals.fps};
+            vkCmdPushConstants(globals->cmdBuffer, globals->uberPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(f32) * 2, pcs);
+
+            vkCmdDraw(globals->cmdBuffer, 3, 1, 0, 0);
+
+            vkCmdEndRenderingKHR(globals->cmdBuffer);
         }
-
-        vkCmdBindPipeline(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->uberPipeline);
-        vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->uberPipelineLayout, 0, 2, (VkDescriptorSet[]){globals->postProcessAttachmentDescriptorSet, globals->gbufferDescriptorSet}, 0, VK_NULL_HANDLE);
-
-        f32 pcs[2] = {(f32)vkglobals.time / 1e9f, vkglobals.fps};
-        vkCmdPushConstants(globals->cmdBuffer, globals->uberPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(f32) * 2, pcs);
-
-        vkCmdDraw(globals->cmdBuffer, 3, 1, 0, 0);
-
-        vkCmdEndRenderingKHR(globals->cmdBuffer);
 
         {
             VkImageMemoryBarrier imageBarriers[1] = {};
@@ -1612,26 +1820,30 @@ void modelViewSceneQuit() {
 
     vkDestroyPipelineLayout(vkglobals.device, globals->uberPipelineLayout, VK_NULL_HANDLE);
     vkDestroyPipelineLayout(vkglobals.device, globals->compositionPipelineLayout, VK_NULL_HANDLE);
-    vkDestroyPipelineLayout(vkglobals.device, globals->sampledImagePipelineLayout, VK_NULL_HANDLE);
     vkDestroyPipelineLayout(vkglobals.device, globals->PVgbufferPipelineLayout, VK_NULL_HANDLE);
     vkDestroyPipelineLayout(vkglobals.device, globals->skyboxPipelineLayout, VK_NULL_HANDLE);
     vkDestroyPipelineLayout(vkglobals.device, globals->modelPipelineLayout, VK_NULL_HANDLE);
+    vkDestroyPipelineLayout(vkglobals.device, globals->shadowmapPipelineLayout, VK_NULL_HANDLE);
+    vkDestroyPipelineLayout(vkglobals.device, globals->sampledImagePipelineLayout, VK_NULL_HANDLE);
 
     vkDestroyPipeline(vkglobals.device, globals->uberPipeline, VK_NULL_HANDLE);
     vkDestroyPipeline(vkglobals.device, globals->compositionPipeline, VK_NULL_HANDLE);
     vkDestroyPipeline(vkglobals.device, globals->ssaoPipeline, VK_NULL_HANDLE);
     vkDestroyPipeline(vkglobals.device, globals->skyboxPipeline, VK_NULL_HANDLE);
     vkDestroyPipeline(vkglobals.device, globals->modelPipeline, VK_NULL_HANDLE);
+    vkDestroyPipeline(vkglobals.device, globals->shadowmapPipeline, VK_NULL_HANDLE);
 
     vkDestroyDescriptorSetLayout(vkglobals.device, globals->modelDescriptorSetLayout, VK_NULL_HANDLE);
     vkDestroyDescriptorSetLayout(vkglobals.device, globals->combinedImageSamplerDescriptorSetLayout, VK_NULL_HANDLE);
     vkDestroyDescriptorSetLayout(vkglobals.device, globals->sampledImageDescriptorSetLayout, VK_NULL_HANDLE);
     vkDestroyDescriptorSetLayout(vkglobals.device, globals->gbufferDescriptorSetLayout, VK_NULL_HANDLE);
     vkDestroyDescriptorSetLayout(vkglobals.device, globals->uniformDescriptorSetLayout, VK_NULL_HANDLE);
+    vkDestroyDescriptorSetLayout(vkglobals.device, globals->storageDescriptorSetLayout, VK_NULL_HANDLE);
     vkDestroyDescriptorSetLayout(vkglobals.device, globals->PVmatrixdescriptorSetLayout, VK_NULL_HANDLE);
 
     vkDestroyDescriptorPool(vkglobals.device, globals->descriptorPool, VK_NULL_HANDLE);
 
+    vkDestroyBuffer(vkglobals.device, globals->lightBuffer, VK_NULL_HANDLE);
     vkDestroyBuffer(vkglobals.device, globals->viewMatrixBuffer, VK_NULL_HANDLE);
 
     vkDestroyImageView(vkglobals.device, globals->postProcessAttachmentView, VK_NULL_HANDLE);
@@ -1640,6 +1852,7 @@ void modelViewSceneQuit() {
     vkDestroyImageView(vkglobals.device, globals->gbufferAlbedoView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, globals->gbufferNormalView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, globals->skyboxCubemapView, VK_NULL_HANDLE);
+    vkDestroyImageView(vkglobals.device, globals->shadowmapView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, globals->depthTextureView, VK_NULL_HANDLE);
     
     vkDestroyImage(vkglobals.device, globals->postProcessAttachment, VK_NULL_HANDLE);
@@ -1647,6 +1860,7 @@ void modelViewSceneQuit() {
     vkDestroyImage(vkglobals.device, globals->metallicRoughnessVelocityTexture, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, globals->gbuffer, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, globals->skyboxCubemap, VK_NULL_HANDLE);
+    vkDestroyImage(vkglobals.device, globals->shadowmap, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, globals->depthTexture, VK_NULL_HANDLE);
 
     vkDestroyBuffer(vkglobals.device, globals->skyboxVertexBuffer, VK_NULL_HANDLE);
@@ -1669,6 +1883,7 @@ void modelViewSceneQuit() {
     vkFreeMemory(vkglobals.device, globals->deviceLocalColorAttachmentSampledMemory, VK_NULL_HANDLE);
     vkFreeMemory(vkglobals.device, globals->deviceLocalDepthStencilAttachmentMemory, VK_NULL_HANDLE);
 
+    vkDestroySampler(vkglobals.device, globals->shadowmapSampler, VK_NULL_HANDLE);
     vkDestroySampler(vkglobals.device, globals->sampler, VK_NULL_HANDLE);
 
     for (u32 i = 0; i < globals->swapchainImageCount; i++) vkDestroyImageView(vkglobals.device, globals->swapchainImageViews[i], VK_NULL_HANDLE);

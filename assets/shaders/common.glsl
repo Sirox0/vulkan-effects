@@ -1,3 +1,5 @@
+#extension GL_EXT_samplerless_texture_functions : require
+
 float linearDepth(float depth, float near, float far) {
     float z = depth * 2.0 - 1.0;
     return (2.0 * near * far) / (far + near - z * (near - far));
@@ -27,4 +29,19 @@ float bilateral(texture2D tex, vec2 inuv, int size, float exponent, float factor
     }
 
     return mix(center, res / totalWeights,factor);
+}
+
+float PCF(sampler2DShadow tex, vec4 coord, int size, vec2 texelSize) {
+    float res = 0.0;
+    for (int y = -size; y <= size; y++) {
+        for (int x = -size; x <= size; x++) {
+            vec4 offset = vec4(x, y, 0.0, 0.0);
+            offset.xy *= texelSize * coord.w;
+
+            res += textureProj(tex, coord + offset);
+        }
+    }
+
+    int dim = size * 2 + 1;
+    return res / float(dim * dim);
 }

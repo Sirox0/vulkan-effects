@@ -27,12 +27,19 @@ layout(binding = 0, set = 1) uniform texture2D gbuffer[4];
 
 layout(binding = 0, set = 2) uniform texture2D occlusionMap;
 
+layout(binding = 0, set = 3) readonly buffer StorageBufferLight {
+    mat4 lightVP;
+    vec4 lightPos;
+};
+
+layout(binding = 0, set = 4) uniform sampler2DShadow shadowmap;
+
 layout(location = 0) out vec4 outColor;
 
 #define MIN 0.00001
 
 const vec4 ambientLightColor = vec4(1.0, 1.0, 1.0, 0.1);
-const vec4 lightColor = vec4(1.0, 1.0, 1.0, 1.0);
+const vec4 lightColor = vec4(1.0, 0.0, 0.0, 1.0);
 
 const vec3 lightDir = normalize(vec3(-0.5, 0.5, 0.5));
 
@@ -83,6 +90,13 @@ vec3 BRDF(vec3 L, vec3 V, vec3 N, vec2 metallicRoughness, vec3 color) {
     return dotNL > 0.0 ? res : vec3(0.0);
 }
 
+const mat4 biasMat = mat4(
+    0.5, 0.0, 0.0, 0.0,
+    0.0, 0.5, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.5, 0.5, 0.0, 1.0
+);
+
 void main() {
     vec3 N = normalize(texelFetch(gbuffer[0], ivec2(gl_FragCoord.xy), 0).xyz * 2.0 - 1.0);
     vec3 V = normalize(-vec3(invProjection * vec4(uv * 2.0 - 1.0, 1.0, 1.0)));
@@ -91,8 +105,17 @@ void main() {
     vec4 origColor = texelFetch(gbuffer[1], ivec2(gl_FragCoord.xy), 0);
     vec3 linearOrigColor = pow(origColor.rgb, vec3(2.2));
 
-    vec3 L = -(mat3(view) * lightDir);
-    vec3 Lo = BRDF(L, V, N, metallicRoughness, linearOrigColor);
+    vec3 viewRay = vec3(invProjection * vec4(uv * 2.0 - 1.0, 1.0, 1.0));
+    float depth = texelFetch(gbuffer[3], ivec2(uv * (textureSize(gbuffer[3], 0) - 1)), 0).r;
+    vec3 pos = viewRay * linearDepth(depth, nearPlane, farPlane);
+
+    vec4 shadowUV = (biasMat * lightVP) * (inverse(view) * vec4(pos, 1.0));
+    shadowUV.z += 0.00002;
+
+    float shadow = PCF(shadowmap, shadowUV, 4, 1.0 / vec2(textureSize(shadowmap, 0)));
+
+    vec3 L = normalize(lightPos.xyz - pos);
+    vec3 Lo = BRDF(L, V, N, metallicRoughness, linearOrigColor) * shadow;
 
     vec3 color = Lo + ambientLightColor.rgb * ambientLightColor.a * linearOrigColor * bilateral(occlusionMap, uv, SSAO_DENOISE_SIZE, SSAO_DENOISE_EXPONENT, SSAO_DENOISE_FACTOR);
 

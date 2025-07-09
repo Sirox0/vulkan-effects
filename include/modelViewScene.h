@@ -21,13 +21,17 @@ typedef struct {
         f32 targetPitch, targetYaw;
     } cam;
 
+    u8 moveLight;
+    vec4 lightPos;
+
     vec2 inputX;
     vec2 inputY;
     vec2 inputZ;
     f32 shift;
-    VkFormat depthTextureFormat;
+    VkFormat depthFormat;
 
     VkSampler sampler;
+    VkSampler shadowmapSampler;
 
     // device local memory
     VkDeviceMemory deviceLocalDepthStencilAttachmentMemory;
@@ -57,6 +61,7 @@ typedef struct {
     VkImage metallicRoughnessVelocityTexture;
     VkImage ssaoAttachment;
     VkImage postProcessAttachment;
+    VkImage shadowmap;
 
     VkImageView depthTextureView;
     VkImageView skyboxCubemapView;
@@ -65,13 +70,18 @@ typedef struct {
     VkImageView metallicRoughnessVelocityTextureView;
     VkImageView ssaoAttachmentView;
     VkImageView postProcessAttachmentView;
+    VkImageView shadowmapView;
 
     // host visible resources
     VkBuffer viewMatrixBuffer;
+    VkBuffer lightBuffer;
+
+    VkDeviceSize lightBufferOffset;
 
 
     VkDescriptorPool descriptorPool;
 
+    VkDescriptorSetLayout storageDescriptorSetLayout;
     VkDescriptorSetLayout gbufferDescriptorSetLayout;
     VkDescriptorSetLayout modelDescriptorSetLayout;
 
@@ -80,20 +90,24 @@ typedef struct {
     VkDescriptorSetLayout sampledImageDescriptorSetLayout;
     VkDescriptorSetLayout combinedImageSamplerDescriptorSetLayout;
     
+    VkDescriptorSet lightDescriptorSet;
     VkDescriptorSet PVmatrixdescriptorSet;
     VkDescriptorSet skyboxCubemapDescriptorSet;
     VkDescriptorSet gbufferDescriptorSet;
     VkDescriptorSet ssaoAttachmentDescriptorSet;
     VkDescriptorSet postProcessAttachmentDescriptorSet;
+    VkDescriptorSet shadowmapDescriptorSet;
 
 
     VkPipelineLayout sampledImagePipelineLayout;
+    VkPipelineLayout shadowmapPipelineLayout;
     VkPipelineLayout modelPipelineLayout;
     VkPipelineLayout skyboxPipelineLayout;
     VkPipelineLayout PVgbufferPipelineLayout;
     VkPipelineLayout compositionPipelineLayout;
     VkPipelineLayout uberPipelineLayout;
 
+    VkPipeline shadowmapPipeline;
     VkPipeline modelPipeline;
     VkPipeline skyboxPipeline;
     VkPipeline ssaoPipeline;

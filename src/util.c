@@ -111,6 +111,8 @@ void vkAllocateMemoryCluster(VkMemoryAllocClusterInfo_t* info, VkDeviceMemory* p
                 break;
         }
     }
+
+    if (info->pDstOffsets != VK_NULL_HANDLE) memcpy(info->pDstOffsets, offsets, sizeof(VkDeviceSize) * info->handleCount);
 }
 
 void createImage(VkImage* pImage, i32 w, i32 h, VkFormat textureFormat, u32 arrayLayers, u32 mipLevels, VkImageUsageFlags usage, VkImageCreateFlags flags) {

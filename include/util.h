@@ -15,6 +15,7 @@ typedef struct {
     VkMemoryAllocClusterHandleType_t handleType;
     u32 handleCount;
     const void* pHandles;
+    VkDeviceSize* pDstOffsets;
 } VkMemoryAllocClusterInfo_t;
 
 void copyTempBufferToImage(VkCommandBuffer cmdBuffer, VkBuffer buffer, VkDeviceSize* bufferOffsets, VkImage image, u32 w, u32 h, u32 arrayLayers, u32 baseArrayLayer, u32 mipLevels, u32 baseMipLevel, VkImageLayout newLayout);
