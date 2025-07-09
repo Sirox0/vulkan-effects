@@ -39,9 +39,7 @@ layout(location = 0) out vec4 outColor;
 #define MIN 0.00001
 
 const vec4 ambientLightColor = vec4(1.0, 1.0, 1.0, 0.1);
-const vec4 lightColor = vec4(1.0, 0.0, 0.0, 1.0);
-
-const vec3 lightDir = normalize(vec3(-0.5, 0.5, 0.5));
+const vec4 lightColor = vec4(1.0, 1.0, 1.0, 1.0);
 
 const float PI = acos(-1.0);
 
