@@ -459,8 +459,8 @@ void modelViewSceneInit() {
             samplerInfo.mipLodBias = 0.0f;
             samplerInfo.minLod = 0.0f;
             samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
-            samplerInfo.minFilter = VK_FILTER_NEAREST;
-            samplerInfo.magFilter = VK_FILTER_NEAREST;
+            samplerInfo.minFilter = VK_FILTER_LINEAR;
+            samplerInfo.magFilter = VK_FILTER_LINEAR;
             samplerInfo.anisotropyEnable = VK_FALSE;
             samplerInfo.compareEnable = VK_TRUE;
             samplerInfo.compareOp = VK_COMPARE_OP_GREATER;
@@ -1251,9 +1251,9 @@ void modelViewSceneInit() {
     glm_mat4_identity(globals->hostVisibleUniformMemoryRaw);
 
     globals->moveLight = 0;
-    globals->lightPos[0] = 2.175429f;
+    globals->lightPos[0] = -3.317797f;
     globals->lightPos[1] = -22.590681f;
-    globals->lightPos[2] = -2.495682f;
+    globals->lightPos[2] = -6.158334f;
     globals->lightPos[3] = 0.0f;
 
     tempResourcesWaitAndDestroy(1, &tempCmdBuffer, 1, &tempBuffer, 1, &tempBufferMemory, 1, &tempFence);
@@ -1326,8 +1326,7 @@ void updateCubeUbo() {
 
     mat4 proj, view;
 
-    glm_perspective(glm_rad(90.0f), (f32)vkglobals.swapchainExtent.width / (f32)vkglobals.swapchainExtent.height, 100.0f, 0.01f, proj);
-    //glm_ortho(-20.0f, 20.0f, 20.0f, -20.0f, 100.0f, 0.01f, proj);
+    glm_ortho(-22.0f, 22.0f, 22.0f, -22.0f, 100.0f, 0.01f, proj);
     glm_lookat(globals->lightPos, (vec3){0.0f, 0.0f, 0.0f}, (vec3){0.0f, 1.0f, 0.0f}, view);
     glm_mat4_mul(proj, view, proj);
 

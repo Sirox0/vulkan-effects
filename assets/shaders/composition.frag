@@ -110,7 +110,7 @@ void main() {
     vec4 shadowUV = (biasMat * lightVP) * (inverse(view) * vec4(pos, 1.0));
     shadowUV.z += 0.00002;
 
-    float shadow = PCF(shadowmap, shadowUV, 4, 1.0 / vec2(textureSize(shadowmap, 0)));
+    float shadow = PCF(shadowmap, shadowUV, 1, 1.0 / vec2(textureSize(shadowmap, 0)));
 
     vec3 L = normalize(lightPos.xyz - pos);
     vec3 Lo = BRDF(L, V, N, metallicRoughness, linearOrigColor) * shadow;
