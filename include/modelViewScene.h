@@ -15,6 +15,8 @@ typedef struct {
 
     VkCommandBuffer cmdBuffer;
 
+    VkPipelineCache pipelineCache;
+
     struct {
         vec3 position;
         f32 pitch, yaw;

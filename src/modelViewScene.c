@@ -55,6 +55,8 @@ void modelViewSceneInit() {
         }
     }
 
+    globals->pipelineCache = loadPipelineCache("pipelinecache.dat");
+
     {
         #define DEPTH_FORMAT_COUNT 3
         VkFormat formats[DEPTH_FORMAT_COUNT] = {VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D16_UNORM_S8_UINT};
@@ -1186,11 +1188,9 @@ void modelViewSceneInit() {
         pipelineInfos[5].renderingInfo.pColorAttachmentFormats = &vkglobals.surfaceFormat.format;
         pipelineInfos[5].layout = globals->uberPipelineLayout;
 
-        VkPipelineCache pipelineCache = loadPipelineCache("pipelinecache.dat");
-
         VkPipeline pipelines[6];
 
-        pipelineCreateGraphicsPipelines(pipelineCache, 6, pipelineInfos, pipelines);
+        pipelineCreateGraphicsPipelines(globals->pipelineCache, 6, pipelineInfos, pipelines);
 
         globals->shadowmapPipeline = pipelines[0];
         globals->modelPipeline = pipelines[1];
@@ -1198,9 +1198,6 @@ void modelViewSceneInit() {
         globals->ssaoPipeline = pipelines[3];
         globals->compositionPipeline = pipelines[4];
         globals->uberPipeline = pipelines[5];
-
-        storePipelineCache(pipelineCache, "pipelinecache.dat");
-        vkDestroyPipelineCache(vkglobals.device, pipelineCache, VK_NULL_HANDLE);
 
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[5].stages[1].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[4].stages[1].module, VK_NULL_HANDLE);
@@ -1884,6 +1881,9 @@ void modelViewSceneQuit() {
 
     vkDestroySampler(vkglobals.device, globals->shadowmapSampler, VK_NULL_HANDLE);
     vkDestroySampler(vkglobals.device, globals->sampler, VK_NULL_HANDLE);
+
+    storePipelineCache(globals->pipelineCache, "pipelinecache.dat");
+    vkDestroyPipelineCache(vkglobals.device, globals->pipelineCache, VK_NULL_HANDLE);
 
     for (u32 i = 0; i < globals->swapchainImageCount; i++) vkDestroyImageView(vkglobals.device, globals->swapchainImageViews[i], VK_NULL_HANDLE);
     free(globals->swapchainImages);
