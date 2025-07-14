@@ -9,7 +9,9 @@
 #include <stdbool.h>
 #include <memory.h>
 #include <math.h>
+#include <vulkan/vulkan_core.h>
 
+#include "cglm/affine-pre.h"
 #include "numtypes.h"
 #include "vkFunctions.h"
 #include "vk.h"
@@ -147,11 +149,13 @@ void modelViewSceneInit() {
         globals->model.textures = (VkImage*)malloc((sizeof(VkImage) + sizeof(VkImageView)) * imageCount);
         globals->model.views = (VkImageView*)(((void*)globals->model.textures) + sizeof(VkImage) * imageCount);
 
-        u32 vertexSize, indexSize, indirectSize, storageMaterialsSize, storageMaterialIndicesSize;
-        vkModelGetSizes(scene, &vertexSize, &indexSize, &indirectSize, &storageMaterialsSize, &storageMaterialIndicesSize);
+        u32 vertexSize, indexSize, indirectSize, storageMaterialsSize, storageTransformsSize, storageMeshIndicesSize;
+        vkModelGetSizes(scene, &vertexSize, &indexSize, &indirectSize, &storageMaterialsSize, &storageTransformsSize, &storageMeshIndicesSize);
 
         globals->model.materialsSize = storageMaterialsSize;
-        globals->model.materialIndicesOffset = storageMaterialsSize + getAlignCooficient(storageMaterialsSize, vkglobals.deviceProperties.properties.limits.minStorageBufferOffsetAlignment);
+        globals->model.transformsSize = storageTransformsSize;
+        globals->model.transformsOffset = storageMaterialsSize + getAlignCooficient(storageMaterialsSize, vkglobals.deviceProperties.properties.limits.minStorageBufferOffsetAlignment);
+        globals->model.meshIndicesOffset = globals->model.transformsOffset + storageTransformsSize + getAlignCooficient(globals->model.transformsOffset + storageTransformsSize, vkglobals.deviceProperties.properties.limits.minStorageBufferOffsetAlignment);
 
         {
             // device-local resources
@@ -163,7 +167,7 @@ void modelViewSceneInit() {
             
             createBuffer(&globals->projectionBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(mat4) * 2 + sizeof(f32) * 2);
 
-            createBuffer(&globals->model.storageBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, globals->model.materialIndicesOffset + storageMaterialIndicesSize);
+            createBuffer(&globals->model.storageBuffer, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, globals->model.meshIndicesOffset + storageMeshIndicesSize);
 
             createBuffer(&globals->skyboxVertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(skyboxVertexbuf));
             createBuffer(&globals->model.vertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, vertexSize);
@@ -312,7 +316,7 @@ void modelViewSceneInit() {
             // temporary resources
             createBuffer(&tempBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, sizeof(skyboxVertexbuf) +
                 sizeof(mat4) * 2 + sizeof(f32) * 2 + vertexSize + indexSize + indirectSize +
-                globals->model.materialsSize + storageMaterialIndicesSize + imagesSize + skyboxTextureSize
+                storageMaterialsSize + storageTransformsSize + storageMeshIndicesSize + imagesSize + skyboxTextureSize
             );
             
             {
@@ -332,7 +336,7 @@ void modelViewSceneInit() {
         {
             #define tempBufferMemRawProjectionMatrixoffset (sizeof(skyboxVertexbuf))
             #define tempBufferMemRawModeloffset (tempBufferMemRawProjectionMatrixoffset + sizeof(mat4) * 2 + sizeof(f32) * 2)
-            #define tempBufferMemRawSkyboxCubemapoffset (tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize + globals->model.materialsSize + storageMaterialIndicesSize + imagesSize)
+            #define tempBufferMemRawSkyboxCubemapoffset (tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize + storageMaterialsSize + storageTransformsSize + storageMeshIndicesSize + imagesSize)
 
             {
                 void* tempBufferMemRaw;
@@ -351,8 +355,10 @@ void modelViewSceneInit() {
                     tempBufferMemRawModeloffset + vertexSize,
                     tempBufferMemRawModeloffset + vertexSize + indexSize,
                     tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize,
-                    tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize + globals->model.materialsSize + storageMaterialIndicesSize,
-                    globals->model.materialIndicesOffset,
+                    tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize + storageMaterialsSize,
+                    tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize + storageMaterialsSize + storageTransformsSize,
+                    tempBufferMemRawModeloffset + vertexSize + indexSize + indirectSize + storageMaterialsSize + storageTransformsSize + storageMeshIndicesSize,
+                    globals->model.transformsOffset, globals->model.meshIndicesOffset,
                     tempBufferMemRaw, &globals->model
                 );
 
@@ -481,7 +487,7 @@ void modelViewSceneInit() {
         poolSizes[0].descriptorCount = 3;
 
         poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        poolSizes[1].descriptorCount = 4;
+        poolSizes[1].descriptorCount = 5;
 
         poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         poolSizes[2].descriptorCount = 2 + globals->model.textureCount;
@@ -515,7 +521,7 @@ void modelViewSceneInit() {
         }
 
         {
-            VkDescriptorSetLayoutBinding bindings[4] = {};
+            VkDescriptorSetLayoutBinding bindings[5] = {};
             bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
             bindings[0].binding = 0;
             bindings[0].descriptorCount = 1;
@@ -530,24 +536,29 @@ void modelViewSceneInit() {
             bindings[2].binding = 2;
             bindings[2].descriptorCount = 1;
             bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            
-            bindings[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-            bindings[3].binding = 3;
-            bindings[3].descriptorCount = globals->model.textureCount;
-            bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
-            VkDescriptorBindingFlags bindingFlagsValues[4] = {};
-            bindingFlagsValues[3] = VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+            bindings[3].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+            bindings[3].binding = 3;
+            bindings[3].descriptorCount = 1;
+            bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            
+            bindings[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+            bindings[4].binding = 4;
+            bindings[4].descriptorCount = globals->model.textureCount;
+            bindings[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+
+            VkDescriptorBindingFlags bindingFlagsValues[5] = {};
+            bindingFlagsValues[4] = VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
 
             VkDescriptorSetLayoutBindingFlagsCreateInfoEXT bindingFlags = {};
             bindingFlags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
-            bindingFlags.bindingCount = 4;
+            bindingFlags.bindingCount = 5;
             bindingFlags.pBindingFlags = bindingFlagsValues;
 
             VkDescriptorSetLayoutCreateInfo layoutInfo = {};
             layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
             layoutInfo.pNext = &bindingFlags;
-            layoutInfo.bindingCount = 4;
+            layoutInfo.bindingCount = 5;
             layoutInfo.pBindings = bindings;
 
             VK_ASSERT(vkCreateDescriptorSetLayout(vkglobals.device, &layoutInfo, VK_NULL_HANDLE, &globals->modelDescriptorSetLayout), "failed to create descriptor set layout\n");
@@ -1316,7 +1327,7 @@ void updateCubeUbo() {
     }
 
     glm_mat4_identity(modelMatrix);
-    glm_scale_uni(modelMatrix, config.modelScale);
+    glm_spin(modelMatrix, M_PI, (vec3){0.0f, 0.0f, 1.0f});
 
     vec4 viewLightPos;
     glm_mat4_mulv3(viewMatrix, globals->lightPos, 1.0f, viewLightPos);

@@ -33,8 +33,17 @@ layout(binding = 1, set = 1, std430) readonly buffer StorageBufferMaterials {
     material mats[];
 };
 
-layout(binding = 2, set = 1, std430) readonly buffer StorageBufferMaterialIndicies {
-    uint matIndices[];
+layout(binding = 2, set = 1, std430) readonly buffer StorageBufferTransforms {
+    mat4 transforms[];
+};
+
+struct MeshIndices {
+    int materialIndex;
+    uint nodeIndex;
+};
+
+layout(binding = 3, set = 1, std430) readonly buffer StorageBufferMaterialIndicies {
+    MeshIndices meshIndices[];
 };
 
 layout(location = 0) out vec4 fragpos;
@@ -47,20 +56,20 @@ layout(location = 6) out flat int normalMapIndex;
 layout(location = 7) out flat int metallicRoughnessIndex;
 
 void main() {
-    vec4 Mpos = model * vec4(pos, 1.0);
+    vec4 Mpos = model * transforms[meshIndices[gl_DrawIDARB].nodeIndex] * vec4(pos, 1.0);
     vec4 MVPpos = projection * view * Mpos;
     gl_Position = MVPpos;
 
     fragpos = MVPpos;
     fragoldpos = projection * oldView * Mpos;
 
-    mat3 normalMatrix = transpose(inverse(mat3(view * model)));
+    mat3 normalMatrix = transpose(inverse(mat3(view * model * transforms[meshIndices[gl_DrawIDARB].nodeIndex])));
     fragnormal = normalMatrix * normal;
     fragtangent = normalMatrix * tangent;
 
     fraguv = uv;
 
-    textureIndex = mats[matIndices[gl_DrawIDARB]].textureIndex;
-    normalMapIndex = mats[matIndices[gl_DrawIDARB]].normalMapIndex;
-    metallicRoughnessIndex = mats[matIndices[gl_DrawIDARB]].metallicRoughnessIndex;
+    textureIndex = mats[meshIndices[gl_DrawIDARB].materialIndex].textureIndex;
+    normalMapIndex = mats[meshIndices[gl_DrawIDARB].materialIndex].normalMapIndex;
+    metallicRoughnessIndex = mats[meshIndices[gl_DrawIDARB].materialIndex].metallicRoughnessIndex;
 }

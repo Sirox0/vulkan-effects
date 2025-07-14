@@ -16,7 +16,6 @@ typedef struct {
     f32 maxAnisotropy;
     char modelDirectoryPath[256];
     char modelFile[64];
-    f32 modelScale;
     f32 playerSpeed;
     f32 shiftMultiplier;
     f32 targetFps;

@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "numtypes.h"
 #include "config.h"
 
 config_t config;
@@ -37,7 +36,6 @@ void configLoad(char* path) {
     } 
     strcpy(config.modelFile, modelPath);
 
-    config.modelScale = iniparser_getdouble(conf, "general:model-scale", 1.0f);
     config.playerSpeed = iniparser_getdouble(conf, "general:player-speed", 1.0f);
     config.shiftMultiplier = iniparser_getdouble(conf, "general:shift-multiplier", 3.0f);
     config.targetFps = iniparser_getdouble(conf, "general:target-fps", 60.0f);
