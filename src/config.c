@@ -39,6 +39,7 @@ void configLoad(char* path) {
     config.playerSpeed = iniparser_getdouble(conf, "general:player-speed", 1.0f);
     config.shiftMultiplier = iniparser_getdouble(conf, "general:shift-multiplier", 3.0f);
     config.targetFps = iniparser_getdouble(conf, "general:target-fps", 60.0f);
+    config.gamma = iniparser_getdouble(conf, "general:gamma", 2.2f);
 
     config.mouseSmoothingEnable = iniparser_getboolean(conf, "mouse-smoothing:enable", 0);
     config.mouseSmoothingSpeed = iniparser_getdouble(conf, "mouse-smoothing:speed", 100.0f);

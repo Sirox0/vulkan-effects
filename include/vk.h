@@ -28,6 +28,7 @@ typedef struct {
 
     VkFilter textureFilter;
     VkFormat textureFormat;
+    VkFormat textureFormatSRGB;
     ktx_transcode_fmt_e textureFormatKtx;
 
     VkInstance instance;

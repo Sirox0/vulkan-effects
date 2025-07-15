@@ -6,12 +6,12 @@
 #include <string.h>
 #include <math.h>
 #include <memory.h>
+#include <vulkan/vulkan_core.h>
 
 #include "numtypes.h"
 #include "vkFunctions.h"
 #include "vk.h"
 #include "mathext.h"
-#include "util.h"
 #include "config.h"
 
 VulkanGlobals_t vkglobals = {};
@@ -211,6 +211,7 @@ void vkInit() {
 
             if (properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT && properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_TRANSFER_DST_BIT_KHR) {
                 vkglobals.textureFormat = VK_FORMAT_ASTC_4x4_UNORM_BLOCK;
+                vkglobals.textureFormatSRGB = VK_FORMAT_ASTC_4x4_SRGB_BLOCK;
                 vkglobals.textureFormatKtx = KTX_TTF_ASTC_4x4_RGBA;
                 goto foundFormat;
             }
@@ -221,6 +222,7 @@ void vkInit() {
 
             if (properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT && properties.formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_TRANSFER_DST_BIT_KHR) {
                 vkglobals.textureFormat = VK_FORMAT_BC7_UNORM_BLOCK;
+                vkglobals.textureFormatSRGB = VK_FORMAT_BC7_SRGB_BLOCK;
                 vkglobals.textureFormatKtx = KTX_TTF_BC7_RGBA;
                 goto foundFormat;
             }
@@ -230,6 +232,7 @@ void vkInit() {
             vkGetPhysicalDeviceFormatProperties2KHR(vkglobals.physicalDevice, VK_FORMAT_R8G8B8A8_UNORM, &properties);
 
             vkglobals.textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
+            vkglobals.textureFormatSRGB = VK_FORMAT_R8G8B8A8_SRGB;
             vkglobals.textureFormatKtx = KTX_TTF_RGBA32;
         }
 

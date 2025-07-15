@@ -9,6 +9,8 @@ layout(constant_id = 0) const int SSAO_DENOISE_SIZE = 4;
 layout(constant_id = 1) const float SSAO_DENOISE_EXPONENT = 5.0;
 layout(constant_id = 2) const float SSAO_DENOISE_FACTOR = 0.75;
 
+layout(constant_id = 3) const float GAMMA = 2.2;
+
 layout(location = 0) in vec2 uv;
 
 layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
@@ -101,7 +103,6 @@ void main() {
 
     vec2 metallicRoughness = texelFetch(gbuffer[2], ivec2(gl_FragCoord.xy), 0).rg;
     vec4 origColor = texelFetch(gbuffer[1], ivec2(gl_FragCoord.xy), 0);
-    vec3 linearOrigColor = pow(origColor.rgb, vec3(2.2));
 
     vec3 viewRay = vec3(invProjection * vec4(uv * 2.0 - 1.0, 1.0, 1.0));
     float depth = texelFetch(gbuffer[3], ivec2(uv * (textureSize(gbuffer[3], 0) - 1)), 0).r;
@@ -113,11 +114,10 @@ void main() {
     float shadow = PCF(shadowmap, shadowUV, 1, 1.0 / vec2(textureSize(shadowmap, 0)));
 
     vec3 L = normalize(lightPos.xyz - pos);
-    vec3 Lo = BRDF(L, V, N, metallicRoughness, linearOrigColor) * shadow;
+    vec3 Lo = BRDF(L, V, N, metallicRoughness, origColor.rgb) * shadow;
 
-    vec3 color = Lo + ambientLightColor.rgb * ambientLightColor.a * linearOrigColor * bilateral(occlusionMap, uv, SSAO_DENOISE_SIZE, SSAO_DENOISE_EXPONENT, SSAO_DENOISE_FACTOR);
-
-    color = pow(color, vec3(1.0 / 2.2));
+    vec3 color = Lo + ambientLightColor.rgb * ambientLightColor.a * origColor.rgb * bilateral(occlusionMap, uv, SSAO_DENOISE_SIZE, SSAO_DENOISE_EXPONENT, SSAO_DENOISE_FACTOR);
+    color.rgb = linear2Gamma(color.rgb, vec3(GAMMA));
 
     outColor = origColor.a == 0.0 ? origColor : vec4(color, origColor.a);
 }

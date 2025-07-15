@@ -65,7 +65,7 @@ void vkModelGetNodeSizes(const struct aiScene* scene, const struct aiNode* node,
     }
 }
 
-void vkModelGetTexturesInfo(const struct aiScene* scene, const char* modelDirPath, u32* pImagesSize, u32* pImageCount, u32* pImageMipLevels, u32* pImageWidths, u32* pImageHeights) {
+void vkModelGetTexturesInfo(const struct aiScene* scene, const char* modelDirPath, u32* pImagesSize, u32* pImageCount, u32* pImageMipLevels, VkFormat* pImageFormats, u32* pImageWidths, u32* pImageHeights) {
     u32 curImagesSize = 0;
     u32 curImageCount = 0;
 
@@ -83,11 +83,10 @@ void vkModelGetTexturesInfo(const struct aiScene* scene, const char* modelDirPat
                 ktxTexture2* tex;
                 ktxTexture2_CreateFromNamedFile(p, 0, &tex);
                 ktxTexture2_TranscodeBasis(tex, vkglobals.textureFormatKtx, 0);
-                if (pImageWidths != NULL && pImageHeights != NULL && pImageMipLevels != NULL) {
-                    pImageMipLevels[curImageCount] = tex->numLevels;
-                    pImageWidths[curImageCount] = tex->baseWidth;
-                    pImageHeights[curImageCount] = tex->baseHeight;
-                }
+                if (pImageFormats != NULL) pImageFormats[curImageCount] = vkglobals.textureFormatSRGB;
+                if (pImageMipLevels != NULL) pImageMipLevels[curImageCount] = tex->numLevels;
+                if (pImageWidths != NULL) pImageWidths[curImageCount] = tex->baseWidth;
+                if (pImageHeights != NULL) pImageHeights[curImageCount] = tex->baseHeight;
 
                 u32 size = ktxTexture_GetImageSize((ktxTexture*)tex, 0);
                 size += getAlignCooficient(size, 16);
@@ -112,11 +111,10 @@ void vkModelGetTexturesInfo(const struct aiScene* scene, const char* modelDirPat
                 ktxTexture2* tex;
                 ktxTexture2_CreateFromNamedFile(p, 0, &tex);
                 ktxTexture2_TranscodeBasis(tex, vkglobals.textureFormatKtx, 0);
-                if (pImageWidths != NULL && pImageHeights != NULL && pImageMipLevels != NULL) {
-                    pImageMipLevels[curImageCount] = tex->numLevels;
-                    pImageWidths[curImageCount] = tex->baseWidth;
-                    pImageHeights[curImageCount] = tex->baseHeight;
-                }
+                if (pImageFormats != NULL) pImageFormats[curImageCount] = vkglobals.textureFormat;
+                if (pImageMipLevels != NULL) pImageMipLevels[curImageCount] = tex->numLevels;
+                if (pImageWidths != NULL) pImageWidths[curImageCount] = tex->baseWidth;
+                if (pImageHeights != NULL) pImageHeights[curImageCount] = tex->baseHeight;
 
                 u32 size = ktxTexture_GetImageSize((ktxTexture*)tex, 0);
                 size += getAlignCooficient(size, 16);
@@ -141,11 +139,10 @@ void vkModelGetTexturesInfo(const struct aiScene* scene, const char* modelDirPat
                 ktxTexture2* tex;
                 ktxTexture2_CreateFromNamedFile(p, 0, &tex);
                 ktxTexture2_TranscodeBasis(tex, vkglobals.textureFormatKtx, 0);
-                if (pImageWidths != NULL && pImageHeights != NULL && pImageMipLevels != NULL) {
-                    pImageMipLevels[curImageCount] = tex->numLevels;
-                    pImageWidths[curImageCount] = tex->baseWidth;
-                    pImageHeights[curImageCount] = tex->baseHeight;
-                }
+                if (pImageFormats != NULL) pImageFormats[curImageCount] = vkglobals.textureFormat;
+                if (pImageMipLevels != NULL) pImageMipLevels[curImageCount] = tex->numLevels;
+                if (pImageWidths != NULL) pImageWidths[curImageCount] = tex->baseWidth;
+                if (pImageHeights != NULL) pImageHeights[curImageCount] = tex->baseHeight;
 
                 u32 size = ktxTexture_GetImageSize((ktxTexture*)tex, 0);
                 size += getAlignCooficient(size, 16);

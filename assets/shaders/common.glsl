@@ -45,3 +45,6 @@ float PCF(sampler2DShadow tex, vec4 coord, int size, vec2 texelSize) {
     int dim = size * 2 + 1;
     return res / float(dim * dim);
 }
+
+vec3 linear2Gamma(vec3 v, vec3 gamma) { return pow(v, 1.0 / gamma); }
+vec3 gamma2Linear(vec3 v, vec3 gamma) { return pow(v, gamma); }

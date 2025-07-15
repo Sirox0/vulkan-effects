@@ -19,6 +19,7 @@ typedef struct {
     f32 playerSpeed;
     f32 shiftMultiplier;
     f32 targetFps;
+    f32 gamma;
 
     u8 mouseSmoothingEnable;
     f32 mouseSmoothingSpeed;

@@ -142,9 +142,10 @@ void modelViewSceneInit() {
         const struct aiScene* scene = vkModelLoadScene(modelPath);
 
         u32 imagesSize, imageCount;
-        vkModelGetTexturesInfo(scene, config.modelDirectoryPath, &imagesSize, &imageCount, NULL, NULL, NULL);
+        vkModelGetTexturesInfo(scene, config.modelDirectoryPath, &imagesSize, &imageCount, NULL, NULL, NULL, NULL);
         u32 imageMipLevels[imageCount], imageWidths[imageCount], imageHeights[imageCount];
-        vkModelGetTexturesInfo(scene, config.modelDirectoryPath, &imagesSize, &imageCount, imageMipLevels, imageWidths, imageHeights);
+        VkFormat imageFormats[imageCount];
+        vkModelGetTexturesInfo(scene, config.modelDirectoryPath, &imagesSize, &imageCount, imageMipLevels, imageFormats, imageWidths, imageHeights);
 
         globals->model.textures = (VkImage*)malloc((sizeof(VkImage) + sizeof(VkImageView)) * imageCount);
         globals->model.views = (VkImageView*)(((void*)globals->model.textures) + sizeof(VkImage) * imageCount);
@@ -162,8 +163,8 @@ void modelViewSceneInit() {
             createImage(&globals->depthTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, globals->depthFormat, 1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
             createImage(&globals->shadowmap, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, globals->depthFormat, 1, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
 
-            createImage(&globals->skyboxCubemap, skyboxTexture->baseWidth, skyboxTexture->baseHeight, VK_FORMAT_R8G8B8A8_UNORM, 6, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
-            for (u32 i = 0; i < imageCount; i++) createImage(&globals->model.textures[i], imageWidths[i], imageHeights[i], vkglobals.textureFormat, 1, imageMipLevels[i], VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
+            createImage(&globals->skyboxCubemap, skyboxTexture->baseWidth, skyboxTexture->baseHeight, VK_FORMAT_R8G8B8A8_SRGB, 6, 1, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+            for (u32 i = 0; i < imageCount; i++) createImage(&globals->model.textures[i], imageWidths[i], imageHeights[i], imageFormats[i], 1, imageMipLevels[i], VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, 0);
             
             createBuffer(&globals->projectionBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, sizeof(mat4) * 2 + sizeof(f32) * 2);
 
@@ -331,7 +332,7 @@ void modelViewSceneInit() {
             }
         }
 
-        for (u32 i = 0; i < imageCount; i++) createImageView(&globals->model.views[i], globals->model.textures[i], VK_IMAGE_VIEW_TYPE_2D, vkglobals.textureFormat, 1, 0, imageMipLevels[i], 0, VK_IMAGE_ASPECT_COLOR_BIT);
+        for (u32 i = 0; i < imageCount; i++) createImageView(&globals->model.views[i], globals->model.textures[i], VK_IMAGE_VIEW_TYPE_2D, imageFormats[i], 1, 0, imageMipLevels[i], 0, VK_IMAGE_ASPECT_COLOR_BIT);
 
         {
             #define tempBufferMemRawProjectionMatrixoffset (sizeof(skyboxVertexbuf))
@@ -432,7 +433,7 @@ void modelViewSceneInit() {
 
     createImageView(&globals->depthTextureView, globals->depthTexture, VK_IMAGE_VIEW_TYPE_2D, globals->depthFormat, 1, 0, 1, 0, VK_IMAGE_ASPECT_DEPTH_BIT);
     createImageView(&globals->shadowmapView, globals->shadowmap, VK_IMAGE_VIEW_TYPE_2D, globals->depthFormat, 1, 0, 1, 0, VK_IMAGE_ASPECT_DEPTH_BIT);
-    createImageView(&globals->skyboxCubemapView, globals->skyboxCubemap, VK_IMAGE_VIEW_TYPE_CUBE, VK_FORMAT_R8G8B8A8_UNORM, 6, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+    createImageView(&globals->skyboxCubemapView, globals->skyboxCubemap, VK_IMAGE_VIEW_TYPE_CUBE, VK_FORMAT_R8G8B8A8_SRGB, 6, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&globals->gbufferNormalView, globals->gbuffer, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&globals->gbufferAlbedoView, globals->gbuffer, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&globals->metallicRoughnessVelocityTextureView, globals->metallicRoughnessVelocityTexture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -927,7 +928,7 @@ void modelViewSceneInit() {
         ssaoSpecializationMapEntrys[6].offset = sizeof(u32) + sizeof(f32) * 5;
         ssaoSpecializationMapEntrys[6].size = sizeof(f32);
 
-        VkSpecializationMapEntry compositionSpecializationMapEntrys[3] = {};
+        VkSpecializationMapEntry compositionSpecializationMapEntrys[4] = {};
         compositionSpecializationMapEntrys[0].constantID = 0;
         compositionSpecializationMapEntrys[0].offset = 0;
         compositionSpecializationMapEntrys[0].size = sizeof(i32);
@@ -937,6 +938,9 @@ void modelViewSceneInit() {
         compositionSpecializationMapEntrys[2].constantID = 2;
         compositionSpecializationMapEntrys[2].offset = sizeof(i32) + sizeof(f32);
         compositionSpecializationMapEntrys[2].size = sizeof(f32);
+        compositionSpecializationMapEntrys[3].constantID = 3;
+        compositionSpecializationMapEntrys[3].offset = sizeof(i32) + sizeof(f32) * 2;
+        compositionSpecializationMapEntrys[3].size = sizeof(f32);
 
         VkSpecializationMapEntry uberSpecializationMapEntrys[14] = {};
         uberSpecializationMapEntrys[0].constantID = 0;
@@ -1003,7 +1007,9 @@ void modelViewSceneInit() {
             i32 ssaoDenoiseSize;
             f32 ssaoDenoiseExponent;
             f32 ssaoDenoiseFactor;
-        } compositionSpecializationData = {config.ssaoDenoiseSize, config.ssaoDenoiseExponent, config.ssaoDenoiseFactor};
+
+            f32 gamma;
+        } compositionSpecializationData = {config.ssaoDenoiseSize, config.ssaoDenoiseExponent, config.ssaoDenoiseFactor, config.gamma};
 
         struct {
             f32 targetFps;
@@ -1038,9 +1044,9 @@ void modelViewSceneInit() {
         specializationInfos[0].dataSize = sizeof(u32) + sizeof(f32) * 6;
         specializationInfos[0].pData = &ssaoSpecializationData;
 
-        specializationInfos[1].mapEntryCount = 3;
+        specializationInfos[1].mapEntryCount = 4;
         specializationInfos[1].pMapEntries = compositionSpecializationMapEntrys;
-        specializationInfos[1].dataSize = sizeof(i32) + sizeof(f32) * 2;
+        specializationInfos[1].dataSize = sizeof(i32) + sizeof(f32) * 3;
         specializationInfos[1].pData = &compositionSpecializationData;
 
         specializationInfos[2].mapEntryCount = 14;
