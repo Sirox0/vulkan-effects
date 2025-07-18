@@ -152,7 +152,6 @@ void modelViewSceneInit() {
 
         u32 vertexSize, indexSize, indirectSize, storageMaterialsSize, storageTransformsSize, storageMeshIndicesSize;
         vkModelGetSizes(scene, &vertexSize, &indexSize, &indirectSize, &storageMaterialsSize, &storageTransformsSize, &storageMeshIndicesSize);
-        printf("%d\n", storageTransformsSize);
 
         globals->model.materialsSize = storageMaterialsSize;
         globals->model.transformsSize = storageTransformsSize;
