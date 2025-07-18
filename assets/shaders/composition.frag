@@ -9,7 +9,15 @@ layout(constant_id = 0) const int SSAO_DENOISE_SIZE = 4;
 layout(constant_id = 1) const float SSAO_DENOISE_EXPONENT = 5.0;
 layout(constant_id = 2) const float SSAO_DENOISE_FACTOR = 0.75;
 
-layout(constant_id = 3) const float GAMMA = 2.2;
+layout(constant_id = 3) const float AMBIENT_LIGHT_COLOR_R = 1.0;
+layout(constant_id = 4) const float AMBIENT_LIGHT_COLOR_G = 1.0;
+layout(constant_id = 5) const float AMBIENT_LIGHT_COLOR_B = 1.0;
+layout(constant_id = 6) const float AMBIENT_LIGHT_INTENSITY = 0.1;
+
+layout(constant_id = 7) const float DIRECTIONAL_LIGHT_COLOR_R = 1.0;
+layout(constant_id = 8) const float DIRECTIONAL_LIGHT_COLOR_G = 1.0;
+layout(constant_id = 9) const float DIRECTIONAL_LIGHT_COLOR_B = 1.0;
+layout(constant_id = 10) const float DIRECTIONAL_LIGHT_INTENSITY = 10.0;
 
 layout(location = 0) in vec2 uv;
 
@@ -40,8 +48,8 @@ layout(location = 0) out vec4 outColor;
 
 #define MIN 0.00001
 
-const vec4 ambientLightColor = vec4(1.0, 1.0, 1.0, 0.1);
-const vec4 lightColor = vec4(1.0, 1.0, 1.0, 1.0);
+vec3 AMBIENT_LIGHT_COLOR = vec3(AMBIENT_LIGHT_COLOR_R, AMBIENT_LIGHT_COLOR_G, AMBIENT_LIGHT_COLOR_B) * AMBIENT_LIGHT_INTENSITY;
+vec3 DIRECTIONAL_LIGHT_COLOR = vec3(DIRECTIONAL_LIGHT_COLOR_R, DIRECTIONAL_LIGHT_COLOR_G, DIRECTIONAL_LIGHT_COLOR_B) * DIRECTIONAL_LIGHT_INTENSITY;
 
 const float PI = acos(-1.0);
 
@@ -85,7 +93,7 @@ vec3 BRDF(vec3 L, vec3 V, vec3 N, vec2 metallicRoughness, vec3 color) {
     vec3 Kd = 1.0 - F;
     Kd *= 1.0 - metallicRoughness.r;
 
-    vec3 res = (Kd * color + spec) * dotNL * lightColor.rgb * lightColor.a;
+    vec3 res = (Kd * color + spec) * dotNL * DIRECTIONAL_LIGHT_COLOR;
 
     return dotNL > 0.0 ? res : vec3(0.0);
 }
@@ -98,26 +106,25 @@ const mat4 biasMat = mat4(
 );
 
 void main() {
-    vec3 N = normalize(texelFetch(gbuffer[0], ivec2(gl_FragCoord.xy), 0).xyz * 2.0 - 1.0);
-    vec3 V = normalize(-vec3(invProjection * vec4(uv * 2.0 - 1.0, 1.0, 1.0)));
+  vec3 N = normalize(texelFetch(gbuffer[0], ivec2(gl_FragCoord.xy), 0).xyz * 2.0 - 1.0);
+  vec3 V = normalize(-vec3(invProjection * vec4(uv * 2.0 - 1.0, 1.0, 1.0)));
 
-    vec2 metallicRoughness = texelFetch(gbuffer[2], ivec2(gl_FragCoord.xy), 0).rg;
-    vec4 origColor = texelFetch(gbuffer[1], ivec2(gl_FragCoord.xy), 0);
+  vec2 metallicRoughness = texelFetch(gbuffer[2], ivec2(gl_FragCoord.xy), 0).rg;
+  vec4 origColor = texelFetch(gbuffer[1], ivec2(gl_FragCoord.xy), 0);
 
-    vec3 viewRay = vec3(invProjection * vec4(uv * 2.0 - 1.0, 1.0, 1.0));
-    float depth = texelFetch(gbuffer[3], ivec2(uv * (textureSize(gbuffer[3], 0) - 1)), 0).r;
-    vec3 pos = viewRay * linearDepth(depth, nearPlane, farPlane);
+  vec3 viewRay = vec3(invProjection * vec4(uv * 2.0 - 1.0, 1.0, 1.0));
+  float depth = texelFetch(gbuffer[3], ivec2(uv * (textureSize(gbuffer[3], 0) - 1)), 0).r;
+  vec3 pos = viewRay * linearDepth(depth, nearPlane, farPlane);
 
-    vec4 shadowUV = (biasMat * lightVP) * (inverse(view) * vec4(pos, 1.0));
-    shadowUV.z += 0.00002;
+  vec4 shadowUV = (biasMat * lightVP) * (inverse(view) * vec4(pos, 1.0));
+  shadowUV.z += 0.00002;
 
-    float shadow = PCF(shadowmap, shadowUV, 1, 1.0 / vec2(textureSize(shadowmap, 0)));
+  float shadow = PCF(shadowmap, shadowUV, 1, 1.0 / vec2(textureSize(shadowmap, 0)));
 
-    vec3 L = normalize(lightPos.xyz - pos);
-    vec3 Lo = BRDF(L, V, N, metallicRoughness, origColor.rgb) * shadow;
+  vec3 L = normalize(lightPos.xyz - pos);
+  vec3 Lo = BRDF(L, V, N, metallicRoughness, origColor.rgb) * shadow;
 
-    vec3 color = Lo + ambientLightColor.rgb * ambientLightColor.a * origColor.rgb * bilateral(occlusionMap, uv, SSAO_DENOISE_SIZE, SSAO_DENOISE_EXPONENT, SSAO_DENOISE_FACTOR);
-    color.rgb = linear2Gamma(color.rgb, vec3(GAMMA));
+  vec3 color = Lo + AMBIENT_LIGHT_COLOR * origColor.rgb * bilateral(occlusionMap, uv, SSAO_DENOISE_SIZE, SSAO_DENOISE_EXPONENT, SSAO_DENOISE_FACTOR);
 
-    outColor = origColor.a == 0.0 ? origColor : vec4(color, origColor.a);
+  outColor = origColor.a == 0.0 ? origColor : vec4(color, origColor.a);
 }

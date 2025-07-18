@@ -5,8 +5,19 @@
 #include <string.h>
 
 #include "config.h"
+#include "dictionary.h"
 
 config_t config;
+
+void parseVec3(vec3 dest, dictionary* conf, const char* key, const char* def) {
+    char* vec = (char*)iniparser_getstring(conf, key, def);
+    vec = strtok(vec, " ");
+    dest[0] = atof(vec);
+    vec = strtok(NULL, " ");
+    dest[1] = atof(vec);
+    vec = strtok(NULL, " ");
+    dest[2] = atof(vec);
+}
 
 void configLoad(char* path) {
     dictionary* conf = iniparser_load(path);
@@ -39,10 +50,24 @@ void configLoad(char* path) {
     config.playerSpeed = iniparser_getdouble(conf, "general:player-speed", 1.0f);
     config.shiftMultiplier = iniparser_getdouble(conf, "general:shift-multiplier", 3.0f);
     config.targetFps = iniparser_getdouble(conf, "general:target-fps", 60.0f);
-    config.gamma = iniparser_getdouble(conf, "general:gamma", 2.2f);
 
     config.mouseSmoothingEnable = iniparser_getboolean(conf, "mouse-smoothing:enable", 0);
     config.mouseSmoothingSpeed = iniparser_getdouble(conf, "mouse-smoothing:speed", 100.0f);
+
+    parseVec3(config.gamma, conf, "tonemapping:gamma", "2.2 2.2 2.2");
+    parseVec3(config.exposure, conf, "tonemapping:exposure", "1.0 1.0 1.0");
+    parseVec3(config.agxLookOffset, conf, "tonemapping:agx-look-offset", "0.0 0.0 0.0");
+    parseVec3(config.agxLookSlope, conf, "tonemapping:agx-look-slope", "1.0 1.0 1.0");
+    parseVec3(config.agxLookPower, conf, "tonemapping:agx-look-power", "1.0 1.0 1.0");
+    parseVec3(config.agxLookSaturation, conf, "tonemapping:agx-look-saturation", "1.0 1.0 1.0");
+
+    parseVec3(config.ambientLightColor, conf, "lighting:ambient-light-color", "1.0 1.0 1.0");
+
+    config.ambientLightIntensity = iniparser_getdouble(conf, "lighting:ambient-light-intensity", 0.1f);
+
+    parseVec3(config.directionalLightColor, conf, "lighting:directional-light-color", "1.0 1.0 1.0");
+
+    config.directionalLightIntensity = iniparser_getdouble(conf, "lighting:directional-light-intensity", 10.0f);
 
     config.fov = iniparser_getdouble(conf, "projection:fov", 80.0f);
     config.nearPlane = iniparser_getdouble(conf, "projection:near-plane", 0.01f);
@@ -77,6 +102,10 @@ void configLoad(char* path) {
     config.fxaaReduceMin = iniparser_getdouble(conf, "fxaa:reduce-min", 0.0078125f);
     config.fxaaReduceMul = iniparser_getdouble(conf, "fxaa:reduce-mul", 0.03125f);
     config.fxaaSpanMax = iniparser_getdouble(conf, "fxaa:span-max", 8.0f);
+
+    config.bloomEnable = iniparser_getboolean(conf, "bloom:enable", 1);
+    config.bloomIntensity = iniparser_getdouble(conf, "bloom:intensity", 1.0f);
+    config.bloomThreshold = iniparser_getdouble(conf, "bloom:threshold", 1.0f);
 
     iniparser_freedict(conf);
 }

@@ -1,6 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <cglm/cglm.h>
+
 #include "numtypes.h"
 
 typedef struct {
@@ -19,10 +21,21 @@ typedef struct {
     f32 playerSpeed;
     f32 shiftMultiplier;
     f32 targetFps;
-    f32 gamma;
 
     u8 mouseSmoothingEnable;
     f32 mouseSmoothingSpeed;
+
+    vec3 gamma;
+    vec3 exposure;
+    vec3 agxLookOffset;
+    vec3 agxLookSlope;
+    vec3 agxLookPower;
+    vec3 agxLookSaturation;
+
+    vec3 ambientLightColor;
+    f32 ambientLightIntensity;
+    vec3 directionalLightColor;
+    f32 directionalLightIntensity;
 
     f32 fov;
     f32 nearPlane;
@@ -57,6 +70,10 @@ typedef struct {
     f32 fxaaReduceMin;
     f32 fxaaReduceMul;
     f32 fxaaSpanMax;
+
+    u8 bloomEnable;
+    f32 bloomIntensity;
+    f32 bloomThreshold;
 } config_t;
 
 void configLoad(char* path);

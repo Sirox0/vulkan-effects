@@ -58,7 +58,7 @@ void vkModelGetNodeSizes(const struct aiScene* scene, const struct aiNode* node,
     *pVertexSize += vertexSize * sizeof(VkModelVertex_t);
     *pIndexSize += indexSize * sizeof(u32);
     *pIndirectSize += node->mNumMeshes * sizeof(VkDrawIndexedIndirectCommand);
-    *pTransformsSize += sizeof(mat4);
+    *pTransformsSize += node->mNumMeshes > 0 ? sizeof(mat4) : 0;
 
     for (u32 i = 0; i < node->mNumChildren; i++) {
         vkModelGetNodeSizes(scene, node->mChildren[i], pVertexSize, pIndexSize, pIndirectSize, pTransformsSize);
@@ -165,6 +165,7 @@ void vkModelGetSizes(const struct aiScene* scene, u32* pVertexSize, u32* pIndexS
     *pVertexSize = 0;
     *pIndexSize = 0;
     *pIndirectSize = 0;
+    *pTransformsSize = 0;
     *pMaterialsSize = scene->mNumMaterials * sizeof(VkModelMaterial_t);
     *pMeshIndicesSize = scene->mNumMeshes * sizeof(VkModelMeshIndices_t);
     
@@ -232,18 +233,20 @@ void vkModelProcessNode(const struct aiScene* scene, const struct aiNode* node, 
 
     aiMultiplyMatrix4(mat, &node->mTransformation);
 
-    struct aiMatrix4x4 copy = *mat;
-    aiTransposeMatrix4(&copy);
+    if (node->mNumMeshes > 0) {
+        struct aiMatrix4x4 copy = *mat;
+        aiTransposeMatrix4(&copy);
 
-    memcpy(pTempBufferRaw + tempBufferTransformsOffset + *pCurTransformOffset, &copy, sizeof(mat4));
+        memcpy(pTempBufferRaw + tempBufferTransformsOffset + *pCurTransformOffset, &copy, sizeof(mat4));
+        *pCurTransformOffset += sizeof(mat4);
+        
+        *pNodeIndex += 1;
+    }
 
     *pCurVertexCount += curVertexCount - *pCurVertexCount;
     *pCurIndexCount += curIndexCount - *pCurIndexCount;
     *pCurIndirectCount += curIndirectCount - *pCurIndirectCount;
     *pCurMeshIndexOffset += curMeshIndexOffset - *pCurMeshIndexOffset;
-    *pCurTransformOffset += sizeof(mat4);
-    
-    *pNodeIndex += 1;
 
     for (u32 i = 0; i < node->mNumChildren; i++) {
         struct aiMatrix4x4 next = *mat;

@@ -30,6 +30,7 @@ set(SHADERS
     ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/composition.frag
     ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/fullscreen.vert
     ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/fullscreenNoUV.vert
+    ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/gaussianBlur.frag
     ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/model.frag
     ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/model.vert
     ${CMAKE_CURRENT_LIST_DIR}/assets/shaders/shadowmap.vert

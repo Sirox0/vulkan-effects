@@ -152,6 +152,7 @@ void modelViewSceneInit() {
 
         u32 vertexSize, indexSize, indirectSize, storageMaterialsSize, storageTransformsSize, storageMeshIndicesSize;
         vkModelGetSizes(scene, &vertexSize, &indexSize, &indirectSize, &storageMaterialsSize, &storageTransformsSize, &storageMeshIndicesSize);
+        printf("%d\n", storageTransformsSize);
 
         globals->model.materialsSize = storageMaterialsSize;
         globals->model.transformsSize = storageTransformsSize;
@@ -180,7 +181,8 @@ void modelViewSceneInit() {
             createImage(&globals->gbuffer, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 2, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
             createImage(&globals->metallicRoughnessVelocityTexture, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
             createImage(&globals->ssaoAttachment, config.ssaoResolutionWidth, config.ssaoResolutionHeight, VK_FORMAT_R8_UNORM, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
-            createImage(&globals->postProcessAttachment, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&globals->postProcessAttachment, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+            createImage(&globals->blurredPostProcessAttachment, vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0);
 
             {
                 VkMemoryAllocClusterInfo_t allocInfo = {};
@@ -267,8 +269,8 @@ void modelViewSceneInit() {
                 VkMemoryAllocClusterInfo_t allocInfo = {};
                 allocInfo.memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
                 allocInfo.handleType = VK_MEMORY_ALLOC_CLUSTER_HANDLE_TYPE_IMAGE;
-                allocInfo.handleCount = 4;
-                allocInfo.pHandles = (VkImage[]){globals->gbuffer, globals->metallicRoughnessVelocityTexture, globals->ssaoAttachment, globals->postProcessAttachment};
+                allocInfo.handleCount = 5;
+                allocInfo.pHandles = (VkImage[]){globals->gbuffer, globals->metallicRoughnessVelocityTexture, globals->ssaoAttachment, globals->postProcessAttachment, globals->blurredPostProcessAttachment};
                 allocInfo.pDstOffsets = VK_NULL_HANDLE;
 
                 vkAllocateMemoryCluster(&allocInfo, &globals->deviceLocalColorAttachmentSampledMemory);
@@ -402,22 +404,38 @@ void modelViewSceneInit() {
     }
 
     {
-        VkImageMemoryBarrier imageBarrier = {};
-        imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        imageBarrier.image = globals->depthTexture;
-        imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-        imageBarrier.subresourceRange.baseArrayLayer = 0;
-        imageBarrier.subresourceRange.layerCount = 1;
-        imageBarrier.subresourceRange.baseMipLevel = 0;
-        imageBarrier.subresourceRange.levelCount = 1;
-        imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        imageBarrier.srcAccessMask = 0;
-        imageBarrier.dstAccessMask = 0;
-        imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        VkImageMemoryBarrier imageBarriers[2] = {};
+        imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        imageBarriers[0].image = globals->depthTexture;
+        imageBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        imageBarriers[0].subresourceRange.baseArrayLayer = 0;
+        imageBarriers[0].subresourceRange.layerCount = 1;
+        imageBarriers[0].subresourceRange.baseMipLevel = 0;
+        imageBarriers[0].subresourceRange.levelCount = 1;
+        imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageBarriers[0].srcAccessMask = 0;
+        imageBarriers[0].dstAccessMask = 0;
+        imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-        vkCmdPipelineBarrier(tempCmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, &imageBarrier);
+        if (!config.bloomEnable) {
+            imageBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageBarriers[1].image = globals->blurredPostProcessAttachment;
+            imageBarriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            imageBarriers[1].subresourceRange.baseArrayLayer = 0;
+            imageBarriers[1].subresourceRange.layerCount = 1;
+            imageBarriers[1].subresourceRange.baseMipLevel = 0;
+            imageBarriers[1].subresourceRange.levelCount = 1;
+            imageBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            imageBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            imageBarriers[1].srcAccessMask = 0;
+            imageBarriers[1].dstAccessMask = 0;
+            imageBarriers[1].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        }
+
+        vkCmdPipelineBarrier(tempCmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, config.bloomEnable ? 1 : 2, imageBarriers);
     }
 
     {
@@ -438,7 +456,8 @@ void modelViewSceneInit() {
     createImageView(&globals->gbufferAlbedoView, globals->gbuffer, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&globals->metallicRoughnessVelocityTextureView, globals->metallicRoughnessVelocityTexture, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     createImageView(&globals->ssaoAttachmentView, globals->ssaoAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8_UNORM, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
-    createImageView(&globals->postProcessAttachmentView, globals->postProcessAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R8G8B8A8_UNORM, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+    createImageView(&globals->postProcessAttachmentView, globals->postProcessAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
+    createImageView(&globals->blurredPostProcessAttachmentView, globals->blurredPostProcessAttachment, VK_IMAGE_VIEW_TYPE_2D, VK_FORMAT_R16G16B16A16_SFLOAT, 1, 0, 1, 0, VK_IMAGE_ASPECT_COLOR_BIT);
     
     {
         {
@@ -648,25 +667,26 @@ void modelViewSceneInit() {
 
     {
         {
-            u32 variableDescriptorCounts[8] = {};
+            u32 variableDescriptorCounts[9] = {};
             variableDescriptorCounts[4] = globals->model.textureCount;
 
             VkDescriptorSetVariableDescriptorCountAllocateInfoEXT variableDescriptorCountAllocateInfo = {};
             variableDescriptorCountAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
-            variableDescriptorCountAllocateInfo.descriptorSetCount = 8;
+            variableDescriptorCountAllocateInfo.descriptorSetCount = 9;
             variableDescriptorCountAllocateInfo.pDescriptorCounts = variableDescriptorCounts;
 
             VkDescriptorSetAllocateInfo descriptorSetsInfo = {};
             descriptorSetsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
             descriptorSetsInfo.pNext = &variableDescriptorCountAllocateInfo;
             descriptorSetsInfo.descriptorPool = globals->descriptorPool;
-            descriptorSetsInfo.descriptorSetCount = 8;
+            descriptorSetsInfo.descriptorSetCount = 9;
             descriptorSetsInfo.pSetLayouts = (VkDescriptorSetLayout[]){globals->PVmatrixdescriptorSetLayout, globals->gbufferDescriptorSetLayout,
                 globals->sampledImageDescriptorSetLayout, globals->sampledImageDescriptorSetLayout, globals->modelDescriptorSetLayout,
-                globals->combinedImageSamplerDescriptorSetLayout, globals->storageDescriptorSetLayout, globals->combinedImageSamplerDescriptorSetLayout
+                globals->combinedImageSamplerDescriptorSetLayout, globals->storageDescriptorSetLayout, globals->combinedImageSamplerDescriptorSetLayout,
+                globals->sampledImageDescriptorSetLayout
             };
 
-            VkDescriptorSet sets[8];
+            VkDescriptorSet sets[9];
 
             VK_ASSERT(vkAllocateDescriptorSets(vkglobals.device, &descriptorSetsInfo, sets), "failed to allocate descriptor sets\n");
 
@@ -678,6 +698,7 @@ void modelViewSceneInit() {
             globals->skyboxCubemapDescriptorSet = sets[5];
             globals->lightDescriptorSet = sets[6];
             globals->shadowmapDescriptorSet = sets[7];
+            globals->blurredPostProcessAttachmentDescriptorSet = sets[8];
         }
 
         u32 modelDescriptorBufferCount, modelDescriptorImageCount, modelDescriptorWriteCount;
@@ -696,7 +717,7 @@ void modelViewSceneInit() {
         descriptorBufferInfos[2].offset = 0;
         descriptorBufferInfos[2].range = VK_WHOLE_SIZE;
 
-        VkDescriptorImageInfo descriptorImageInfos[8 + modelDescriptorImageCount];
+        VkDescriptorImageInfo descriptorImageInfos[9 + modelDescriptorImageCount];
         descriptorImageInfos[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         descriptorImageInfos[0].imageView = globals->gbufferNormalView;
         descriptorImageInfos[0].sampler = VK_NULL_HANDLE;
@@ -729,7 +750,11 @@ void modelViewSceneInit() {
         descriptorImageInfos[7].imageView = globals->shadowmapView;
         descriptorImageInfos[7].sampler = globals->shadowmapSampler;
 
-        VkWriteDescriptorSet descriptorWrites[11 + modelDescriptorWriteCount];
+        descriptorImageInfos[8].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        descriptorImageInfos[8].imageView = globals->blurredPostProcessAttachmentView;
+        descriptorImageInfos[8].sampler = VK_NULL_HANDLE;
+
+        VkWriteDescriptorSet descriptorWrites[12 + modelDescriptorWriteCount];
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].pNext = VK_NULL_HANDLE;
         descriptorWrites[0].descriptorCount = 1;
@@ -829,9 +854,18 @@ void modelViewSceneInit() {
         descriptorWrites[10].dstSet = globals->shadowmapDescriptorSet;
         descriptorWrites[10].pImageInfo = &descriptorImageInfos[7];
 
-        vkModelGetDescriptorWrites(&globals->model, globals->sampler, &modelDescriptorBufferCount, descriptorBufferInfos + 3, &modelDescriptorImageCount, descriptorImageInfos + 8, &modelDescriptorWriteCount, descriptorWrites + 11);
+        descriptorWrites[11].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[11].pNext = VK_NULL_HANDLE;
+        descriptorWrites[11].descriptorCount = 1;
+        descriptorWrites[11].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        descriptorWrites[11].dstBinding = 0;
+        descriptorWrites[11].dstArrayElement = 0;
+        descriptorWrites[11].dstSet = globals->blurredPostProcessAttachmentDescriptorSet;
+        descriptorWrites[11].pImageInfo = &descriptorImageInfos[8];
 
-        vkUpdateDescriptorSets(vkglobals.device, 11 + modelDescriptorWriteCount, descriptorWrites, 0, VK_NULL_HANDLE);
+        vkModelGetDescriptorWrites(&globals->model, globals->sampler, &modelDescriptorBufferCount, descriptorBufferInfos + 3, &modelDescriptorImageCount, descriptorImageInfos + 9, &modelDescriptorWriteCount, descriptorWrites + 12);
+
+        vkUpdateDescriptorSets(vkglobals.device, 12 + modelDescriptorWriteCount, descriptorWrites, 0, VK_NULL_HANDLE);
     }
 
     {
@@ -897,8 +931,8 @@ void modelViewSceneInit() {
 
             VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
             pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            pipelineLayoutInfo.setLayoutCount = 2;
-            pipelineLayoutInfo.pSetLayouts = (VkDescriptorSetLayout[]){globals->sampledImageDescriptorSetLayout, globals->gbufferDescriptorSetLayout};
+            pipelineLayoutInfo.setLayoutCount = 3;
+            pipelineLayoutInfo.pSetLayouts = (VkDescriptorSetLayout[]){globals->sampledImageDescriptorSetLayout, globals->gbufferDescriptorSetLayout, globals->sampledImageDescriptorSetLayout};
             pipelineLayoutInfo.pushConstantRangeCount = 1;
             pipelineLayoutInfo.pPushConstantRanges = &pcRange;
 
@@ -928,7 +962,7 @@ void modelViewSceneInit() {
         ssaoSpecializationMapEntrys[6].offset = sizeof(u32) + sizeof(f32) * 5;
         ssaoSpecializationMapEntrys[6].size = sizeof(f32);
 
-        VkSpecializationMapEntry compositionSpecializationMapEntrys[4] = {};
+        VkSpecializationMapEntry compositionSpecializationMapEntrys[11] = {};
         compositionSpecializationMapEntrys[0].constantID = 0;
         compositionSpecializationMapEntrys[0].offset = 0;
         compositionSpecializationMapEntrys[0].size = sizeof(i32);
@@ -938,57 +972,81 @@ void modelViewSceneInit() {
         compositionSpecializationMapEntrys[2].constantID = 2;
         compositionSpecializationMapEntrys[2].offset = sizeof(i32) + sizeof(f32);
         compositionSpecializationMapEntrys[2].size = sizeof(f32);
-        compositionSpecializationMapEntrys[3].constantID = 3;
-        compositionSpecializationMapEntrys[3].offset = sizeof(i32) + sizeof(f32) * 2;
-        compositionSpecializationMapEntrys[3].size = sizeof(f32);
 
-        VkSpecializationMapEntry uberSpecializationMapEntrys[14] = {};
+        for (u32 i = 3; i < 11; i++) {
+            compositionSpecializationMapEntrys[i].constantID = i;
+            compositionSpecializationMapEntrys[i].offset = sizeof(i32) + sizeof(f32) * (i-1);
+            compositionSpecializationMapEntrys[i].size = sizeof(f32);
+        }
+
+        VkSpecializationMapEntry gaussianBlurSpecializationMapEntrys[2] = {};
+        gaussianBlurSpecializationMapEntrys[0].constantID = 0;
+        gaussianBlurSpecializationMapEntrys[0].offset = 0;
+        gaussianBlurSpecializationMapEntrys[0].size = sizeof(f32);
+        gaussianBlurSpecializationMapEntrys[1].constantID = 1;
+        gaussianBlurSpecializationMapEntrys[1].offset = sizeof(f32);
+        gaussianBlurSpecializationMapEntrys[1].size = sizeof(f32);
+
+        VkSpecializationMapEntry uberSpecializationMapEntrys[34] = {};
         uberSpecializationMapEntrys[0].constantID = 0;
         uberSpecializationMapEntrys[0].offset = 0;
         uberSpecializationMapEntrys[0].size = sizeof(f32);
 
-        uberSpecializationMapEntrys[1].constantID = 1;
-        uberSpecializationMapEntrys[1].offset = sizeof(f32);
-        uberSpecializationMapEntrys[1].size = sizeof(u32);
-        uberSpecializationMapEntrys[2].constantID = 2;
-        uberSpecializationMapEntrys[2].offset = sizeof(u32) + sizeof(f32);
-        uberSpecializationMapEntrys[2].size = sizeof(f32);
-        uberSpecializationMapEntrys[3].constantID = 3;
-        uberSpecializationMapEntrys[3].offset = sizeof(u32) + sizeof(f32) * 2;
-        uberSpecializationMapEntrys[3].size = sizeof(f32);
-        uberSpecializationMapEntrys[4].constantID = 4;
-        uberSpecializationMapEntrys[4].offset = sizeof(u32) + sizeof(f32) * 3;
-        uberSpecializationMapEntrys[4].size = sizeof(f32);
+        for (u32 i = 1; i < 19; i++) {
+            uberSpecializationMapEntrys[i].constantID = i;
+            uberSpecializationMapEntrys[i].offset = sizeof(f32) * i;
+            uberSpecializationMapEntrys[i].size = sizeof(f32);
+        }
 
-        uberSpecializationMapEntrys[5].constantID = 5;
-        uberSpecializationMapEntrys[5].offset = sizeof(u32) + sizeof(f32) * 4;
-        uberSpecializationMapEntrys[5].size = sizeof(u32);
-        uberSpecializationMapEntrys[6].constantID = 6;
-        uberSpecializationMapEntrys[6].offset = sizeof(u32) * 2 + sizeof(f32) * 4;
-        uberSpecializationMapEntrys[6].size = sizeof(f32);
+        uberSpecializationMapEntrys[19].constantID = 19;
+        uberSpecializationMapEntrys[19].offset = sizeof(f32) * 19;
+        uberSpecializationMapEntrys[19].size = sizeof(u32);
+        uberSpecializationMapEntrys[20].constantID = 20;
+        uberSpecializationMapEntrys[20].offset = sizeof(u32) + sizeof(f32) * 19;
+        uberSpecializationMapEntrys[20].size = sizeof(f32);
+        uberSpecializationMapEntrys[21].constantID = 21;
+        uberSpecializationMapEntrys[21].offset = sizeof(u32) + sizeof(f32) * 20;
+        uberSpecializationMapEntrys[21].size = sizeof(f32);
+        uberSpecializationMapEntrys[22].constantID = 22;
+        uberSpecializationMapEntrys[22].offset = sizeof(u32) + sizeof(f32) * 21;
+        uberSpecializationMapEntrys[22].size = sizeof(f32);
 
-        uberSpecializationMapEntrys[7].constantID = 7;
-        uberSpecializationMapEntrys[7].offset = sizeof(u32) * 2 + sizeof(f32) * 5;
-        uberSpecializationMapEntrys[7].size = sizeof(u32);
-        uberSpecializationMapEntrys[8].constantID = 8;
-        uberSpecializationMapEntrys[8].offset = sizeof(u32) * 3 + sizeof(f32) * 5;
-        uberSpecializationMapEntrys[8].size = sizeof(f32);
-        uberSpecializationMapEntrys[9].constantID = 9;
-        uberSpecializationMapEntrys[9].offset = sizeof(u32) * 4 + sizeof(f32) * 5;
-        uberSpecializationMapEntrys[9].size = sizeof(f32);
+        uberSpecializationMapEntrys[23].constantID = 23;
+        uberSpecializationMapEntrys[23].offset = sizeof(u32) + sizeof(f32) * 22;
+        uberSpecializationMapEntrys[23].size = sizeof(u32);
+        uberSpecializationMapEntrys[24].constantID = 24;
+        uberSpecializationMapEntrys[24].offset = sizeof(u32) * 2 + sizeof(f32) * 22;
+        uberSpecializationMapEntrys[24].size = sizeof(f32);
 
-        uberSpecializationMapEntrys[10].constantID = 10;
-        uberSpecializationMapEntrys[10].offset = sizeof(u32) * 4 + sizeof(f32) * 6;
-        uberSpecializationMapEntrys[10].size = sizeof(u32);
-        uberSpecializationMapEntrys[11].constantID = 11;
-        uberSpecializationMapEntrys[11].offset = sizeof(u32) * 5 + sizeof(f32) * 6;
-        uberSpecializationMapEntrys[11].size = sizeof(f32);
-        uberSpecializationMapEntrys[12].constantID = 12;
-        uberSpecializationMapEntrys[12].offset = sizeof(u32) * 5 + sizeof(f32) * 7;
-        uberSpecializationMapEntrys[12].size = sizeof(f32);
-        uberSpecializationMapEntrys[13].constantID = 13;
-        uberSpecializationMapEntrys[13].offset = sizeof(u32) * 5 + sizeof(f32) * 8;
-        uberSpecializationMapEntrys[13].size = sizeof(f32);
+        uberSpecializationMapEntrys[25].constantID = 25;
+        uberSpecializationMapEntrys[25].offset = sizeof(u32) * 2 + sizeof(f32) * 23;
+        uberSpecializationMapEntrys[25].size = sizeof(u32);
+        uberSpecializationMapEntrys[26].constantID = 26;
+        uberSpecializationMapEntrys[26].offset = sizeof(u32) * 3 + sizeof(f32) * 23;
+        uberSpecializationMapEntrys[26].size = sizeof(f32);
+        uberSpecializationMapEntrys[27].constantID = 27;
+        uberSpecializationMapEntrys[27].offset = sizeof(u32) * 3 + sizeof(f32) * 24;
+        uberSpecializationMapEntrys[27].size = sizeof(f32);
+
+        uberSpecializationMapEntrys[28].constantID = 28;
+        uberSpecializationMapEntrys[28].offset = sizeof(u32) * 3 + sizeof(f32) * 25;
+        uberSpecializationMapEntrys[28].size = sizeof(u32);
+        uberSpecializationMapEntrys[29].constantID = 29;
+        uberSpecializationMapEntrys[29].offset = sizeof(u32) * 4 + sizeof(f32) * 25;
+        uberSpecializationMapEntrys[29].size = sizeof(f32);
+        uberSpecializationMapEntrys[30].constantID = 30;
+        uberSpecializationMapEntrys[30].offset = sizeof(u32) * 4 + sizeof(f32) * 26;
+        uberSpecializationMapEntrys[30].size = sizeof(f32);
+        uberSpecializationMapEntrys[31].constantID = 31;
+        uberSpecializationMapEntrys[31].offset = sizeof(u32) * 4 + sizeof(f32) * 27;
+        uberSpecializationMapEntrys[31].size = sizeof(f32);
+
+        uberSpecializationMapEntrys[32].constantID = 32;
+        uberSpecializationMapEntrys[32].offset = sizeof(u32) * 4 + sizeof(f32) * 28;
+        uberSpecializationMapEntrys[32].size = sizeof(u32);
+        uberSpecializationMapEntrys[33].constantID = 33;
+        uberSpecializationMapEntrys[33].offset = sizeof(u32) * 5 + sizeof(f32) * 28;
+        uberSpecializationMapEntrys[33].size = sizeof(f32);
 
         struct {
             u32 samples;
@@ -1008,11 +1066,46 @@ void modelViewSceneInit() {
             f32 ssaoDenoiseExponent;
             f32 ssaoDenoiseFactor;
 
-            f32 gamma;
-        } compositionSpecializationData = {config.ssaoDenoiseSize, config.ssaoDenoiseExponent, config.ssaoDenoiseFactor, config.gamma};
+            f32 ambientLightColorR;
+            f32 ambientLightColorG;
+            f32 ambientLightColorB;
+            f32 ambientLightIntensity;
+            f32 directionalLightColorR;
+            f32 directionalLightColorG;
+            f32 directionalLightColorB;
+            f32 directionalLightIntensity;
+        } compositionSpecializationData = {
+            config.ssaoDenoiseSize, config.ssaoDenoiseExponent, config.ssaoDenoiseFactor,
+            config.ambientLightColor[0], config.ambientLightColor[1], config.ambientLightColor[2], config.ambientLightIntensity,
+            config.directionalLightColor[0], config.directionalLightColor[1], config.directionalLightColor[2], config.directionalLightIntensity
+        };
+
+        struct {
+            f32 bloomIntensity;
+            f32 bloomThreshold;
+        } gaussianBlurSpecializationData = {config.bloomIntensity, config.bloomThreshold};
 
         struct {
             f32 targetFps;
+
+            f32 gammaR;
+            f32 gammaG;
+            f32 gammaB;
+            f32 exposureR;
+            f32 exposureG;
+            f32 exposureB;
+            f32 agxLookOffsetR;
+            f32 agxLookOffsetG;
+            f32 agxLookOffsetB;
+            f32 agxLookSlopeR;
+            f32 agxLookSlopeG;
+            f32 agxLookSlopeB;
+            f32 agxLookPowerR;
+            f32 agxLookPowerG;
+            f32 agxLookPowerB;
+            f32 agxLookSaturationR;
+            f32 agxLookSaturationG;
+            f32 agxLookSaturationB;
 
             u32 grainEnable;
             f32 grainIntensity;
@@ -1030,29 +1123,44 @@ void modelViewSceneInit() {
             f32 fxaaReduceMin;
             f32 fxaaReduceMul;
             f32 fxaaSpanMax;
+
+            u32 bloomEnable;
+            f32 bloomIntensity;
         } uberSpecializationData = {
             config.targetFps,
+            config.gamma[0], config.gamma[1], config.gamma[2],
+            config.exposure[0], config.exposure[1], config.exposure[2],
+            config.agxLookOffset[0], config.agxLookOffset[1], config.agxLookOffset[2],
+            config.agxLookSlope[0], config.agxLookSlope[1], config.agxLookSlope[2],
+            config.agxLookPower[0], config.agxLookPower[1], config.agxLookPower[2],
+            config.agxLookSaturation[0], config.agxLookSaturation[1], config.agxLookSaturation[2],
             config.grainEnable, config.grainIntensity, config.grainSignalToNoise, config.grainNoiseShift,
             config.ditheringEnable, config.ditheringToneCount,
             config.motionBlurEnable, config.motionBlurMaxSamples, config.motionBlurVelocityReductionFactor,
-            config.fxaaEnable, config.fxaaReduceMin, config.fxaaReduceMul, config.fxaaSpanMax
+            config.fxaaEnable, config.fxaaReduceMin, config.fxaaReduceMul, config.fxaaSpanMax,
+            config.bloomEnable, config.bloomIntensity
         };
 
-        VkSpecializationInfo specializationInfos[3] = {};
+        VkSpecializationInfo specializationInfos[4] = {};
         specializationInfos[0].mapEntryCount = 7;
         specializationInfos[0].pMapEntries = ssaoSpecializationMapEntrys;
         specializationInfos[0].dataSize = sizeof(u32) + sizeof(f32) * 6;
         specializationInfos[0].pData = &ssaoSpecializationData;
 
-        specializationInfos[1].mapEntryCount = 4;
+        specializationInfos[1].mapEntryCount = 11;
         specializationInfos[1].pMapEntries = compositionSpecializationMapEntrys;
-        specializationInfos[1].dataSize = sizeof(i32) + sizeof(f32) * 3;
+        specializationInfos[1].dataSize = sizeof(i32) + sizeof(f32) * 10;
         specializationInfos[1].pData = &compositionSpecializationData;
 
-        specializationInfos[2].mapEntryCount = 14;
-        specializationInfos[2].pMapEntries = uberSpecializationMapEntrys;
-        specializationInfos[2].dataSize = sizeof(u32) * 5 + sizeof(f32) * 9;
-        specializationInfos[2].pData = &uberSpecializationData;
+        specializationInfos[2].mapEntryCount = 2;
+        specializationInfos[2].pMapEntries = gaussianBlurSpecializationMapEntrys;
+        specializationInfos[2].dataSize = sizeof(f32) * 2;
+        specializationInfos[2].pData = &gaussianBlurSpecializationData;
+
+        specializationInfos[3].mapEntryCount = 34;
+        specializationInfos[3].pMapEntries = uberSpecializationMapEntrys;
+        specializationInfos[3].dataSize = sizeof(u32) * 5 + sizeof(f32) * 29;
+        specializationInfos[3].pData = &uberSpecializationData;
 
         VkVertexInputBindingDescription bindingDescs[2] = {};
         bindingDescs[0].binding = 0;
@@ -1087,13 +1195,14 @@ void modelViewSceneInit() {
         VkShaderModule fullscreenVertexModule = createShaderModuleFromAsset("assets/shaders/fullscreen.vert.spv");
         VkShaderModule fullscreenNoUVVertexModule = createShaderModuleFromAsset("assets/shaders/fullscreenNoUV.vert.spv");
 
-        VkGraphicsPipelineInfo_t pipelineInfos[6] = {};
+        VkGraphicsPipelineInfo_t pipelineInfos[7] = {};
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[0]);
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[1]);
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[2]);
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[3]);
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[4]);
         pipelineFillDefaultGraphicsPipeline(&pipelineInfos[5]);
+        pipelineFillDefaultGraphicsPipeline(&pipelineInfos[6]);
 
 
         pipelineInfos[0].stageCount = 1;
@@ -1190,7 +1299,7 @@ void modelViewSceneInit() {
         pipelineInfos[4].stages[1].pSpecializationInfo = &specializationInfos[1];
 
         pipelineInfos[4].renderingInfo.colorAttachmentCount = 1;
-        pipelineInfos[4].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R8G8B8A8_UNORM};
+        pipelineInfos[4].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R16G16B16A16_SFLOAT};
         pipelineInfos[4].layout = globals->compositionPipelineLayout;
 
 
@@ -1199,15 +1308,26 @@ void modelViewSceneInit() {
         pipelineInfos[5].stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
         pipelineInfos[5].stages[0].module = fullscreenVertexModule;
         pipelineInfos[5].stages[1].module = createShaderModuleFromAsset("assets/shaders/postprocess/uber.frag.spv");
-        pipelineInfos[5].stages[1].pSpecializationInfo = &specializationInfos[2];
+        pipelineInfos[5].stages[1].pSpecializationInfo = &specializationInfos[3];
 
         pipelineInfos[5].renderingInfo.colorAttachmentCount = 1;
         pipelineInfos[5].renderingInfo.pColorAttachmentFormats = &vkglobals.surfaceFormat.format;
         pipelineInfos[5].layout = globals->uberPipelineLayout;
 
-        VkPipeline pipelines[6];
+        pipelineInfos[6].stageCount = 2;
+        pipelineInfos[6].stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+        pipelineInfos[6].stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+        pipelineInfos[6].stages[0].module = fullscreenNoUVVertexModule;
+        pipelineInfos[6].stages[1].module = createShaderModuleFromAsset("assets/shaders/gaussianBlur.frag.spv");
+        pipelineInfos[6].stages[1].pSpecializationInfo = &specializationInfos[2];
 
-        pipelineCreateGraphicsPipelines(globals->pipelineCache, 6, pipelineInfos, pipelines);
+        pipelineInfos[6].renderingInfo.colorAttachmentCount = 1;
+        pipelineInfos[6].renderingInfo.pColorAttachmentFormats = (VkFormat[]){VK_FORMAT_R16G16B16A16_SFLOAT};
+        pipelineInfos[6].layout = globals->sampledImagePipelineLayout;
+
+        VkPipeline pipelines[7];
+
+        pipelineCreateGraphicsPipelines(globals->pipelineCache, 7, pipelineInfos, pipelines);
 
         globals->shadowmapPipeline = pipelines[0];
         globals->modelPipeline = pipelines[1];
@@ -1215,7 +1335,9 @@ void modelViewSceneInit() {
         globals->ssaoPipeline = pipelines[3];
         globals->compositionPipeline = pipelines[4];
         globals->uberPipeline = pipelines[5];
+        globals->gaussianBlurPipeline = pipelines[6];
 
+        vkDestroyShaderModule(vkglobals.device, pipelineInfos[6].stages[1].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[5].stages[1].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[4].stages[1].module, VK_NULL_HANDLE);
         vkDestroyShaderModule(vkglobals.device, pipelineInfos[3].stages[1].module, VK_NULL_HANDLE);
@@ -1711,19 +1833,23 @@ void modelViewSceneRender() {
 
         {
             VkImageMemoryBarrier imageBarriers[2] = {};
-            imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            imageBarriers[0].image = globals->swapchainImages[imageIndex];
-            imageBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            imageBarriers[0].subresourceRange.baseArrayLayer = 0;
-            imageBarriers[0].subresourceRange.layerCount = 1;
-            imageBarriers[0].subresourceRange.baseMipLevel = 0;
-            imageBarriers[0].subresourceRange.levelCount = 1;
-            imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            imageBarriers[0].srcAccessMask = 0;
-            imageBarriers[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-            imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            if (config.bloomEnable) {
+                imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                imageBarriers[0].image = globals->blurredPostProcessAttachment;
+                imageBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                imageBarriers[0].subresourceRange.baseArrayLayer = 0;
+                imageBarriers[0].subresourceRange.layerCount = 1;
+                imageBarriers[0].subresourceRange.baseMipLevel = 0;
+                imageBarriers[0].subresourceRange.levelCount = 1;
+                imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                imageBarriers[0].srcAccessMask = 0;
+                imageBarriers[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+                vkCmdPipelineBarrier(globals->cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, imageBarriers);
+            }
 
             imageBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             imageBarriers[1].image = globals->postProcessAttachment;
@@ -1739,8 +1865,73 @@ void modelViewSceneRender() {
             imageBarriers[1].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
             imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-            vkCmdPipelineBarrier(globals->cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, imageBarriers);
             vkCmdPipelineBarrier(globals->cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, imageBarriers + 1);
+        }
+
+        if (config.bloomEnable) {
+            VkRenderingAttachmentInfoKHR attachments[1] = {};
+            attachments[0].sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+            attachments[0].imageView = globals->blurredPostProcessAttachmentView;
+            attachments[0].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            attachments[0].resolveMode = VK_RESOLVE_MODE_NONE_KHR;
+            attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            attachments[0].clearValue = (VkClearValue){{{0.0f, 0.0f, 0.0f, 0.0f}}};
+
+            VkRenderingInfoKHR renderingInfo = {};
+            renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+            renderingInfo.renderArea = (VkRect2D){(VkOffset2D){0, 0}, (VkExtent2D){vkglobals.swapchainExtent.width, vkglobals.swapchainExtent.height}};
+            renderingInfo.layerCount = 1;
+            renderingInfo.colorAttachmentCount = 1;
+            renderingInfo.pColorAttachments = attachments;
+            renderingInfo.pDepthAttachment = VK_NULL_HANDLE;
+            renderingInfo.pStencilAttachment = VK_NULL_HANDLE;
+
+            vkCmdBeginRenderingKHR(globals->cmdBuffer, &renderingInfo);
+
+            vkCmdBindPipeline(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->gaussianBlurPipeline);
+            vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->sampledImagePipelineLayout, 0, 1, (VkDescriptorSet[]){globals->postProcessAttachmentDescriptorSet}, 0, VK_NULL_HANDLE);
+
+            vkCmdDraw(globals->cmdBuffer, 3, 1, 0, 0);
+
+            vkCmdEndRenderingKHR(globals->cmdBuffer);
+        }
+
+        {
+            VkImageMemoryBarrier imageBarriers[2] = {};
+            imageBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageBarriers[0].image = globals->swapchainImages[imageIndex];
+            imageBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            imageBarriers[0].subresourceRange.baseArrayLayer = 0;
+            imageBarriers[0].subresourceRange.layerCount = 1;
+            imageBarriers[0].subresourceRange.baseMipLevel = 0;
+            imageBarriers[0].subresourceRange.levelCount = 1;
+            imageBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            imageBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            imageBarriers[0].srcAccessMask = 0;
+            imageBarriers[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            imageBarriers[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            imageBarriers[0].newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+            if (config.bloomEnable) {
+                imageBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                imageBarriers[1].image = globals->blurredPostProcessAttachment;
+                imageBarriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                imageBarriers[1].subresourceRange.baseArrayLayer = 0;
+                imageBarriers[1].subresourceRange.layerCount = 1;
+                imageBarriers[1].subresourceRange.baseMipLevel = 0;
+                imageBarriers[1].subresourceRange.levelCount = 1;
+                imageBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                imageBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                imageBarriers[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                imageBarriers[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                imageBarriers[1].oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                imageBarriers[1].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+                vkCmdPipelineBarrier(globals->cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, imageBarriers + 1);
+            }
+
+            vkCmdPipelineBarrier(globals->cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, VK_NULL_HANDLE, 0, VK_NULL_HANDLE, 1, imageBarriers);
         }
 
         {
@@ -1765,7 +1956,7 @@ void modelViewSceneRender() {
             vkCmdBeginRenderingKHR(globals->cmdBuffer, &renderingInfo);
 
             vkCmdBindPipeline(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->uberPipeline);
-            vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->uberPipelineLayout, 0, 2, (VkDescriptorSet[]){globals->postProcessAttachmentDescriptorSet, globals->gbufferDescriptorSet}, 0, VK_NULL_HANDLE);
+            vkCmdBindDescriptorSets(globals->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, globals->uberPipelineLayout, 0, 3, (VkDescriptorSet[]){globals->postProcessAttachmentDescriptorSet, globals->gbufferDescriptorSet, globals->blurredPostProcessAttachmentDescriptorSet}, 0, VK_NULL_HANDLE);
 
             f32 pcs[2] = {(f32)vkglobals.time / 1e9f, vkglobals.fps};
             vkCmdPushConstants(globals->cmdBuffer, globals->uberPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(f32) * 2, pcs);
@@ -1840,6 +2031,7 @@ void modelViewSceneQuit() {
     vkDestroyPipelineLayout(vkglobals.device, globals->sampledImagePipelineLayout, VK_NULL_HANDLE);
 
     vkDestroyPipeline(vkglobals.device, globals->uberPipeline, VK_NULL_HANDLE);
+    vkDestroyPipeline(vkglobals.device, globals->gaussianBlurPipeline, VK_NULL_HANDLE);
     vkDestroyPipeline(vkglobals.device, globals->compositionPipeline, VK_NULL_HANDLE);
     vkDestroyPipeline(vkglobals.device, globals->ssaoPipeline, VK_NULL_HANDLE);
     vkDestroyPipeline(vkglobals.device, globals->skyboxPipeline, VK_NULL_HANDLE);
@@ -1859,6 +2051,7 @@ void modelViewSceneQuit() {
     vkDestroyBuffer(vkglobals.device, globals->lightBuffer, VK_NULL_HANDLE);
     vkDestroyBuffer(vkglobals.device, globals->viewMatrixBuffer, VK_NULL_HANDLE);
 
+    vkDestroyImageView(vkglobals.device, globals->blurredPostProcessAttachmentView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, globals->postProcessAttachmentView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, globals->ssaoAttachmentView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, globals->metallicRoughnessVelocityTextureView, VK_NULL_HANDLE);
@@ -1868,6 +2061,7 @@ void modelViewSceneQuit() {
     vkDestroyImageView(vkglobals.device, globals->shadowmapView, VK_NULL_HANDLE);
     vkDestroyImageView(vkglobals.device, globals->depthTextureView, VK_NULL_HANDLE);
     
+    vkDestroyImage(vkglobals.device, globals->blurredPostProcessAttachment, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, globals->postProcessAttachment, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, globals->ssaoAttachment, VK_NULL_HANDLE);
     vkDestroyImage(vkglobals.device, globals->metallicRoughnessVelocityTexture, VK_NULL_HANDLE);

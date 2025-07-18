@@ -1,31 +1,58 @@
 #version 450
 
+#extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_samplerless_texture_functions : require
+
+#include "../common.glsl"
 
 layout(constant_id = 0) const float TARGET_FPS = 60.0;
 
-layout(constant_id = 1) const bool GRAIN_ENABLE = true;
-layout(constant_id = 2) const float GRAIN_INTESITY = 0.25;
-layout(constant_id = 3) const float GRAIN_SIGNAL_TO_NOISE = 4.0;
-layout(constant_id = 4) const float GRAIN_NOISE_SHIFT = 0.0;
+layout(constant_id = 1) const float GAMMA_R = 2.2;
+layout(constant_id = 2) const float GAMMA_G = 2.2;
+layout(constant_id = 3) const float GAMMA_B = 2.2;
+layout(constant_id = 4) const float EXPOSURE_R = 1.0;
+layout(constant_id = 5) const float EXPOSURE_G = 1.0;
+layout(constant_id = 6) const float EXPOSURE_B = 1.0;
+layout(constant_id = 7) const float AGX_LOOK_OFFSET_R = 0.0;
+layout(constant_id = 8) const float AGX_LOOK_OFFSET_G = 0.0;
+layout(constant_id = 9) const float AGX_LOOK_OFFSET_B = 0.0;
+layout(constant_id = 10) const float AGX_LOOK_SLOPE_R = 1.0;
+layout(constant_id = 11) const float AGX_LOOK_SLOPE_G = 1.0;
+layout(constant_id = 12) const float AGX_LOOK_SLOPE_B = 1.0;
+layout(constant_id = 13) const float AGX_LOOK_POWER_R = 1.0;
+layout(constant_id = 14) const float AGX_LOOK_POWER_G = 1.0;
+layout(constant_id = 15) const float AGX_LOOK_POWER_B = 1.0;
+layout(constant_id = 16) const float AGX_LOOK_SATURATION_R = 1.0;
+layout(constant_id = 17) const float AGX_LOOK_SATURATION_G = 1.0;
+layout(constant_id = 18) const float AGX_LOOK_SATURATION_B = 1.0;
 
-layout(constant_id = 5) const bool DITHERING_ENABLE = true;
-layout(constant_id = 6) const float DITHERING_TONE_COUNT = 32.0;
+layout(constant_id = 19) const bool GRAIN_ENABLE = true;
+layout(constant_id = 20) const float GRAIN_INTESITY = 0.25;
+layout(constant_id = 21) const float GRAIN_SIGNAL_TO_NOISE = 4.0;
+layout(constant_id = 22) const float GRAIN_NOISE_SHIFT = 0.0;
 
-layout(constant_id = 7) const bool MOTION_BLUR_ENABLE = true;
-layout(constant_id = 8) const uint MOTION_BLUR_MAX_SAMPLES = 8;
-layout(constant_id = 9) const float MOTION_BLUR_VELOCITY_REDUCTION_FACTOR = 4.0;
+layout(constant_id = 23) const bool DITHERING_ENABLE = true;
+layout(constant_id = 24) const float DITHERING_TONE_COUNT = 32.0;
 
-layout(constant_id = 10) const bool FXAA_ENABLE = true;
-layout(constant_id = 11) const float FXAA_REDUCE_MIN = 0.0078125;
-layout(constant_id = 12) const float FXAA_REDUCE_MUL = 0.03125;
-layout(constant_id = 13) const float FXAA_SPAN_MAX = 8.0;
+layout(constant_id = 25) const bool MOTION_BLUR_ENABLE = true;
+layout(constant_id = 26) const uint MOTION_BLUR_MAX_SAMPLES = 8;
+layout(constant_id = 27) const float MOTION_BLUR_VELOCITY_REDUCTION_FACTOR = 4.0;
+
+layout(constant_id = 28) const bool FXAA_ENABLE = true;
+layout(constant_id = 29) const float FXAA_REDUCE_MIN = 0.0078125;
+layout(constant_id = 30) const float FXAA_REDUCE_MUL = 0.03125;
+layout(constant_id = 31) const float FXAA_SPAN_MAX = 8.0;
+
+layout(constant_id = 32) const bool BLOOM_ENABLE = true;
+layout(constant_id = 33) const float BLOOM_INTENSITY = 1.0;
 
 layout(location = 0) in vec2 uv;
 
 layout(binding = 0, set = 0) uniform texture2D frame;
 
 layout(binding = 0, set = 1) uniform texture2D gbuffer[4];
+
+layout(binding = 0, set = 2) uniform texture2D blurredFrame;
 
 layout(push_constant) uniform PC {
     float time;
@@ -52,10 +79,6 @@ float bayerDitherMatrix16x16[16][16] = float[16][16](
     float[16](0.24609375, 0.74609375, 0.12109375, 0.62109375, 0.21484375, 0.71484375, 0.08984375, 0.58984375, 0.23828125, 0.73828125, 0.11328125, 0.61328125, 0.20703125, 0.70703125, 0.08203125, 0.58203125),
     float[16](0.99609375, 0.49609375, 0.87109375, 0.37109375, 0.96484375, 0.46484375, 0.83984375, 0.33984375, 0.98828125, 0.48828125, 0.86328125, 0.36328125, 0.95703125, 0.45703125, 0.83203125, 0.33203125)
 );
-
-float luma(vec3 color) {
-    return dot(color, vec3(0.2126, 0.7152, 0.0722));
-}
 
 float grain(vec3 color) {
     // inverse luma
@@ -125,6 +148,66 @@ vec3 fxaa(vec3 middlePixel) {
     else return color2;
 }
 
+vec3 agxDefaultContrastApprox(vec3 x) {
+  vec3 x2 = x * x;
+  vec3 x4 = x2 * x2;
+  
+  return + 15.5     * x4 * x2
+         - 40.14    * x4 * x
+         + 31.96    * x4
+         - 6.868    * x2 * x
+         + 0.4298   * x2
+         + 0.1191   * x
+         - 0.00232;
+}
+
+vec3 agx(vec3 val) {
+  const mat3 agx_mat = mat3(
+    0.842479062253094, 0.0423282422610123, 0.0423756549057051,
+    0.0784335999999992,  0.878468636469772,  0.0784336,
+    0.0792237451477643, 0.0791661274605434, 0.879142973793104
+  );
+    
+  const float min_ev = -12.47393f;
+  const float max_ev = 4.026069f;
+
+  val = agx_mat * val;
+  
+  // Log2 space encoding
+  val = clamp(log2(val), min_ev, max_ev);
+  val = (val - min_ev) / (max_ev - min_ev);
+
+  return agxDefaultContrastApprox(val);
+}
+
+vec3 agxtf(vec3 val) {
+  const mat3 agx_mat_inv = mat3(
+    1.19687900512017, -0.0528968517574562, -0.0529716355144438,
+    -0.0980208811401368, 1.15190312990417, -0.0980434501171241,
+    -0.0990297440797205, -0.0989611768448433, 1.15107367264116
+  );
+
+  return agx_mat_inv * val;
+}
+
+vec3 AGX_LOOK_OFFSET = vec3(AGX_LOOK_OFFSET_R, AGX_LOOK_OFFSET_G, AGX_LOOK_OFFSET_B);
+vec3 AGX_LOOK_SLOPE = vec3(AGX_LOOK_SLOPE_R, AGX_LOOK_SLOPE_G, AGX_LOOK_SLOPE_B);
+vec3 AGX_LOOK_POWER = vec3(AGX_LOOK_POWER_R, AGX_LOOK_POWER_G, AGX_LOOK_POWER_B);
+vec3 AGX_LOOK_SATURATION = vec3(AGX_LOOK_SATURATION_R, AGX_LOOK_SATURATION_G, AGX_LOOK_SATURATION_B);
+
+vec3 agxLook(vec3 val) {  
+  // ASC CDL
+  val = pow(val * AGX_LOOK_SLOPE + AGX_LOOK_OFFSET, AGX_LOOK_POWER);
+
+  const vec3 lw = vec3(0.2126, 0.7152, 0.0722);
+  float luma = dot(val, lw);
+
+  return luma + AGX_LOOK_SATURATION * (val - luma);
+}
+
+vec3 EXPOSURE = vec3(EXPOSURE_R, EXPOSURE_G, EXPOSURE_B);
+vec3 GAMMA = vec3(GAMMA_R, GAMMA_G, GAMMA_B);
+
 void main() {
     vec4 color = texelFetch(frame, ivec2(gl_FragCoord.xy), 0);
 
@@ -132,9 +215,19 @@ void main() {
 
     if (MOTION_BLUR_ENABLE) color.rgb = motionBlur(color.rgb);
 
+    if (BLOOM_ENABLE) color.rgb += gaussianBlur17Tap(blurredFrame, ivec2(0.0, 1.0), BLOOM_INTENSITY);
+
+    color.rgb *= EXPOSURE;
+
+    color.rgb = agx(color.rgb);
+    color.rgb = agxLook(color.rgb);
+    color.rgb = agxtf(color.rgb);
+
     if (DITHERING_ENABLE) color.rgb = dither(color.rgb);
 
     if (GRAIN_ENABLE) color.rgb += grain(color.rgb);
+
+    color.rgb = gammaCorrection(color.rgb, GAMMA);
 
     outColor = color;
 }

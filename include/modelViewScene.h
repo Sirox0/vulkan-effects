@@ -63,6 +63,7 @@ typedef struct {
     VkImage metallicRoughnessVelocityTexture;
     VkImage ssaoAttachment;
     VkImage postProcessAttachment;
+    VkImage blurredPostProcessAttachment;
     VkImage shadowmap;
 
     VkImageView depthTextureView;
@@ -72,6 +73,7 @@ typedef struct {
     VkImageView metallicRoughnessVelocityTextureView;
     VkImageView ssaoAttachmentView;
     VkImageView postProcessAttachmentView;
+    VkImageView blurredPostProcessAttachmentView;
     VkImageView shadowmapView;
 
     // host visible resources
@@ -98,6 +100,7 @@ typedef struct {
     VkDescriptorSet gbufferDescriptorSet;
     VkDescriptorSet ssaoAttachmentDescriptorSet;
     VkDescriptorSet postProcessAttachmentDescriptorSet;
+    VkDescriptorSet blurredPostProcessAttachmentDescriptorSet;
     VkDescriptorSet shadowmapDescriptorSet;
 
 
@@ -114,6 +117,7 @@ typedef struct {
     VkPipeline skyboxPipeline;
     VkPipeline ssaoPipeline;
     VkPipeline compositionPipeline;
+    VkPipeline gaussianBlurPipeline;
     VkPipeline uberPipeline;
 
     VkSemaphore* renderingDoneSemaphores;
