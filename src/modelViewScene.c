@@ -278,7 +278,7 @@ void modelViewSceneInit() {
 
 
             // host-visible resources
-            createBuffer(&globals->viewMatrixBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(mat4) * 2);
+            createBuffer(&globals->viewMatrixBuffer, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(mat4) * 3);
 
             {
                 VkMemoryAllocClusterInfo_t allocInfo = {};
@@ -1450,7 +1450,10 @@ void updateCubeUbo() {
 
     {
         glm_quat_mul(y, p, y);
+
+        glm_mat4_copy(viewMatrix, viewMatrix + sizeof(mat4) * 2);
         glm_quat_look(globals->cam.position, y, viewMatrix);
+        glm_mat4_inv(viewMatrix, viewMatrix + sizeof(mat4));
     }
 
     glm_mat4_identity(modelMatrix);
@@ -1489,7 +1492,6 @@ void modelViewSceneRender() {
     u32 imageIndex;
     VK_ASSERT(vkAcquireNextImageKHR(vkglobals.device, vkglobals.swapchain, 0xFFFFFFFFFFFFFFFF, globals->swapchainReadySemaphore, VK_NULL_HANDLE, &imageIndex), "failed to acquire swapchain image\n");
 
-    glm_mat4_copy(globals->hostVisibleUniformMemoryRaw, globals->hostVisibleUniformMemoryRaw + sizeof(mat4));
     updateCubeUbo();
 
     {

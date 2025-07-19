@@ -30,6 +30,7 @@ layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
 
 layout(binding = 1, set = 0) uniform UniformBufferViewMatrix {
     mat4 view;
+    mat4 invView;
     mat4 oldView;
 };
 
@@ -116,7 +117,7 @@ void main() {
   float depth = texelFetch(gbuffer[3], ivec2(uv * (textureSize(gbuffer[3], 0) - 1)), 0).r;
   vec3 pos = viewRay * linearDepth(depth, nearPlane, farPlane);
 
-  vec4 shadowUV = (biasMat * lightVP) * (inverse(view) * vec4(pos, 1.0));
+  vec4 shadowUV = (biasMat * lightVP) * (invView * vec4(pos, 1.0));
   shadowUV.z += 0.00002;
 
   float shadow = PCF(shadowmap, shadowUV, 1, 1.0 / vec2(textureSize(shadowmap, 0)));

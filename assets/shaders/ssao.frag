@@ -24,6 +24,7 @@ layout(binding = 0, set = 0) uniform UniformBufferProjectionMatrix {
 
 layout(binding = 1, set = 0) uniform UniformBufferViewMatrix {
     mat4 view;
+    mat4 invView;
     mat4 oldView;
 };
 
