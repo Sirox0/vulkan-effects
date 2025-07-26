@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "SDL3/SDL_timer.h"
 #include "config.h"
 #include "vk.h"
 #include "vkFunctions.h"
@@ -51,6 +52,7 @@ int main(int argc, char** argv) {
         }
 
         vkglobals.time = SDL_GetTicksNS();
+        vkglobals.timeMS = SDL_GetTicks();
 
         curscene.render();
 

@@ -36,7 +36,7 @@ const struct aiScene* vkModelLoadScene(const char* path) {
         aiProcess_GenSmoothNormals |
         aiProcess_CalcTangentSpace |
         aiProcess_GenUVCoords |
-        aiProcess_ConvertToLeftHanded |
+        aiProcess_FlipUVs |
         aiProcess_RemoveRedundantMaterials |
         // transition to zeux/meshoptimizer?
         aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality
@@ -51,7 +51,7 @@ void vkModelGetNodeSizes(const struct aiScene* scene, const struct aiNode* node,
         struct aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
         vertexSize += mesh->mNumVertices;
         for (u32 j = 0; j < mesh->mNumFaces; j++) {
-            indexSize += mesh->mFaces[j].mNumIndices;
+            indexSize += mesh->mFaces[j].mNumIndices * sizeof(u32);
         }
     }
 

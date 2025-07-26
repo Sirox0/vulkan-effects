@@ -5,6 +5,8 @@
 
 #include "common.glsl"
 
+#include "atmosphere.glsl"
+
 layout(constant_id = 0) const int SSAO_DENOISE_SIZE = 4;
 layout(constant_id = 1) const float SSAO_DENOISE_EXPONENT = 5.0;
 layout(constant_id = 2) const float SSAO_DENOISE_FACTOR = 0.75;
@@ -18,6 +20,13 @@ layout(constant_id = 7) const float DIRECTIONAL_LIGHT_COLOR_R = 1.0;
 layout(constant_id = 8) const float DIRECTIONAL_LIGHT_COLOR_G = 1.0;
 layout(constant_id = 9) const float DIRECTIONAL_LIGHT_COLOR_B = 1.0;
 layout(constant_id = 10) const float DIRECTIONAL_LIGHT_INTENSITY = 10.0;
+
+layout(constant_id = 11) const float VOLUMETRIC_LIGHT_SCATTERING_FACTOR = 0.25;
+layout(constant_id = 12) const uint VOLUMETRIC_LIGHT_STEPS = 40;
+
+layout(constant_id = 13) const float ATMOSPHERE_SUN_POWER = 20.0;
+layout(constant_id = 14) const uint ATMOSPHERE_STEPS = 16;
+layout(constant_id = 15) const uint ATMOSPHERE_LIGHT_STEPS = 8;
 
 layout(location = 0) in vec2 uv;
 
@@ -52,13 +61,13 @@ layout(location = 0) out vec4 outColor;
 vec3 AMBIENT_LIGHT_COLOR = vec3(AMBIENT_LIGHT_COLOR_R, AMBIENT_LIGHT_COLOR_G, AMBIENT_LIGHT_COLOR_B) * AMBIENT_LIGHT_INTENSITY;
 vec3 DIRECTIONAL_LIGHT_COLOR = vec3(DIRECTIONAL_LIGHT_COLOR_R, DIRECTIONAL_LIGHT_COLOR_G, DIRECTIONAL_LIGHT_COLOR_B) * DIRECTIONAL_LIGHT_INTENSITY;
 
-const float PI = acos(-1.0);
+const float C_PI = acos(-1.0);
 
 float D_GGX(float dotNH, float roughness) {
     float alpha = roughness * roughness;
     float alphaSqr = alpha * alpha;
     float denom = max(dotNH * dotNH * (alphaSqr - 1.0) + 1.0, MIN);
-    return alphaSqr / (PI * denom * denom);
+    return alphaSqr / (C_PI * denom * denom);
 }
 
 float G_SchlicksmithGGX(float dotNL, float dotNV, float roughness) {
@@ -108,24 +117,41 @@ const mat4 biasMat = mat4(
 
 void main() {
   vec3 N = normalize(texelFetch(gbuffer[0], ivec2(gl_FragCoord.xy), 0).xyz * 2.0 - 1.0);
-  vec3 V = normalize(-vec3(invProjection * vec4(uv * 2.0 - 1.0, 1.0, 1.0)));
+  vec3 V = vec3(invProjection * vec4(uv * 2.0 - 1.0, 1.0, 1.0));
 
   vec2 metallicRoughness = texelFetch(gbuffer[2], ivec2(gl_FragCoord.xy), 0).rg;
   vec4 origColor = texelFetch(gbuffer[1], ivec2(gl_FragCoord.xy), 0);
 
-  vec3 viewRay = vec3(invProjection * vec4(uv * 2.0 - 1.0, 1.0, 1.0));
-  float depth = texelFetch(gbuffer[3], ivec2(uv * (textureSize(gbuffer[3], 0) - 1)), 0).r;
-  vec3 pos = viewRay * linearDepth(depth, nearPlane, farPlane);
+  float depth = texelFetch(gbuffer[3], ivec2(gl_FragCoord.xy), 0).r;
+  vec3 pos = V.xyz * linearDepth(depth, nearPlane, farPlane);
+  vec4 worldPos = invView * vec4(pos, 1.0);
 
-  vec4 shadowUV = (biasMat * lightVP) * (invView * vec4(pos, 1.0));
-  shadowUV.z += 0.00002;
+  vec4 camPos = invView * vec4(0.0, 0.0, 0.0, 1.0);
 
-  float shadow = PCF(shadowmap, shadowUV, 1, 1.0 / vec2(textureSize(shadowmap, 0)));
+  vec4 worldLightPos = invView * lightPos;
 
-  vec3 L = normalize(lightPos.xyz - pos);
-  vec3 Lo = BRDF(L, V, N, metallicRoughness, origColor.rgb) * shadow;
+  mat4 shadowMat = biasMat * lightVP;
 
-  vec3 color = Lo + AMBIENT_LIGHT_COLOR * origColor.rgb * bilateral(occlusionMap, uv, SSAO_DENOISE_SIZE, SSAO_DENOISE_EXPONENT, SSAO_DENOISE_FACTOR);
+  vec4 shadowUV = shadowMat * worldPos;
 
-  outColor = origColor.a == 0.0 ? origColor : vec4(color, origColor.a);
+  float shadow = PCF(shadowmap, shadowUV, 4, 1.0 / vec2(textureSize(shadowmap, 0)));
+
+  vec3 L = normalize(lightPos.xyz - pos.xyz);
+  vec3 Lo = BRDF(L, normalize(-V.xyz), N, metallicRoughness, origColor.rgb) * shadow;
+
+  vec3 color = Lo + max(vec3(AMBIENT_LIGHT_COLOR_R, AMBIENT_LIGHT_COLOR_G, AMBIENT_LIGHT_COLOR_B) * 0.0005, AMBIENT_LIGHT_COLOR * origColor.rgb * bilateral(occlusionMap, uv, SSAO_DENOISE_SIZE, SSAO_DENOISE_EXPONENT, SSAO_DENOISE_FACTOR));
+
+  vec3 worldViewRay = mat3(invView) * normalize(V.xyz);
+  worldViewRay.y *= -1;
+
+  vec3 sunDir = normalize(worldLightPos).xyz;
+  sunDir.y *= -1;
+
+  vec3 sky = pow(atmosphere(worldViewRay, sunDir, ATMOSPHERE_SUN_POWER, ATMOSPHERE_STEPS, ATMOSPHERE_LIGHT_STEPS), vec3(2.2));
+
+  color = origColor.a == 0.0 ? sky : color;
+
+  color += 0.05 * DIRECTIONAL_LIGHT_COLOR * volumetricLight(shadowmap, shadowMat, L, camPos.xyz, worldPos.xyz, VOLUMETRIC_LIGHT_SCATTERING_FACTOR, VOLUMETRIC_LIGHT_STEPS);
+
+  outColor = vec4(color, origColor.a);
 }

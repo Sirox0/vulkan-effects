@@ -16,7 +16,7 @@ float hash12(vec2 p) {
 }
 
 float bilateral(texture2D tex, vec2 inuv, int size, float exponent, float factor) {
-    ivec2 coord = ivec2(inuv * (textureSize(tex, 0) - 1));
+    ivec2 coord = ivec2(floor(inuv * (textureSize(tex, 0) - 1)));
 
     float center = texelFetch(tex, coord, 0).r;
 
@@ -114,4 +114,30 @@ vec3 gaussianBlur17Tap(texture2D tex, ivec2 direction, float intensity) {
     }
 
     return result;
+}
+
+float volumetricLight(sampler2DShadow shadowmapTex, mat4 transform, vec3 lightDir, vec3 camPos, vec3 geomPos, float scatteringFactor, uint steps) {
+    vec3 ray = geomPos - camPos;
+    float rayLen = length(ray);
+    vec3 dir = ray / rayLen;
+    float stepLen = 1.0 / float(steps);
+    vec3 rayStep = dir * stepLen * rayLen;
+    float dotVL = dot(dir, lightDir);
+
+    float scatteringFactorSqr = scatteringFactor * scatteringFactor;
+    float scattering = (1.0 - scatteringFactorSqr) / (4.0 * acos(-1.0) * pow(1.0 + scatteringFactorSqr - 2.0 * scatteringFactor * dotVL, 1.5));
+
+    float L = 0.0;
+    vec4 rayPos = vec4(camPos, 1.0);
+
+    for (uint i = 0; i < steps; i++) {
+        vec4 rayLightSpace = transform * rayPos;
+        
+        float smpl = textureProj(shadowmapTex, rayLightSpace);
+        L += smpl * scattering;
+
+        rayPos.xyz += rayStep;
+    }
+
+    return L * stepLen;
 }

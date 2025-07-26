@@ -36,6 +36,12 @@ typedef struct {
     f32 ambientLightIntensity;
     vec3 directionalLightColor;
     f32 directionalLightIntensity;
+    f32 volumetricLightScatteringFactor;
+    u32 volumetricLightSteps;
+
+    f32 atmosphereSunPower;
+    u32 atmosphereSteps;
+    u32 atmosphereLightSteps;
 
     f32 fov;
     f32 nearPlane;

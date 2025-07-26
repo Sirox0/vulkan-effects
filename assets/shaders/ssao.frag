@@ -36,7 +36,7 @@ layout(location = 0) out float outOcclusion;
 
 float ao(vec2 tcoord, vec2 inuv, vec3 p, vec3 normal, ivec2 textureDim) {
     vec3 viewRay = vec3(invProjection * vec4((tcoord + inuv) * 2.0 - 1.0, 1.0, 1.0));
-    vec3 pos = viewRay * linearDepth(texelFetch(gbuffer[3], ivec2((tcoord + inuv) * (textureDim - 1)), 0).r, nearPlane, farPlane);
+    vec3 pos = viewRay * linearDepth(texelFetch(gbuffer[3], ivec2(floor((tcoord + inuv) * (textureDim - 1))), 0).r, nearPlane, farPlane);
 
     vec3 diff = pos - p;
     float l = length(diff);
@@ -50,9 +50,9 @@ void main() {
     ivec2 textureDim = textureSize(gbuffer[3], 0);
 
     vec3 viewRay = vec3(invProjection * vec4(uv * 2.0 - 1.0, 1.0, 1.0));
-    vec3 pos = viewRay * linearDepth(texelFetch(gbuffer[3], ivec2(uv * (textureDim - 1)), 0).r, nearPlane, farPlane);
+    vec3 pos = viewRay * linearDepth(texelFetch(gbuffer[3], ivec2(floor(uv * (textureDim - 1))), 0).r, nearPlane, farPlane);
 
-    vec3 normal = texelFetch(gbuffer[0], ivec2(uv * (textureDim - 1)), 0).xyz * 2.0 - 1.0;
+    vec3 normal = texelFetch(gbuffer[0], ivec2(floor(uv * (textureDim - 1))), 0).xyz * 2.0 - 1.0;
 
     float occlusion = 0.0;
     float inv = 1.0 / float(SSAO_SAMPLES);

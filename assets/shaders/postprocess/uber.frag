@@ -223,11 +223,11 @@ void main() {
     color.rgb = agxLook(color.rgb);
     color.rgb = agxtf(color.rgb);
 
+    color.rgb = gammaCorrection(color.rgb, GAMMA);
+
     if (DITHERING_ENABLE) color.rgb = dither(color.rgb);
 
     if (GRAIN_ENABLE) color.rgb += grain(color.rgb);
-
-    color.rgb = gammaCorrection(color.rgb, GAMMA);
 
     outColor = color;
 }

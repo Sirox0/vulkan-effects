@@ -24,6 +24,7 @@ typedef struct {
     u8 loopActive;
     u32 deltaTime;
     u32 time;
+    u32 timeMS;
     f32 fps;
 
     VkFilter textureFilter;

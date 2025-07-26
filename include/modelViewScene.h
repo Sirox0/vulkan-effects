@@ -23,7 +23,6 @@ typedef struct {
         f32 targetPitch, targetYaw;
     } cam;
 
-    u8 moveLight;
     vec4 lightPos;
 
     vec2 inputX;
@@ -58,7 +57,6 @@ typedef struct {
     VkBuffer skyboxVertexBuffer;
 
     VkImage depthTexture;
-    VkImage skyboxCubemap;
     VkImage gbuffer;
     VkImage metallicRoughnessVelocityTexture;
     VkImage ssaoAttachment;
@@ -67,7 +65,6 @@ typedef struct {
     VkImage shadowmap;
 
     VkImageView depthTextureView;
-    VkImageView skyboxCubemapView;
     VkImageView gbufferNormalView;
     VkImageView gbufferAlbedoView;
     VkImageView metallicRoughnessVelocityTextureView;
@@ -96,7 +93,6 @@ typedef struct {
     
     VkDescriptorSet lightDescriptorSet;
     VkDescriptorSet PVmatrixdescriptorSet;
-    VkDescriptorSet skyboxCubemapDescriptorSet;
     VkDescriptorSet gbufferDescriptorSet;
     VkDescriptorSet ssaoAttachmentDescriptorSet;
     VkDescriptorSet postProcessAttachmentDescriptorSet;
@@ -107,7 +103,7 @@ typedef struct {
     VkPipelineLayout sampledImagePipelineLayout;
     VkPipelineLayout shadowmapPipelineLayout;
     VkPipelineLayout modelPipelineLayout;
-    VkPipelineLayout skyboxPipelineLayout;
+    VkPipelineLayout PVPipelineLayout;
     VkPipelineLayout PVgbufferPipelineLayout;
     VkPipelineLayout compositionPipelineLayout;
     VkPipelineLayout uberPipelineLayout;
